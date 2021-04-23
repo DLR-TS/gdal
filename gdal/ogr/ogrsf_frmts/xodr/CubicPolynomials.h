@@ -25,32 +25,26 @@
 #define CUBICPOLYNOMIALS_H
 
 #include <string>
+#include <iostream>
 
 class CubicPolynomial {
 public:
+    CubicPolynomial();
     CubicPolynomial(const double coeffA, const double coeffB, const double coeffC, const double coeffD);
     CubicPolynomial(const CubicPolynomial& orig);
     virtual ~CubicPolynomial();
     double value(const double x);
+    CubicPolynomial derivative();
+    double getD () const;
+    double getC () const;
+    double getB () const;
+    double getA () const;
+    
 private:
     double a;
     double b;
     double c;
     double d;
 };
-
-class ParametricCubicPolynomial {
-public:
-    ParametricCubicPolynomial(const double coeffUA, const double coeffUB, const double coeffUC, const double coeffUD,
-            const double coeffVA, const double coeffVB, const double coeffVC, const double coeffVD);
-    ParametricCubicPolynomial(const ParametricCubicPolynomial& orig);
-    virtual ~ParametricCubicPolynomial();
-    double valueU(const double parameter);
-    double valueV(const double parameter);
-private:
-    CubicPolynomial polyU;
-    CubicPolynomial polyV;
-};
-
 #endif /* CUBICPOLYNOMIALS_H */
 
