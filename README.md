@@ -95,6 +95,8 @@ We basically follow the official [GDAL building instructions for Windows](https:
 generate_vcxproj.bat 15.0 64 gdal_vs2017
 ```
 
+If you encounter compilation errors, make sure to have installed the additional Visual Studio 2017 components "Windows Universal CRT SDK" and "Windows 8.1 SDK".
+
 Now configure your GEOS and Xerces dependencies by adding the corresponding include directory and library paths into a _new_ lokal NMake configuration file `nmake.local`. It should contain something like the following (consider `nmake.opt` as a reference):
 
 ```bash
@@ -189,10 +191,16 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/gdal/build/lib
 export GDAL_DRIVER_PATH=<gdal>/gdal/build/lib/gdalplugins
 ```
 
-To convert an OpenDRIVE XML file into, e.g., an ESRI Shapefile, use the provided utility `ogr2ogr`:
+To convert reference lines of an OpenDRIVE file into, e.g., an ESRI Shapefile, use the provided utility `ogr2ogr`:
 
 ```bash
 ogr2ogr -f "ESRI Shapefile" CulDeSac.shp CulDeSac.xodr referenceLine
+```
+
+To convert the wohle OpenDRIVE file with all its different layers into a Geopackage:
+
+```bash
+ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr
 ```
 
 Details on driver capabilities can be found in the [driver documentation](https://github.com/DLR-TS/gdal/blob/ogr/xodr/gdal/doc/source/drivers/vector/xodr.rst). For advanced debug console output of those utility programs and the implemented drivers add `CPL_DEBUG=ON` to your running environment.
