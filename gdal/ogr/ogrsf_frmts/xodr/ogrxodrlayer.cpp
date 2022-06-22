@@ -1,611 +1,463 @@
-/******************************************************************************
- * $Id$
- *
- * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of OGRXODRLayer.
- * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
- *			 Cristhian Eduardo Murcia Galeano, cristhianmurcia182@gmail.com
- *			 Ana Maria Orozco, ana.orozco.net@gmail.com
- *
- ******************************************************************************
- * Copyright 2017 German Aerospace Center (DLR), Institute of Transportation Systems 
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ****************************************************************************/
-
 #include "ogr_xodr.h"
 #include "ogr_api.h"
 #include "ogr_geometry.h"
+
 #include <cmath>
 #include <iostream>
-#include <memory>   
+#include <memory>
 #include <string>
 #include <typeinfo>
-#include <vector>
-#include <iterator> 
+#include "cpl_error.h"
 
-using namespace std;
-using namespace xml_schema;
 
-//pass third argument
-OGRXODRLayer::OGRXODRLayer(XODR* xodr, const char* pszName, std::string lName) :
-xodr(xodr),
-xodrRoads(xodr->getXODRRoads()),
-xodrRoadsIte(xodrRoads.begin()),
-poFeatureDefn(new OGRFeatureDefn(CPLGetBasename(pszName))) {
+OGRXODRLayer::OGRXODRLayer(XODR *xodr, const std::vector<RoadSF> &roads, const char* pszName, uint8_t lId) :
+	xodr(xodr),
+	simpleRoads(roads),
+	roadIter(simpleRoads.begin()),
+	poFeatureDefn(new OGRFeatureDefn(CPLGetBasename(pszName)))
+{
+	layerId = lId;
+	if(layerId == refLayer || layerId == laneLayer)
+		poFeatureDefn->SetGeomType(OGRwkbGeometryType::wkbMultiLineString);
+	else if(layerId == objectLayer || layerId == signalLayer)
+		poFeatureDefn->SetGeomType(OGRwkbGeometryType::wkbPoint);
+	else
+		poFeatureDefn->SetGeomType(OGRwkbGeometryType::wkbMultiLineString);
+	poFeatureDefn->Reference();
 
-	//Defines a data structure according to the lName parameter (layer name), this parameter is passed by the user in the command prompt
-	layerName = lName;
-    poFeatureDefn->SetGeomType(wkbMultiLineString);
-    poFeatureDefn->Reference();
+	ResetReading();
+	poSRS = NULL;
+	if (xodr->getMinorRevision() > 3) {
+		std::string geoReference = xodr->getSpatialReferenceSystem();
+        if (!geoReference.empty())
+		{
+			poSRS = new OGRSpatialReference();
+			poSRS->importFromProj4(geoReference.c_str());
 
-    ResetReading();
+			poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
 
-    // Spatial Reference (for OpenDRIVE >= 1.4)
-    poSRS = NULL;
-    if (xodr -> getMinorRevision() > 3) {
+            //CPLError(CE_Warning, CPLE_AppDefined, geoReference.c_str());
+		}
+	}
+	createRequestedLayer();
 
-        std::string geoRef = xodr->getGeoReferenceString();
-        if (!geoRef.empty()) {
-            poSRS = new OGRSpatialReference();
-            poSRS->importFromProj4(geoRef.c_str());
-            //            poSRS->dumpReadable();
-            poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
+}
+
+OGRXODRLayer::~OGRXODRLayer()
+{
+	if (poFeatureDefn != NULL)
+	{
+		poFeatureDefn->Release();
+	}
+	if (poSRS != NULL)
+	{
+		poSRS->Release();
+	}
+}
+
+OGRFeature* OGRXODRLayer::GetNextFeature()
+{
+	switch (layerId)
+	{
+		case refLayer:
+			return getReferenceLineFeatures();
+			break;
+		case laneLayer:
+			return getLaneLineFeatures();
+			break;
+		case centerLanelayer:
+			return  getCenterLaneLineFeatures();
+			break;
+		case signalLayer:
+		 	return getSignalFeatures();
+		 	break;
+		case objectLayer:
+			return getObjectFeatures();
+			break;
+		case markLayer:
+			return getLaneLineFeatures();
+			break;
+		default:
+			return getReferenceLineFeatures();
+			break;
+	}
+}
+
+OGRFeature* OGRXODRLayer::getReferenceLineFeatures()
+{
+	if (roadIter != simpleRoads.end())
+	{
+		RoadSF roadsf = *roadIter;
+		OGRFeature *f = new OGRFeature(poFeatureDefn);
+		OGRLineString *temp_l = new OGRLineString();
+		std::unique_ptr<CoordinateSequence> cs = roadsf.getPlanViewSF()->getCoordinates();
+		for(int i = 0; cs->getSize() > i ;i++){
+            temp_l->setPoint(i,new OGRPoint(cs->getX(i),cs->getY(i)));
+		}
+        OGRGeometry *l = temp_l->MakeValid();
+		f->SetGeometry(l);
+		f->SetField(poFeatureDefn->GetFieldIndex("Name"), roadsf.getRoad().id().get().c_str()); //roadsf.getRoad().name().get().c_str()
+		f->SetField(poFeatureDefn->GetFieldIndex("ID"), roadsf.getRoad().id().get().c_str());
+		f->SetField(poFeatureDefn->GetFieldIndex("Junction"), roadsf.getRoad().junction().get().c_str());
+		f->SetFID(nNextFID++);
+
+		roadIter++;
+		delete l;
+		if ((m_poFilterGeom == NULL || FilterGeometry(f->GetGeometryRef()))
+			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(f)))
+		{
+
+			return f;
+		}
+
+		delete f;
+	}
+	return NULL;
+}
+
+OGRFeature* OGRXODRLayer::getCenterLaneLineFeatures()
+{
+	if (roadIter != simpleRoads.end())
+	{
+		if (featureIndex == 0)
+		{
+			try
+			{
+				currentCenterLanes = roadIter->getCenterLaneSf();
+			}
+			catch(const std::exception& e)
+			{
+				std::cerr << e.what() << '\n';
+			}
+		}
+
+		size_t nLanes = currentCenterLanes.size();
+		OGRFeature* f = new OGRFeature(poFeatureDefn);
+
+		if (nLanes > 0)
+		{
+			CenterLaneSF* lane = currentCenterLanes.at(featureIndex);
+			OGRLineString *l = new OGRLineString();
+			std::unique_ptr<CoordinateSequence> cs = lane->getGeometry()->getCoordinates();
+			for(int i = 0; cs->getSize() > i ;i++){
+				l->setPoint(i,new OGRPoint(cs->getX(i),cs->getY(i)));
+			}
+
+			f->SetGeometryDirectly(l->clone());
+			f->SetField(poFeatureDefn->GetFieldIndex("ID"), (char)lane->getID());
+			f->SetField(poFeatureDefn->GetFieldIndex("RoadID"), roadIter->getRoad().id().get().c_str());
+			featureIndex++;
+			delete l;
+            delete lane;
+		}
+
+		if (featureIndex >= nLanes) {
+			roadIter++;
+			featureIndex = 0;
+		}
+		if ((m_poFilterGeom == NULL || FilterGeometry(f->GetGeometryRef()))
+			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(f)))
+		{
+			return f;
+		}
+		delete f;
+	}
+	return NULL;
+}
+
+OGRFeature* OGRXODRLayer::getLaneLineFeatures()
+{
+	if (roadIter != simpleRoads.end())
+	{
+		if (featureIndex == 0)
+		{
+			try
+			{
+				currentLanes = roadIter->getLanesSf();
+			}
+			catch(const std::exception& e)
+			{
+				std::cerr << e.what() << '\n';
+			}
+
+
+		}
+		size_t nLanes = currentLanes.size();
+		OGRFeature* f = new OGRFeature(poFeatureDefn);
+
+		if (nLanes > 0)
+		{
+			LaneSF lane = currentLanes.at(featureIndex);
+			OGRLineString *l = new OGRLineString();
+			std::unique_ptr<CoordinateSequence> cs = lane.getGeometry()->getCoordinates();
+			for(int i = 0; cs->getSize() > i ;i++){
+				l->setPoint(i,new OGRPoint(cs->getX(i),cs->getY(i)));
+			}
+
+			f->SetGeometryDirectly(l->clone());
+			f->SetField(poFeatureDefn->GetFieldIndex("ID"), (char)lane.GetRoadLane().id().get());
+			f->SetField(poFeatureDefn->GetFieldIndex("Type"), lane.GetRoadLane().type().get().c_str());
+			f->SetField(poFeatureDefn->GetFieldIndex("Level"), lane.GetRoadLane().level().get().c_str());
+			f->SetField(poFeatureDefn->GetFieldIndex("RoadID"), roadIter->getRoad().id().get().c_str());
+			featureIndex++;
+			delete l;
+		}
+
+		if (featureIndex >= nLanes) {
+			roadIter++;
+			featureIndex = 0;
+		}
+		if ((m_poFilterGeom == NULL || FilterGeometry(f->GetGeometryRef()))
+			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(f)))
+		{
+			return f;
+		}
+		delete f;
+	}
+	return NULL;
+}
+
+//OGRFeature* OGRXODRLayer::getRoadMarkLineFeatures()
+//{
+//	return NULL;
+//}
+
+OGRFeature* OGRXODRLayer::getSignalFeatures()
+{
+	if(roadIter != simpleRoads.end())
+	{
+		if(featureIndex == 0){
+		//find road with objects and skip empty roads
+		 	while(roadIter != simpleRoads.end())
+			{
+				 try
+				{
+					currentSignals = roadIter->getSignalSf();
+				}
+				catch(const std::exception& e)
+				{
+					std::cerr << e.what() << '\n';
+				}
+				if(currentSignals.size() > 0){
+		 			break;
+		 		}
+		 		roadIter++;
+			}
+		}
+	int nFeatures =  currentSignals.size();
+
+	OGRFeature* feature = new OGRFeature(poFeatureDefn);
+	if(nFeatures > 0) {
+	    SignalSF sigSf = currentSignals[featureIndex];
+		OGRPoint *pFeature = new OGRPoint(sigSf.getP()->getX(), sigSf.getP()->getY());
+	    feature->SetGeometryDirectly(pFeature);
+		feature->SetField(poFeatureDefn->GetFieldIndex("ID"), sigSf.getXodrSignal().id().get().c_str());
+        if (sigSf.getXodrSignal().name() != NULL)
+            feature->SetField(poFeatureDefn->GetFieldIndex("Name"), sigSf.getXodrSignal().name().get().c_str());
+		if (sigSf.getXodrSignal().type() != NULL)
+            feature->SetField(poFeatureDefn->GetFieldIndex("Type"), sigSf.getXodrSignal().type().get().c_str());
+		if (sigSf.getXodrSignal().subtype() != NULL)
+            feature->SetField(poFeatureDefn->GetFieldIndex("Subtype"), sigSf.getXodrSignal().subtype().get().c_str());
+		if (sigSf.getXodrSignal().dynamic() != NULL)
+            feature->SetField(poFeatureDefn->GetFieldIndex("Dynamic"), sigSf.getXodrSignal().dynamic().get().c_str());
+        if (sigSf.getXodrSignal().country() != NULL)
+            feature->SetField(poFeatureDefn->GetFieldIndex("Country"), sigSf.getXodrSignal().country().get().c_str());
+
+        feature->SetField(poFeatureDefn->GetFieldIndex("RoadID"), roadIter->getRoad().id().get().c_str());
+		if(sigSf.getXodrSignal().orientation() != NULL){
+		    feature->SetField(poFeatureDefn->GetFieldIndex("Orient"), sigSf.getXodrSignal().orientation().get().c_str());
+		}else{
+		 	feature->SetField(poFeatureDefn->GetFieldIndex("Orient"), "");
+		}
+
+		featureIndex++;
+	}
+    if (featureIndex >= nFeatures && roadIter != simpleRoads.end())
+    {
+        roadIter++;
+        featureIndex = 0;
+    }
+    if((m_poFilterGeom == NULL || FilterGeometry(feature->GetGeometryRef()))
+        && (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(feature)))
+        {
+            return feature;
         }
-    }
-
-	if (layerName == "referenceLine") {		
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldJunction("Junction", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldJunction);
-	}
-	else if (layerName == "lane") {
-		
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);
-		OGRFieldDefn oFieldLevel("Level", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldLevel);
-		OGRFieldDefn oFieldSingleSide("SingleSide", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldSingleSide);
-		OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoadID);
-	}
-	else if (layerName == "roadMark") {
-
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);
-		OGRFieldDefn oFieldWeight("Weight", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldWeight);
-		OGRFieldDefn oFieldColor("Color", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldColor);
-		OGRFieldDefn oFieldLaneChange("LaneChange", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldLaneChange);
-		OGRFieldDefn oFieldRule("Rule", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRule);
-	}
-	else if (layerName == "signal") {
-		
-		//We create a vector containing only the roads that contain signals
-		for (OpenDRIVE::road_const_iterator it = xodrRoads.begin(); it != xodrRoads.end(); ++it) {
-			const road& xodrRoad = *it;
-		
-			if (xodr->signalPresent(xodrRoad)) {	
-				signalRoads.push_back(xodrRoad);
-			}
-			
-		}
-		signalRoadSize = signalRoads.size();
-		OGRFieldDefn oFieldRoadId("RoadId", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoadId);
-		poFeatureDefn->SetGeomType(wkbPoint);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldDynamic("Dynamic", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldDynamic);
-		OGRFieldDefn oFieldOrientation("Orient", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldOrientation);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);		
-		OGRFieldDefn oFieldCountry("Country", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldCountry);
-		OGRFieldDefn oFieldSubtype("Subtype", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldSubtype);
-	}
-
-	else if (layerName == "objectPoint") {
-		//We create a vector containing only the roads that contain object elements
-		for (OpenDRIVE::road_const_iterator it = xodrRoads.begin(); it != xodrRoads.end(); ++it) {
-			const road& xodrRoad = *it;
-
-			if (xodr->objectPresent(xodrRoad)) {
-				objectRoads.push_back(xodrRoad);
-			}
-
-		}
-		objectRoadSize = objectRoads.size();
-		OGRFieldDefn oFieldRoadId("RoadId", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoadId);
-		poFeatureDefn->SetGeomType(wkbPoint);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldOrientation("Orient", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldOrientation);
-		OGRFieldDefn oFieldPitch("Pitch", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldPitch);
-		OGRFieldDefn oFieldRoll("Roll", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoll);
-		OGRFieldDefn oFieldRadius("Radius", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRadius);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);
-	}
-
-	else if (layerName == "objectPolygon") {
-
-		for (OpenDRIVE::road_const_iterator it = xodrRoads.begin(); it != xodrRoads.end(); ++it) {
-			const road& xodrRoad = *it;
-
-			if (xodr->objectPolygonPresent(xodrRoad)) {
-				objectRoads.push_back(xodrRoad);
-			}
-
-		}
-
-		objectRoadSize = objectRoads.size();
-		OGRFieldDefn oFieldRoadId("RoadId", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoadId);
-		poFeatureDefn->SetGeomType(wkbPolygon);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldOrientation("Orient", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldOrientation);
-		OGRFieldDefn oFieldPitch("Pitch", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldPitch);
-		OGRFieldDefn oFieldRoll("Roll", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoll);
-		OGRFieldDefn oFieldRadius("Radius", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRadius);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);
-	}
-
-	else if (layerName == "objectLine") {
-		//We create a vector containing only the roads that contain object elements
-		for (OpenDRIVE::road_const_iterator it = xodrRoads.begin(); it != xodrRoads.end(); ++it) {
-			const road& xodrRoad = *it;
-
-			if (xodr->objectLinePresent(xodrRoad)) {
-		
-				objectRoads.push_back(xodrRoad);
-			}
-
-		}
-		objectRoadSize = objectRoads.size();
-		OGRFieldDefn oFieldRoadId("RoadId", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoadId);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldOrientation("Orient", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldOrientation);
-		OGRFieldDefn oFieldPitch("Pitch", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldPitch);
-		OGRFieldDefn oFieldRoll("Roll", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRoll);
-		OGRFieldDefn oFieldRadius("Radius", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldRadius);
-		OGRFieldDefn oFieldType("Type", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldType);
-	}
-
-	else {
-	
-		OGRFieldDefn oFieldName("Name", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldName);
-		OGRFieldDefn oFieldId("Id", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldId);
-		OGRFieldDefn oFieldJunction("Junction", OFTString);
-		poFeatureDefn->AddFieldDefn(&oFieldJunction);
-
-	}
-}
-
-OGRXODRLayer::~OGRXODRLayer() {
-    if (NULL != poFeatureDefn) {
-        poFeatureDefn->Release();
-    }
-    if (NULL != poSRS) {
-        poSRS->Release();
-    }
-}
-
-void OGRXODRLayer::ResetReading() {
-    xodrRoadsIte = xodrRoads.begin();
-    nNextFID = 0;
-}
-
-
-OGRFeature* OGRXODRLayer::GetNextFeature() {
-	// Retrieves a layer according to the current layerName parameter, this parameter is parsed by the user in the command prompt
-	if (layerName == "referenceLine") {
-		if (print) {
-			print = false;
-			std::cout << "Generating reference lines \n";
-		}
-
-		return referenceLineFeature();
-	} else if (layerName == "lane") {
-		if (print) {
-			print = false;
-			std::cout << "Generating Lanes \n";
-		}
-		return laneFeature();
-	}
-	else if (layerName == "roadMark") {
-		if (print) {
-			print = false;
-			std::cout << "Generating road marks \n";
-		}
-		return roadMarkFeature();
-	}
-	else if (layerName == "signal") {
-		if (print) {
-			print = false;
-			std::cout << "Generating signals \n";
-		}
-		//pass vector containing only the roads that have signal
-		return signalFeature(signalRoads);
-	}
-	else if (layerName == "objectPoint") {
-		if (print) {
-			print = false;
-			std::cout << "Generating objects \n";
-		}
-		//pass vector containing only the roads that have signal
-		return objectFeature(objectRoads);
-	}
-	else if (layerName == "objectPolygon") {
-		if (print) {
-			print = false;
-			std::cout << "Generating objects of the type polygon\n";
-		}
-		return objectFeaturePolygon();
-	}
-	else if (layerName == "objectLine") {
-		if (print) {
-			print = false;
-			std::cout << "Generating objects of the type line\n";
-		}
-		return objectFeatureLine();
-	}
-
-	else {
-		return referenceLineFeature();
-	}
-
-}
-
-
-OGRFeature* OGRXODRLayer::referenceLineFeature() {
-	if (xodrRoadsIte != xodrRoads.end()) {
-
-		const road& xodrRoad = *xodrRoadsIte;
-		const planView& planView = xodrRoad.planView();
-
-		std::cout << "Processing referenceLine elements of road " << xodrRoad.id().get() << "\n";			
-		
-
-
-		OGRMultiLineString  ogrRoad = xodr->toOGRGeometry(planView);
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		poFeature->SetGeometryDirectly(ogrRoad.clone());
-		poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), xodrRoad.name().get().c_str());
-		poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), xodrRoad.id().get().c_str());
-		poFeature->SetField(poFeatureDefn->GetFieldIndex("Junction"), xodrRoad.junction().get().c_str());
-		poFeature->SetFID(nNextFID++);
-
-		++xodrRoadsIte;
-
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
-		}
-		delete poFeature;
+		delete feature;
 	}
 	return NULL;
 }
 
-OGRFeature* OGRXODRLayer::laneFeature() {
-	
-	if (xodrRoadsIte != xodrRoads.end() ) {
-		const road& xodrRoad = *xodrRoadsIte;
-		const planView& planView = xodrRoad.planView();
-		const lanes& lanes = xodrRoad.lanes();
-		OGRMultiLineString  ogrRoad = xodr->toOGRGeometry(planView);
-		
-		//Lanes are only computed once
-		//This method is called several times, to reduce the execution time, we only compute the lanes once in every road (when the lane index is equal to 0)
-		if (laneIndex == 0) {
-			std::cout << "Processing lane elements of road " << xodrRoad.id().get() << "\n";
-			lanesList = xodr->roadLanes(xodrRoad);
-			laneSize = lanesList.size();			
-		} 		
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are lanes available, because some roads do not have lanes
-		if (laneSize > 0) {
-			OGRMultiLineString laneLine;
-			Lane l = lanesList.at(laneIndex);
-			laneLine.addGeometry(&l.line);			
-			poFeature->SetGeometryDirectly(laneLine.clone());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), (char)l.id);
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), l.type.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Level"), l.level.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("SingleSide"), l.singleSide.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"), l.parentRoadId.c_str());
-			laneIndex++;
-		}
-		//If there are not more availale Lane elements to retrieve we move to the next road
-		if (laneIndex >= laneSize) {
-			xodrRoadsIte++;
-			laneIndex = 0;
-		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
-		}
-		delete poFeature;
-	}
-	return NULL;
-}
-
-OGRFeature* OGRXODRLayer::roadMarkFeature() {
-	if (xodrRoadsIte != xodrRoads.end()) {
-		const road& xodrRoad = *xodrRoadsIte;
-		const planView& planView = xodrRoad.planView();
-		const lanes& lanes = xodrRoad.lanes();
-		OGRMultiLineString  ogrRoad = xodr->toOGRGeometry(planView);
-
-		//This method is called several times, to reduce the execution time,  road marks are only computed once in every road (when the roadMarkIndex is equal to 0)
-		if (roadMarkIndex == 0) {
-			std::cout << "Processing road mark elements of road " << xodrRoad.id().get() << "\n";
-			roadMarkList = xodr->roadMarks(xodrRoad);
-			xodr->roadSignals(xodrRoad);
-			roadMarksSize = roadMarkList.size();
-		}
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are road marks available, because some roads do not have road marks
-		if (roadMarksSize > 0) {
-			
-			RoadMark r = roadMarkList.at(roadMarkIndex);
-			OGRMultiLineString roadMarkLine = r.line;
-			poFeature->SetGeometryDirectly(roadMarkLine.clone());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), (char)r.laneId);
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), r.type.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Weight"), r.weight.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Color"), r.color.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("LaneChange"), r.laneChange.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Rule"), r.rule.c_str());
-			roadMarkIndex++;
-		}
-		//If there are not more availale road Mark  elements to retrieve we move to the next road
-		if (roadMarkIndex >= roadMarksSize) {
-			++xodrRoadsIte;
-			roadMarkIndex = 0;
-		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
-		}
-		delete poFeature;
-	}
-	return NULL;
-}
-
-
-OGRFeature* OGRXODRLayer::signalFeature(std::vector<road> signalRoads) {
-	if (signalRoadIndex < signalRoadSize) {
-		const road& xodrRoad = signalRoads.at(signalRoadIndex);	
-		//This method is called several times, to reduce the execution time,  signals are only computed once in every road (when the signal index is equal to 0), and then we retrieve them one by one
-		if (signalIndex == 0) {
-			std::cout << "Processing signal elements of road " << xodrRoad.id().get() << "\n";
-			signalList =  xodr->roadSignals(xodrRoad);
-			signalSize = signalList.size();		
-			
-		}
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are signals available, because some roads do not have signals
-		if (signalSize > 0) {
-
-			Signal s = signalList.at(signalIndex);
-			OGRPoint sinalPoint = s.position;
-			poFeature->SetGeometryDirectly(sinalPoint.clone());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadId"), s.roadId.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), s.id.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), s.name.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Dynamic"), s.dynamic.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Orient"), s.orientation.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), s.type.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Country"), s.country.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Subtype"), s.subtype.c_str());
-			signalIndex++;
-		}
-
-		//If there are not more availale signal elements to retrieve we move to the next road
-		if (signalIndex >= signalSize) {
-			signalRoadIndex++;
-			signalIndex = 0;
-		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
-		}
-		delete poFeature;
-	}
-	return NULL;
-}
-
-
-
-OGRFeature* OGRXODRLayer::objectFeature(std::vector<road> objectRoads) {
-	if (objectRoadIndex < objectRoadSize) {
-		const road& xodrRoad = objectRoads.at(objectRoadIndex);
-		//This method is called several times, to reduce the execution time,  signals are only computed once in every road (when the signal index is equal to 0), and then we retrieve them one by one
-		if (objectIndex == 0) {
-			std::cout << "Processing object elements of road " << xodrRoad.id().get() << "\n";
-			objectList = xodr->roadObject(xodrRoad);
-			objectSize = objectList.size();
-		}
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are signals available, because some roads do not have signals
-		if (objectSize > 0) {
-			Object o = objectList.at(objectIndex);
-			OGRPoint objectPoint = o.position;
-			poFeature->SetGeometryDirectly(objectPoint.clone());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadId"), o.roadId.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), o.id.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), o.name.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Orient"), o.orientation.c_str());
-			poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), o.type.c_str());
-
-			objectIndex++;
-		}
-		
-		//If there are not more availale signal elements to retrieve we move to the next road
-		if (objectIndex >= objectSize) {
-			objectRoadIndex++;
-			objectIndex = 0;
-		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
-		}
-		delete poFeature;
-	}
-	return NULL;
-}
-
-
-OGRFeature* OGRXODRLayer::objectFeaturePolygon() {
-	if (objectRoadIndex < objectRoadSize) {
-		const road& xodrRoad = objectRoads.at(objectRoadIndex);
-		//This method is called several times, to reduce the execution time,  signals are only computed once in every road (when the signal index is equal to 0), and then we retrieve them one by one
-		if (objectIndex == 0) {
-			std::cout << "Processing object elements of road " << xodrRoad.id().get() << "\n";
-			std::vector<Object> objectListPolygon;
-			objectList = xodr->roadObject(xodrRoad);
-			for (int i = 0; i < objectList.size(); i++)
+OGRFeature* OGRXODRLayer::getObjectFeatures()
+{
+	if(roadIter != simpleRoads.end())
+	{
+		if(featureIndex == 0){
+		//find road with objects and skip empty roads
+		 	while(roadIter != simpleRoads.end())
 			{
-				Object o = objectList.at(i);
-				if (o.geometryType == "polygon") {
-					objectListPolygon.push_back(o);
+				 try
+				{
+					currentObjects = roadIter->getObjectsSf();
 				}
+				catch(const std::exception& e)
+				{
+					std::cerr << e.what() << '\n';
+				}
+				if(currentObjects.size() > 0){
+		 			break;
+		 		}
+		 		roadIter++;
 			}
-			objectList = objectListPolygon;
-			objectSize = objectList.size();
 		}
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are signals available, because some roads do not have signals
-		if (objectSize > 0) {
-			Object o = objectList.at(objectIndex);
-			if (o.geometryType == "polygon") {
-				OGRPolygon objectPolygon = o.shape;
-				poFeature->SetGeometryDirectly(objectPolygon.clone());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadId"), o.roadId.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), o.id.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), o.name.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Orient"), o.orientation.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), o.type.c_str());
+        size_t nFeatures =  currentObjects.size();
+		OGRFeature* feature = new OGRFeature(poFeatureDefn);
+		if(nFeatures > 0) {
 
+			ObjectSF objSf = currentObjects[featureIndex];
+
+			OGRPoint *pFeature = new OGRPoint(objSf.getP()->getX(), objSf.getP()->getY());
+
+			feature->SetGeometryDirectly(pFeature);
+			if(objSf.getXodrObject().id() != NULL)
+				feature->SetField(poFeatureDefn->GetFieldIndex("ID"), objSf.getXodrObject().id().get().c_str());
+
+			if(objSf.getXodrObject().name() != NULL)
+				feature->SetField(poFeatureDefn->GetFieldIndex("Name"), objSf.getXodrObject().name().get().c_str());
+
+			if(objSf.getXodrObject().type() != NULL)
+				feature->SetField(poFeatureDefn->GetFieldIndex("Type"), objSf.getXodrObject().type().get().c_str());
+
+			feature->SetField(poFeatureDefn->GetFieldIndex("RoadID"), roadIter->getRoad().id().get().c_str());
+
+			if(objSf.getXodrObject().orientation() != NULL){
+				feature->SetField(poFeatureDefn->GetFieldIndex("Orient"), objSf.getXodrObject().orientation().get().c_str());
+			}else{
+				feature->SetField(poFeatureDefn->GetFieldIndex("Orient"), "");
 			}
-			
-			objectIndex++;
-		}
 
-		//If there are not more availale signal elements to retrieve we move to the next road
-		if (objectIndex >= objectSize) {
-			objectRoadIndex++;
-			objectIndex = 0;
+
+			featureIndex++;
 		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
+		if (featureIndex >= nFeatures && roadIter != simpleRoads.end())
+		{
+			roadIter++;
+			featureIndex = 0;
 		}
-		delete poFeature;
+			if((m_poFilterGeom == NULL || FilterGeometry(feature->GetGeometryRef()))
+				&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(feature)))
+			{
+				return feature;
+			}
+		delete feature;
 	}
 	return NULL;
 }
 
+void OGRXODRLayer::ResetReading()
+{
+	roadIter = simpleRoads.begin();
+	nNextFID = 0;
+}
 
-
-OGRFeature* OGRXODRLayer::objectFeatureLine() {
-	if (objectRoadIndex < objectRoadSize) {
-		const road& xodrRoad = objectRoads.at(objectRoadIndex);
-		//This method is called several times, to reduce the execution time,  signals are only computed once in every road (when the signal index is equal to 0), and then we retrieve them one by one
-		if (objectIndex == 0) {
-			std::cout << "Processing object elements of road " << xodrRoad.id().get() << "\n";
-			std::vector<Object> objectListLine;
-			objectList = xodr->roadObject(xodrRoad);
-			for (int i = 0; i < objectList.size(); i++)
-			{
-				Object o = objectList.at(i);
-				if (o.geometryType == "line") {
-					objectListLine.push_back(o);
-				}
-			}
-			objectList = objectListLine;
-			objectSize = objectList.size();
+void OGRXODRLayer::createRequestedLayer()
+{
+	switch (layerId)
+	{
+	case refLayer:
+		{
+			OGRFieldDefn oFieldName("Name", OFTString);
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldJunction("Junction", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldName);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldJunction);
+			break;
 		}
-		OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
-		//We check whether there are signals available, because some roads do not have signals
-		if (objectSize > 0) {
-			Object o = objectList.at(objectIndex);
-			if (o.geometryType == "line") {
-				OGRMultiLineString objectLine= o.line;
-				poFeature->SetGeometryDirectly(objectLine.clone());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadId"), o.roadId.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Id"), o.id.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), o.name.c_str());				
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Orient"), o.orientation.c_str());
-				poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), o.type.c_str());
-			}
-
-			objectIndex++;
+	case laneLayer:
+		{
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldType("Type", OFTString);
+			OGRFieldDefn oFieldLevel("Level", OFTString);
+			OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldType);
+			poFeatureDefn->AddFieldDefn(&oFieldLevel);
+			poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+			break;
 		}
-
-		//If there are not more availale signal elements to retrieve we move to the next road
-		if (objectIndex >= objectSize) {
-			objectRoadIndex++;
-			objectIndex = 0;
+	case centerLanelayer:
+		{
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+			break;
 		}
-		if ((m_poFilterGeom == NULL || FilterGeometry(poFeature->GetGeometryRef()))
-			&& (m_poAttrQuery == NULL || m_poAttrQuery->Evaluate(poFeature))) {
-			return poFeature;
+	case signalLayer:
+		{
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldType("Type", OFTString);
+			OGRFieldDefn oFieldName("Name", OFTString);
+			OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+			OGRFieldDefn oFieldDynamic("Dynamic", OFTString);
+			OGRFieldDefn oFieldCountry("Country", OFTString);
+			OGRFieldDefn oFieldSubtype("Subtype", OFTString);
+			OGRFieldDefn oFieldOrientation("Orient", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+			poFeatureDefn->AddFieldDefn(&oFieldName);
+			poFeatureDefn->AddFieldDefn(&oFieldType);
+			poFeatureDefn->AddFieldDefn(&oFieldOrientation);
+			poFeatureDefn->AddFieldDefn(&oFieldDynamic);
+			poFeatureDefn->AddFieldDefn(&oFieldCountry);
+			poFeatureDefn->AddFieldDefn(&oFieldSubtype);
+			break;
 		}
-		delete poFeature;
+	case objectLayer:
+		{
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldName("Name", OFTString);
+			// OGRFieldDefn oFieldRoll("Roll", OFTString);
+			OGRFieldDefn oFieldType("Type", OFTString);
+			// OGRFieldDefn oFieldPitch("Pitch", OFTString);
+			// OGRFieldDefn oFieldRadius("Radius", OFTString);
+			OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+			OGRFieldDefn oFieldOrientation("Orient", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+			poFeatureDefn->AddFieldDefn(&oFieldName);
+			poFeatureDefn->AddFieldDefn(&oFieldType);
+			poFeatureDefn->AddFieldDefn(&oFieldOrientation);
+			// poFeatureDefn->AddFieldDefn(&oFieldPitch);
+			// poFeatureDefn->AddFieldDefn(&oFieldRoll);
+			// poFeatureDefn->AddFieldDefn(&oFieldRadius);
+			break;
+		}
+	case markLayer:
+		{
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldType("Type", OFTString);
+			OGRFieldDefn oFieldRule("Rule", OFTString);
+			OGRFieldDefn oFieldColor("Color", OFTString);
+			OGRFieldDefn oFieldWeight("Weight", OFTString);
+			OGRFieldDefn oFieldLaneChange("LaneChange", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldType);
+			poFeatureDefn->AddFieldDefn(&oFieldRule);
+			poFeatureDefn->AddFieldDefn(&oFieldColor);
+			poFeatureDefn->AddFieldDefn(&oFieldWeight);
+			poFeatureDefn->AddFieldDefn(&oFieldLaneChange);
+			break;
+		}
+	default:
+		{
+			OGRFieldDefn oFieldName("Name", OFTString);
+			OGRFieldDefn oFieldID("ID", OFTString);
+			OGRFieldDefn oFieldJunction("Junction", OFTString);
+			poFeatureDefn->AddFieldDefn(&oFieldName);
+			poFeatureDefn->AddFieldDefn(&oFieldID);
+			poFeatureDefn->AddFieldDefn(&oFieldJunction);
+			break;
+		}
 	}
-	return NULL;
 }

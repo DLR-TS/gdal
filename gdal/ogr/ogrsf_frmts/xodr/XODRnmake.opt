@@ -1,10 +1,16 @@
 ## OpenDRIVE driver dependencies for C++ compiler under Windows
 
 # CodeSynthesis XSD
-XSD_INCLUDE = -ID:\dev\xsd-4.0.0-i686-windows\libxsd
+XSD_INCLUDE = -ID:\Workspace\OpenDRIVE_BKP\GDAL_XODR\xsd-4.0.0-i686-windows\libxsd
+
+GEOS_DIR = D:\Workspace\OpenDRIVE_BKP\GDAL_XODR\geos-3.8.1
+GEOS_INCLUDE = -I$(GEOS_DIR)\compiled\include
+GEOS_LIB = $(GEOS_DIR)\compiled\lib\geos.lib
+GEOS_CLIB = $(GEOS_DIR)\compiled\lib\geos_c.lib
+#GEOS_LIBB = $(GEOS_DIR)\lib\libgeos.lib
 
 # odrSpiral
-ODRSPIRAL_DIR = D:\dev\odrSpiral
+ODRSPIRAL_DIR = D:\Workspace\OpenDRIVE_BKP\GDAL_XODR\odrSpiral
 ODRSPIRAL_INCLUDE = -I$(ODRSPIRAL_DIR)\include
 !IF "$(DEBUG)" == "0"
 ODRSPIRAL_LIB = $(ODRSPIRAL_DIR)\lib\Release\odrSpiral.lib
@@ -13,10 +19,11 @@ ODRSPIRAL_LIB = $(ODRSPIRAL_DIR)\lib\Debug\odrSpiral.lib
 !ENDIF
 
 # xodr
-XODR_DIR = D:\dev\xodr
+XODR_DIR = D:\Workspace\OpenDRIVE_BKP\GDAL_XODR\xodr
 XODR_INCLUDE = -I$(XODR_DIR)\include
-!IF "$(DEBUG)" == "0"
+#!IF "$(DEBUG)" == "0"
 XODR_LIB = $(XODR_DIR)\lib\Release\xodr.lib
-!ELSE
-XODR_LIB = $(XODR_DIR)\lib\Debug\xodr.lib
-!ENDIF
+#!ELSE
+#XODR_LIB = $(XODR_DIR)\lib\Debug\xodr.lib
+#!ENDIF
+

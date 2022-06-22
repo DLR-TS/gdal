@@ -1,17 +1,17 @@
-OBJ	= ogrxodrdriver.obj ogrxodrdatasource.obj ogrxodrlayer.obj xodr.obj MatrixTransformations2D.obj CubicPolynomials.obj laneWidth.obj Border.obj Lane.obj RoadMark.obj Signal.obj Object.obj
+OBJ	= ogrxodrdriver.obj ogrxodrdatasource.obj ogrxodrlayer.obj xodr.obj MatrixTransformations2D.obj CubicPolynomials.obj CenterLaneSF.obj  LaneOffsetCalculator.obj LaneSectionProcessor.obj LaneSectionSF.obj LaneSF.obj LanesSF.obj objectprocessor.obj objectsf.obj ogr_xodr.obj planviewcalculator.obj planviewgeometry.obj roadsf.obj signalprocessor.obj signalsf.obj WidthLaneType.obj BorderLaneType.obj planviewgeometryfunctionarc.obj planviewgeometryfunctionline.obj planviewgeometryfunctionparampoly3.obj planviewgeometryfunctionpoly3.obj planviewgeometryfunctionspiral.obj
 
-GDAL_ROOT	=	..\..\..
+GDAL_ROOT = ..\..\..
 
 PLUGIN_DLL = ogr_XODR.dll
 
 !INCLUDE $(GDAL_ROOT)\nmake.opt
 !INCLUDE XODRnmake.opt
 
-EXTRAFLAGS = -I.. -I..\generic -I..\.. $(XSD_INCLUDE) $(XERCES_INCLUDE) $(ODRSPIRAL_INCLUDE) $(XODR_INCLUDE)
+EXTRAFLAGS = -I. -I.. -I..\generic -I..\.. $(XSD_INCLUDE) $(XERCES_INCLUDE) $(ODRSPIRAL_INCLUDE) $(XODR_INCLUDE) $(GEOS_INCLUDE)
 
 default:	$(OBJ)
 
-$(OBJ):	ogr_xodr.h
+$(OBJ):	ogr_xodr.h 
 
 clean:
 	-del *.lib
@@ -22,12 +22,12 @@ clean:
 plugin: $(PLUGIN_DLL)
 
 $(PLUGIN_DLL):	$(OBJ)
-	link /dll $(LDEBUG) /out:$(PLUGIN_DLL) $(OBJ) $(GDALLIB) $(XERCES_LIB) $(ODRSPIRAL_LIB) $(XODR_LIB)
-	if exist $(PLUGIN_DLL).manifest mt -manifest $(PLUGIN_DLL).manifest -outputresource:$(PLUGIN_DLL);2
+	link /dll $(LDEBUG) /out:$(PLUGIN_DLL) $(OBJ) $(GDALLIB) $(XERCES_LIB) $(ODRSPIRAL_LIB) $(XODR_LIB) $(GEOS_LIB) $(GEOS_CLIB) $(GEOS_LIBB)
+	if exist $(PLUGIN_DLL).manifest mt -manifest $(PLUGIN_DLL).manifest -outputresource:$(PLUGIN_DLL);
 
 plugin-install: plugin
 	-mkdir $(PLUGINDIR)
 	$(INSTALL) $(PLUGIN_DLL) $(PLUGINDIR)
 	$(INSTALL) $(XERCES_DLL) $(BINDIR)
-    $(INSTALL) $(GEOS_DIR)\bin\geos.dll $(BINDIR)
-    $(INSTALL) $(GEOS_DIR)\bin\geos_c.dll $(BINDIR)
+    $(INSTALL) $(GEOS_DIR)\compiled\bin\geos.dll $(BINDIR)
+    $(INSTALL) $(GEOS_DIR)\compiled\bin\geos_c.dll $(BINDIR)
