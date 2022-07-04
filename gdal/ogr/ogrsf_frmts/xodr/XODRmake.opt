@@ -3,11 +3,11 @@
 XSD_INCLUDE = -I/usr/include
 
 #odrSpiral
-ODRSPIRAL_DIR = /opt/development/XODR/GDAL/odrSpiral
+ODRSPIRAL_DIR = /home/michael/dev/odrSpiral
 ODRSPIRAL_INCLUDE = -I$(ODRSPIRAL_DIR)/include
 ODRSPIRAL_LIB = $(ODRSPIRAL_DIR)/lib/libodrSpiral.a
 
 #xodr
-XODR_DIR = /opt/development/XODR/GDAL/xodr
+XODR_DIR = /home/michael/dev/xodr
 XODR_INCLUDE = -I$(XODR_DIR)/include
 XODR_LIB = $(XODR_DIR)/lib/libxodr.a

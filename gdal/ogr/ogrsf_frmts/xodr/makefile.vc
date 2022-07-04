@@ -11,7 +11,7 @@ EXTRAFLAGS = -I. -I.. -I..\generic -I..\.. $(XSD_INCLUDE) $(XERCES_INCLUDE) $(OD
 
 default:	$(OBJ)
 
-$(OBJ):	ogr_xodr.h 
+$(OBJ):	ogr_xodr.h
 
 clean:
 	-del *.lib
@@ -22,12 +22,12 @@ clean:
 plugin: $(PLUGIN_DLL)
 
 $(PLUGIN_DLL):	$(OBJ)
-	link /dll $(LDEBUG) /out:$(PLUGIN_DLL) $(OBJ) $(GDALLIB) $(XERCES_LIB) $(ODRSPIRAL_LIB) $(XODR_LIB) $(GEOS_LIB) $(GEOS_CLIB) $(GEOS_LIBB)
+	link /dll $(LDEBUG) /out:$(PLUGIN_DLL) $(OBJ) $(GDALLIB) $(XERCES_LIB) $(ODRSPIRAL_LIB) $(XODR_LIB) $(GEOS_LIB) $(GEOS_CPPLIB)
 	if exist $(PLUGIN_DLL).manifest mt -manifest $(PLUGIN_DLL).manifest -outputresource:$(PLUGIN_DLL);
 
 plugin-install: plugin
 	-mkdir $(PLUGINDIR)
 	$(INSTALL) $(PLUGIN_DLL) $(PLUGINDIR)
 	$(INSTALL) $(XERCES_DLL) $(BINDIR)
-    $(INSTALL) $(GEOS_DIR)\compiled\bin\geos.dll $(BINDIR)
-    $(INSTALL) $(GEOS_DIR)\compiled\bin\geos_c.dll $(BINDIR)
+    $(INSTALL) $(GEOS_DIR)\bin\geos.dll $(BINDIR)
+    $(INSTALL) $(GEOS_DIR)\bin\geos_c.dll $(BINDIR)
