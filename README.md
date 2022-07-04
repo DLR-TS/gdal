@@ -33,9 +33,9 @@ The XODR driver is tested to work for GDAL 3.x. It depends on the following libr
 
 - [odrSpiral](https://github.com/DLR-TS/odrSpiral)
 - [xodr](https://github.com/DLR-TS/xodr)
-- [GEOS](https://trac.osgeo.org/geos/); on Windows we recommend using the version distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
-- [PROJ >= 6](https://proj.org/download.html#current-release)
-- [SQLite3](https://www.sqlite.org/index.html); on Windows we recommend using the version distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
+- [GEOS](https://trac.osgeo.org/geos/); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
+- [PROJ >= 6](https://proj.org/download.html#current-release); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
+- [SQLite3](https://www.sqlite.org/index.html); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
 
 Building it is divided into
 
@@ -48,6 +48,7 @@ Install dependencies:
 
 ```
 sudo apt install libgeos-dev
+sudo apt install libgeos++-dev
 sudo apt install libproj-dev
 sudo apt install libsqlite3-dev
 ```
@@ -95,20 +96,21 @@ We basically follow the official [GDAL building instructions for Windows](https:
 generate_vcxproj.bat 15.0 64 gdal_vs2017
 ```
 
-If you encounter compilation errors, make sure to have installed the additional Visual Studio 2017 components "Windows Universal CRT SDK" and "Windows 8.1 SDK".
-
 Now configure your GEOS and Xerces dependencies by adding the corresponding include directory and library paths into a _new_ lokal NMake configuration file `nmake.local`. It should contain something like the following (consider `nmake.opt` as a reference):
 
 ```bash
 GDAL_HOME = "D:\dev\gdal\gdal\build"
 
-OSGEO4W64_DIR = C:\OSGeo4W64
+OSGEO4W_DIR = C:\OSGeo4W
 
 # GEOS
-#GEOS_DIR = D:\dev\geos\distro
-GEOS_DIR = $(OSGEO4W64_DIR)
-GEOS_CFLAGS = -I$(GEOS_DIR)\include -DHAVE_GEOS
-GEOS_LIB = $(GEOS_DIR)\lib\geos_c.lib
+GEOS_DIR    = $(OSGEO4W_DIR)
+#GEOS_DIR    = C:\tmp\dev\geos\distro
+GEOS_INCLUDE = -I$(GEOS_DIR)\include
+GEOS_CFLAGS = $(GEOS_INCLUDE) -DHAVE_GEOS
+GEOS_LIB    = $(GEOS_DIR)\lib\geos_c.lib
+GEOS_CPPLIB    = $(GEOS_DIR)\lib\geos.lib
+GEOS_BIN_DIR    = $(GEOS_DIR)\bin
 
 # Xerces
 XERCES_DIR = D:\dev\xerces-c-3.2.3\distro
@@ -122,16 +124,19 @@ XERCES_DLL = $(XERCES_DIR)\bin\xerces-c_3_2D.dll
 !ENDIF
 
 # PROJ >= 6
-PROJ_INCLUDE = -ID:\dev\proj-6.3.2\distro\include
+PROJ_INCLUDE = -I$(OSGEO4W_DIR)\include
+#PROJ_INCLUDE = -IC:\tmp\dev\proj-6.3.2\distro\include
 !IFNDEF DEBUG
-PROJ_LIBRARY = D:\dev\proj-6.3.2\distro\lib\proj.lib
+PROJ_LIBRARY = $(OSGEO4W_DIR)\lib\proj.lib
+#PROJ_LIBRARY = C:\tmp\dev\proj-6.3.2\distro\lib\proj.lib
 !ELSE
-PROJ_LIBRARY = D:\dev\proj-6.3.2\distro\lib\proj_d.lib
+PROJ_LIBRARY = $(OSGEO4W_DIR)\lib\proj_d.lib
+#PROJ_LIBRARY = C:\tmp\dev\proj-6.3.2\distro\lib\proj_d.lib
 !ENDIF
 
 # SQLite3
-SQLITE_INC = -I$(OSGEO4W64_DIR)\include
-SQLITE_LIB = $(OSGEO4W64_DIR)\lib\sqlite3_i.lib
+SQLITE_INC = -I$(OSGEO4W_DIR)\include
+SQLITE_LIB = $(OSGEO4W_DIR)\lib\sqlite3_i.lib
 ```
 
 Build the base GDAL library with `nmake` from the Visual Studio Command Prompt for the desired configuration. Attach `DEBUG=1` for a Debug build:
