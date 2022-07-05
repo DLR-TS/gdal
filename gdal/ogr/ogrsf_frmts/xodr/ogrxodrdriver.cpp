@@ -35,7 +35,7 @@ void RegisterOGRXODR()
         // set driver description
         driver->SetDescription("XODR");
         driver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-        driver->SetMetadataItem(GDAL_DMD_LONGNAME, "Driver to convert OpenDRIVE files into simple features.");
+        driver->SetMetadataItem(GDAL_DMD_LONGNAME, "OpenDRIVE road network logic description");
         driver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
         driver->SetMetadataItem(GDAL_DMD_HELPTOPIC, "drv_xodr.html");
 

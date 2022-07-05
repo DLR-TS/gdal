@@ -7,7 +7,6 @@ OGRXODRDataSource::OGRXODRDataSource() :
 {
 }
 
-
 OGRXODRDataSource::~OGRXODRDataSource()
 {
 	for (int i = 0; i < nLayers; i++)
@@ -23,7 +22,7 @@ int OGRXODRDataSource::Open(GDALOpenInfo * openInfo)
 {
 	int bUpdate = openInfo->eAccess == GA_Update;
 	if (bUpdate) {
-		CPLError(CE_Failure, CPLE_OpenFailed, "Update access not supported by the XODR Driver.");
+		CPLError(CE_Failure, CPLE_OpenFailed, "Update access not supported by XODR driver.");
 		return FALSE;
 	}
 
@@ -36,9 +35,9 @@ int OGRXODRDataSource::Open(GDALOpenInfo * openInfo)
 	// layerID can be found in ogr_xodr.h
 	std::string layerName = "referenceLine";
 	papoLayers[0] = new OGRXODRLayer(xodr, roads, layerName.c_str(), 0);
-	layerName = "lanes";
+	layerName = "laneBorder";
 	papoLayers[1] = new OGRXODRLayer(xodr, roads, layerName.c_str(), 1);
-	layerName = "centerlanes";
+	layerName = "centerLaneBorder";
 	papoLayers[2] = new OGRXODRLayer(xodr, roads, layerName.c_str(), 2);
 	layerName = "object";
 	papoLayers[3] = new OGRXODRLayer(xodr, roads, layerName.c_str(), 3);
