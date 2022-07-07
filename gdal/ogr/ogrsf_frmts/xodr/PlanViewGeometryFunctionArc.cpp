@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include"planviewgeometryfunction.h"
+#include "PlanViewGeometryFunction.h"
 
 PlanViewGeometryFunctionArc::PlanViewGeometryFunctionArc(arc _arc):
 curvature(_arc.curvature().get()),

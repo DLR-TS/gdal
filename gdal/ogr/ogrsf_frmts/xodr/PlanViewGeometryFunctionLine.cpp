@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of Simple Features for OpenDRIVE objects.
+ * Purpose:  Implementation of OpenDRIVE plan view line geometry functions.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,29 +22,35 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "objectsf.h"
+#include "PlanViewGeometryFunction.h"
 
-ObjectSF::ObjectSF(Point* point, object obj):
-xodrObject(obj),
-p(point)
+
+PlanViewGeometryFunctionLine::PlanViewGeometryFunctionLine()
 {
-
+  
 }
 
-ObjectSF::ObjectSF(const ObjectSF& orig):
-xodrObject(orig.xodrObject),
-p(orig.p)
+PlanViewGeometryFunctionLine::~PlanViewGeometryFunctionLine() {
+}
+
+void PlanViewGeometryFunctionLine::calculateLocalCoordinate(geos::geom::Coordinate& p, double s)
 {
+	p.x = s;
+    p.y = 0;
 }
-
-ObjectSF::~ObjectSF()
+void PlanViewGeometryFunctionLine::calculateLocalOffsetCoordinate(geos::geom::Coordinate& p, double s,double t)
 {
+  p.x = s;
+  p.y = t;
 }
 
-const object &ObjectSF::getXodrObject() const {
-    return xodrObject;
+double PlanViewGeometryFunctionLine::calculateV(double s)
+{
+    return 0.0;
 }
 
-const Point *ObjectSF::getP() const {
-    return p;
+double PlanViewGeometryFunctionLine::calculateU(double s)
+{
+    return s;
 }
+

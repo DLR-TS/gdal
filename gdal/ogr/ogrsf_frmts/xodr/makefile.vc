@@ -1,4 +1,4 @@
-OBJ	= ogrxodrdriver.obj ogrxodrdatasource.obj ogrxodrlayer.obj xodr.obj MatrixTransformations2D.obj CubicPolynomials.obj CenterLaneSF.obj  LaneOffsetCalculator.obj LaneSectionProcessor.obj LaneSectionSF.obj LaneSF.obj LanesSF.obj objectprocessor.obj objectsf.obj ogr_xodr.obj planviewcalculator.obj planviewgeometry.obj roadsf.obj signalprocessor.obj signalsf.obj WidthLaneType.obj BorderLaneType.obj planviewgeometryfunctionarc.obj planviewgeometryfunctionline.obj planviewgeometryfunctionparampoly3.obj planviewgeometryfunctionpoly3.obj planviewgeometryfunctionspiral.obj
+OBJ	= ogrxodrdriver.obj ogrxodrdatasource.obj ogrxodrlayer.obj XODR.obj MatrixTransformations2D.obj CubicPolynomials.obj CenterLaneSF.obj  LaneOffsetCalculator.obj LaneSectionProcessor.obj LaneSectionSF.obj LaneSF.obj LanesSF.obj ObjectProcessor.obj ObjectSF.obj PlanViewCalculator.obj PlanViewGeometry.obj RoadSF.obj SignalProcessor.obj SignalSF.obj WidthLaneType.obj BorderLaneType.obj PlanViewGeometryFunctionArc.obj PlanViewGeometryFunctionLine.obj PlanViewGeometryFunctionParamPoly3.obj PlanViewGeometryFunctionPoly3.obj PlanViewGeometryFunctionSpiral.obj
 
 GDAL_ROOT = ..\..\..
 

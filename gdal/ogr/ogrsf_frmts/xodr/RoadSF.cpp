@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "roadsf.h"
+#include "RoadSF.h"
 
 RoadSF::RoadSF(const OpenDRIVE::road_type& r):
         od_road(r),

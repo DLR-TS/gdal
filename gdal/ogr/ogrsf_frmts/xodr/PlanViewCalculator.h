@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of the processor for OpenDRIVE objects.
+ * Purpose:  Definition of the calculator for OpenDRIVE plan view geometries.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,40 +22,34 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "objectprocessor.h"
+#ifndef PLANVIEWCALCULATOR_H
+#define PLANVIEWCALCULATOR_H
 
-ObjectProcessor::ObjectProcessor()
-{
-}
+#include "PlanViewGeometry.h"
+#include <geos_c.h>
+#include "OpenDRIVE_1.4H.h"
+#include "cpl_error.h"
+#include <iostream>
+#include <map>
+#include <utility>
 
-ObjectProcessor::ObjectProcessor(const OpenDRIVE::road_type::objects_type& objects,const PlanViewCalculator& pvc):
-pvc(pvc),
-roadObjects(objects.object())
-{
+using namespace geos::geom;
 
-}
+class PlanViewCalculator {
+  
+public:
+    PlanViewCalculator();
+    PlanViewCalculator(const OpenDRIVE::road_type::planView_type& planView);
+    PlanViewCalculator(const PlanViewCalculator& orig);
+    virtual ~PlanViewCalculator();
+    Coordinate getPlanViewPoint(double s);
+    Coordinate offsetPoint(double s, double t);
 
-ObjectProcessor::ObjectProcessor(const ObjectProcessor& orig):
-pvc(orig.pvc),
-roadObjects(orig.roadObjects){}
+private:
+     std::map<double,PlanViewGeometry> planViewGeometries;
+     
+     PlanViewGeometry getPlanViewGeometryForOffset(double* planviewOffset, double s);
+};
 
-ObjectProcessor::~ObjectProcessor() {}
+#endif /* PLANVIEWCALCULATOR_H */
 
-std::vector<ObjectSF> ObjectProcessor::getObjectsSF()
-{
-    std::vector<ObjectSF> objects;
-    if(!this->roadObjects.empty())
-    {
-        for(object obj: this->roadObjects)
-        {
-            double s = obj.s().get();
-            double t = obj.t().get();
-            if (s >= 0.0) {
-                Coordinate objectPosition = this->pvc.offsetPoint(s, t);
-                ObjectSF objs(this->gf->createPoint(objectPosition),obj);
-                objects.push_back(objs);
-            }
-        }
-    }
-    return objects;
-}

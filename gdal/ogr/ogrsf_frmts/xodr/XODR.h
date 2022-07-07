@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Definition of the processor for OpenDRIVE objects.
+ * Purpose:  Definition of a wrapper to access OpenDRIVE OGC Simple Features.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,32 +22,34 @@
  * limitations under the License.
  ****************************************************************************/
 
-#ifndef GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H
-#define GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H
+#ifndef XODR_H
+#define XODR_H
+#define USE_UNSTABLE_GEOS_CPP_API
 
-#include "objectsf.h"
 #include "OpenDRIVE_1.4H.h"
-#include "planviewcalculator.h"
-#include "geos/geom.h"
+//#include "cpl_error.h"
+#include "RoadSF.h"
 #include <iostream>
-#include "cpl_error.h"
+#include <vector>
 
-class ObjectProcessor {
 
-public:
 
-    ObjectProcessor();
-    ObjectProcessor(const OpenDRIVE::road_type::objects_type& objects,const PlanViewCalculator& pvc);
-    ObjectProcessor(const ObjectProcessor& orig);
-    virtual ~ObjectProcessor();
-    std::vector<ObjectSF> getObjectsSF();
+class XODR {
+    public:
+        XODR(const char * pszFilename);
+		XODR();
+        virtual ~XODR();
+        uint16_t getMinorRevision();
+        uint16_t getMajorRevision();
+		std::string getSpatialReferenceSystem();
+		std::string getVendor();
+        std::vector<RoadSF> getRoads();
+//        std::vector<lanesf> getLanes();
+    private:
+        std::auto_ptr<OpenDRIVE> op;
 
-private:
-    PlanViewCalculator pvc;
-    OpenDRIVE::road_type::objects_type::object_sequence roadObjects;
-    const GeometryFactory* gf = GeometryFactory::getDefaultInstance();
 
 };
 
+#endif /* XODR_H */
 
-#endif //GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H

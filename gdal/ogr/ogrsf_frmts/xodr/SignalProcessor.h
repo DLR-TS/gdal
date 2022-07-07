@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of OpenDRIVE plan view line geometry functions.
+ * Purpose:  Definition of the processor for OpenDRIVE signals.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,35 +22,29 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "planviewgeometryfunction.h"
+#ifndef GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H
+#define GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H
+
+#include "geos/geom.h"
+#include "OpenDRIVE_1.4H.h"
+#include "PlanViewCalculator.h"
+#include "SignalSF.h"
 
 
-PlanViewGeometryFunctionLine::PlanViewGeometryFunctionLine()
-{
-  
-}
+class SignalProcessor {
+public:
+    SignalProcessor();
+    SignalProcessor(const OpenDRIVE::road_type::signals_type &signals,const PlanViewCalculator &planViewCalculator);
+    SignalProcessor(const SignalProcessor& orig);
+    virtual ~SignalProcessor();
 
-PlanViewGeometryFunctionLine::~PlanViewGeometryFunctionLine() {
-}
+    std::vector<SignalSF> getSignalsSF();
+private:
+    PlanViewCalculator pvc;
+    OpenDRIVE::road_type::signals_type::signal_sequence signalsType;
+    const  GeometryFactory* gf = GeometryFactory::getDefaultInstance();
 
-void PlanViewGeometryFunctionLine::calculateLocalCoordinate(geos::geom::Coordinate& p, double s)
-{
-	p.x = s;
-    p.y = 0;
-}
-void PlanViewGeometryFunctionLine::calculateLocalOffsetCoordinate(geos::geom::Coordinate& p, double s,double t)
-{
-  p.x = s;
-  p.y = t;
-}
+};
 
-double PlanViewGeometryFunctionLine::calculateV(double s)
-{
-    return 0.0;
-}
 
-double PlanViewGeometryFunctionLine::calculateU(double s)
-{
-    return s;
-}
-
+#endif //GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H

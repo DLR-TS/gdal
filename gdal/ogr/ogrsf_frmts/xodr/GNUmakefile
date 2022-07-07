@@ -1,7 +1,7 @@
 include ../../../GDALmake.opt
 include XODRmake.opt
 
-OBJ = ogrxodrdriver.o ogrxodrdatasource.o ogrxodrlayer.o xodr.o MatrixTransformations2D.o CubicPolynomials.o CenterLaneSF.o  LaneOffsetCalculator.o LaneSectionProcessor.o LaneSectionSF.o LaneSF.o LanesSF.o objectprocessor.o objectsf.o ogr_xodr.o planviewcalculator.o planviewgeometry.o roadsf.o signalprocessor.o signalsf.o WidthLaneType.o BorderLaneType.o planviewgeometryfunctionarc.o planviewgeometryfunctionline.o planviewgeometryfunctionparampoly3.o planviewgeometryfunctionpoly3.o planviewgeometryfunctionspiral.o
+OBJ = ogrxodrdriver.o ogrxodrdatasource.o ogrxodrlayer.o XODR.o MatrixTransformations2D.o CubicPolynomials.o CenterLaneSF.o  LaneOffsetCalculator.o LaneSectionProcessor.o LaneSectionSF.o LaneSF.o LanesSF.o ObjectProcessor.o ObjectSF.o PlanViewCalculator.o PlanViewGeometry.o RoadSF.o SignalProcessor.o SignalSF.o WidthLaneType.o BorderLaneType.o PlanViewGeometryFunctionArc.o PlanViewGeometryFunctionLine.o PlanViewGeometryFunctionParamPoly3.o PlanViewGeometryFunctionPoly3.o PlanViewGeometryFunctionSpiral.o
 
 CPPFLAGS	:=	$(GDAL_INCLUDE) $(XSD_INCLUDE) $(ODRSPIRAL_INCLUDE) $(XODR_INCLUDE) $(CPPFLAGS)
 

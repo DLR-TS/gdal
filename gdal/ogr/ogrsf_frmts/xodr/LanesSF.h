@@ -25,7 +25,7 @@
 #ifndef LANESSF_H
 #define LANESSF_H
 
-#include "planviewcalculator.h"
+#include "PlanViewCalculator.h"
 #include "LaneOffsetCalculator.h"
 #include "OpenDRIVE_1.4H.h"
 #include "cpl_error.h"

@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "planviewgeometry.h"
+#include "PlanViewGeometry.h"
 #include "geos/geom.h"
 
 PlanViewGeometry::PlanViewGeometry(OpenDRIVE::road_type::planView_type::geometry_type xodrplanviewgeometry):

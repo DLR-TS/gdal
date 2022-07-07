@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of OpenDRIVE plan view spiral/clothoid geometry functions.
+ * Purpose:  Implementation of Simple Features for OpenDRIVE objects.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,31 +22,29 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "planviewgeometryfunction.h"
+#include "ObjectSF.h"
 
-PlanViewGeometryFunctionSpiral::PlanViewGeometryFunctionSpiral(spiral _spiral)
-{
-    
-}
-
-PlanViewGeometryFunctionSpiral::~PlanViewGeometryFunctionSpiral() {}
-
-void PlanViewGeometryFunctionSpiral::calculateLocalCoordinate(Coordinate& p, double s) 
+ObjectSF::ObjectSF(Point* point, object obj):
+xodrObject(obj),
+p(point)
 {
 
 }
 
-void PlanViewGeometryFunctionSpiral::calculateLocalOffsetCoordinate(Coordinate& p, double s, double t) 
+ObjectSF::ObjectSF(const ObjectSF& orig):
+xodrObject(orig.xodrObject),
+p(orig.p)
 {
-
 }
 
-double PlanViewGeometryFunctionSpiral::calculateU(double s) 
+ObjectSF::~ObjectSF()
 {
-	return 0.0;
 }
 
-double PlanViewGeometryFunctionSpiral::calculateV(double s) 
-{
-	return 0.0;
+const object &ObjectSF::getXodrObject() const {
+    return xodrObject;
+}
+
+const Point *ObjectSF::getP() const {
+    return p;
 }

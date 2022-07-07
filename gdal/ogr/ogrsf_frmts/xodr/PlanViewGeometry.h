@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Definition of Simple Features for OpenDRIVE lane sections.
+ * Purpose:  Definition of OpenDRIVE plan view geometries.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,40 +22,39 @@
  * limitations under the License.
  ****************************************************************************/
 
-#ifndef LANESECTIONSF_H
-#define LANESECTIONSF_H
+#ifndef PLANVIEWGEOMETRY_H
+#define PLANVIEWGEOMETRY_H
 
-#include <vector>
-#include "LaneSF.h"
+
+
+#include "PlanViewGeometryFunction.h"
 #include "geos/geom.h"
-#include "CenterLaneSF.h"
-#include "OpenDRIVE_1.4H.h"
-#include "PlanViewCalculator.h"
-#include "LaneOffsetCalculator.h"
-#include "LaneSectionProcessor.h"
-
+#include "MatrixTransformations2D.h"
+#include <iostream>
+#include <math.h>
 
 using namespace geos::geom;
-typedef std::map<int, LineString*, cmpByAbsIdValue> LineMap;
 
-
-class LaneSectionSF
-{
+class PlanViewGeometry {
 public:
-    LaneSectionSF (double length, OpenDRIVE::road_type::lanes_type::laneSection_type section);
-    virtual ~LaneSectionSF ();
-    LineMap createLinesForLanes();
-    std::vector<LaneSF> createLanes(PlanViewCalculator& pvc, LaneOffsetCalculator& loc);
+    PlanViewGeometry(OpenDRIVE::road_type::planView_type::geometry_type xodrplanviewgeometry);
+    virtual ~PlanViewGeometry();
+    PlanViewGeometry (const PlanViewGeometry& other);
 
-    CenterLaneSF* createCenterLanes(PlanViewCalculator& pvc, LaneOffsetCalculator& loc);
 
+    Coordinate getInertialPoint(double s);
+    Coordinate offsetPoint(double s, double t);
+    double getHdg();
+    double getLength();
+    double getX();
+    double getY();
+    
 private:
-    double length;
-    laneSection section;
-    const GeometryFactory* geometryFactory = GeometryFactory::getDefaultInstance();
-    LineMap createLineStringsForLanes(LaneSectionProcessor& lsp, PlanViewCalculator& pvc, int orientation);
-
+    void transformPoint(Coordinate* geometry, Matrix2D& m);
+    geometry xodrPlanViewGeometry;
+    PlanViewGeometryFunction* planViewGeometryFunction;
+    Matrix2D m;
 };
 
-#endif /* LANESECTIONSF_H */
+#endif /* PLANVIEWGEOMETRY_H */
 

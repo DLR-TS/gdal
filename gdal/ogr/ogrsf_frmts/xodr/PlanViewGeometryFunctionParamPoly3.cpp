@@ -24,7 +24,7 @@
 
 #include <geos/geom/LineSegment.h>
 
-#include "planviewgeometryfunction.h"
+#include "PlanViewGeometryFunction.h"
 
 PlanViewGeometryFunctionParamPoly3::PlanViewGeometryFunctionParamPoly3(paramPoly3 poly, double length):
     length(length),

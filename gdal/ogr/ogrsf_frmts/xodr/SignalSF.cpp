@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "signalsf.h"
+#include "SignalSF.h"
 
 SignalSF::SignalSF(Point* point,signal signal):
         xodrSignal(signal),

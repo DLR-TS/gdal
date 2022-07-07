@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Definition of the processor for OpenDRIVE signals.
+ * Purpose:  Definition of Simple Features for OpenDRIVE roads.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,29 +22,46 @@
  * limitations under the License.
  ****************************************************************************/
 
-#ifndef GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H
-#define GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H
+#ifndef ROADSF_H
+#define ROADSF_H
 
-#include "geos/geom.h"
 #include "OpenDRIVE_1.4H.h"
-#include "planviewcalculator.h"
-#include "signalsf.h"
+#include "PlanViewCalculator.h"
+#include "ObjectSF.h"
+#include "ObjectProcessor.h"
+#include "SignalSF.h"
+#include "SignalProcessor.h"
+#include "LanesSF.h"
+#include "LaneSF.h"
+#include "geos/geom.h"
+#include "geos_c.h"
+#include "cpl_error.h"
+
+using namespace xml_schema;
+using namespace geos::geom;
 
 
-class SignalProcessor {
+class RoadSF {
 public:
-    SignalProcessor();
-    SignalProcessor(const OpenDRIVE::road_type::signals_type &signals,const PlanViewCalculator &planViewCalculator);
-    SignalProcessor(const SignalProcessor& orig);
-    virtual ~SignalProcessor();
-
-    std::vector<SignalSF> getSignalsSF();
+    RoadSF(const OpenDRIVE::road_type& r);
+    RoadSF(const RoadSF& orig);
+    virtual ~RoadSF();
+    geos::geom::LineString* getPlanViewSF();
+    OpenDRIVE::road_type getRoad();
+    std::vector<LaneSF> getLanesSf();
+    std::vector<CenterLaneSF*> getCenterLaneSf();
+    std::vector<ObjectSF> getObjectsSf();
+    std::vector<SignalSF> getSignalSf();
+    
+    
 private:
+    const GeometryFactory* geometryFactory = GeometryFactory::getDefaultInstance();
+    OpenDRIVE::road_type od_road;
     PlanViewCalculator pvc;
-    OpenDRIVE::road_type::signals_type::signal_sequence signalsType;
-    const  GeometryFactory* gf = GeometryFactory::getDefaultInstance();
-
+    ObjectProcessor objProc;
+    SignalProcessor sigProc;
+    LanesSF lanes;
 };
 
+#endif /* ROADSF_H */
 
-#endif //GDAL_STANDALONE_CONVERT_SIGNALPROCESSOR_H

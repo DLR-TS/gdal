@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "planviewcalculator.h"
+#include "PlanViewCalculator.h"
 
 PlanViewCalculator::PlanViewCalculator(const OpenDRIVE::road_type::planView_type& planView):
 planViewGeometries(std::map<double, PlanViewGeometry>())

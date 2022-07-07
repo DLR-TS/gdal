@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Definition of OpenDRIVE plan view geometries.
+ * Purpose:  Definition of the processor for OpenDRIVE objects.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,39 +22,32 @@
  * limitations under the License.
  ****************************************************************************/
 
-#ifndef PLANVIEWGEOMETRY_H
-#define PLANVIEWGEOMETRY_H
+#ifndef GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H
+#define GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H
 
-
-
-#include "planviewgeometryfunction.h"
+#include "ObjectSF.h"
+#include "OpenDRIVE_1.4H.h"
+#include "PlanViewCalculator.h"
 #include "geos/geom.h"
-#include "MatrixTransformations2D.h"
 #include <iostream>
-#include <math.h>
+#include "cpl_error.h"
 
-using namespace geos::geom;
+class ObjectProcessor {
 
-class PlanViewGeometry {
 public:
-    PlanViewGeometry(OpenDRIVE::road_type::planView_type::geometry_type xodrplanviewgeometry);
-    virtual ~PlanViewGeometry();
-    PlanViewGeometry (const PlanViewGeometry& other);
 
+    ObjectProcessor();
+    ObjectProcessor(const OpenDRIVE::road_type::objects_type& objects,const PlanViewCalculator& pvc);
+    ObjectProcessor(const ObjectProcessor& orig);
+    virtual ~ObjectProcessor();
+    std::vector<ObjectSF> getObjectsSF();
 
-    Coordinate getInertialPoint(double s);
-    Coordinate offsetPoint(double s, double t);
-    double getHdg();
-    double getLength();
-    double getX();
-    double getY();
-    
 private:
-    void transformPoint(Coordinate* geometry, Matrix2D& m);
-    geometry xodrPlanViewGeometry;
-    PlanViewGeometryFunction* planViewGeometryFunction;
-    Matrix2D m;
+    PlanViewCalculator pvc;
+    OpenDRIVE::road_type::objects_type::object_sequence roadObjects;
+    const GeometryFactory* gf = GeometryFactory::getDefaultInstance();
+
 };
 
-#endif /* PLANVIEWGEOMETRY_H */
 
+#endif //GDAL_STANDALONE_CONVERT_OBJECTPROCESSOR_H

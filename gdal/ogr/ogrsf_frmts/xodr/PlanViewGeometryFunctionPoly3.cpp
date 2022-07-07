@@ -22,7 +22,7 @@
  * limitations under the License.
  ****************************************************************************/
 
-#include "planviewgeometryfunction.h"
+#include "PlanViewGeometryFunction.h"
 
 PlanViewGeometryFunctionPoly3::PlanViewGeometryFunctionPoly3(poly3 poly, double length):
     poly(CubicPolynomial(poly.a().get(),poly.b().get(),poly.c().get(),poly.d().get())),

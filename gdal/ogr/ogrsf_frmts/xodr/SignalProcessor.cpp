@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Definition of Simple Features for OpenDRIVE lane sections.
+ * Purpose:  Implementation of the processor for OpenDRIVE signals.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
  *
@@ -22,40 +22,39 @@
  * limitations under the License.
  ****************************************************************************/
 
-#ifndef LANESECTIONSF_H
-#define LANESECTIONSF_H
+#include "SignalProcessor.h"
 
-#include <vector>
-#include "LaneSF.h"
-#include "geos/geom.h"
-#include "CenterLaneSF.h"
-#include "OpenDRIVE_1.4H.h"
-#include "PlanViewCalculator.h"
-#include "LaneOffsetCalculator.h"
-#include "LaneSectionProcessor.h"
+SignalProcessor::SignalProcessor()
+{}
 
+SignalProcessor::SignalProcessor(const OpenDRIVE::road_type::signals_type& signals,const PlanViewCalculator& planViewCalculator):
+pvc(planViewCalculator),
+signalsType(signals.signal())
+{}
 
-using namespace geos::geom;
-typedef std::map<int, LineString*, cmpByAbsIdValue> LineMap;
+SignalProcessor::SignalProcessor(const SignalProcessor& orig):
+pvc(orig.pvc),
+signalsType(orig.signalsType)
+{}
 
+SignalProcessor::~SignalProcessor() 
+{}
 
-class LaneSectionSF
+std::vector<SignalSF> SignalProcessor::getSignalsSF()
 {
-public:
-    LaneSectionSF (double length, OpenDRIVE::road_type::lanes_type::laneSection_type section);
-    virtual ~LaneSectionSF ();
-    LineMap createLinesForLanes();
-    std::vector<LaneSF> createLanes(PlanViewCalculator& pvc, LaneOffsetCalculator& loc);
-
-    CenterLaneSF* createCenterLanes(PlanViewCalculator& pvc, LaneOffsetCalculator& loc);
-
-private:
-    double length;
-    laneSection section;
-    const GeometryFactory* geometryFactory = GeometryFactory::getDefaultInstance();
-    LineMap createLineStringsForLanes(LaneSectionProcessor& lsp, PlanViewCalculator& pvc, int orientation);
-
-};
-
-#endif /* LANESECTIONSF_H */
-
+    std::vector<SignalSF> signalVector;
+    if(!this->signalsType.empty())
+    {
+        for(signal sig: this->signalsType)
+        {
+            double s = sig.s().get();
+            double t = sig.t().get();
+			if (s >= 0.0) {
+				Coordinate signalPosition = this->pvc.offsetPoint(s, t);
+				SignalSF signalSf(this->gf->createPoint(signalPosition), sig);
+				signalVector.push_back(signalSf);
+			}
+        }
+    }
+    return signalVector;
+}

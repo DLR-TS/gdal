@@ -33,8 +33,8 @@
 #include "geos/geom/Point.h"
 #include "geos/geom/Geometry.h"
 #include "geos/geom/LineString.h"
-#include "xodr.h"
-#include "roadsf.h"
+#include "XODR.h"
+#include "RoadSF.h"
 #include "LaneSF.h"
 #include <vector>
 
