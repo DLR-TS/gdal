@@ -13,7 +13,7 @@ Geometry:
 - [ ] Add `Polygon` layer for driving lanes
 - [x] Add additional `LineString` layer(s) to contain
   - [x] driving lane boundaries
-  - [x] road marks
+  - [ ] road marks
   - [x] linear objects (e.g. guardrails, barriers)
 - [ ] Implement sampling of `spiral` geometries, with both `curvStart` and `curvEnd` `!= 0`
 
