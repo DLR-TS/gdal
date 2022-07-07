@@ -37,16 +37,30 @@ import stat
 
 import gdaltest
 from osgeo import gdal
+from osgeo import osr
 import pytest
+
+###############################################################################
+@pytest.fixture(autouse=True, scope='module')
+def startup_and_cleanup():
+    with gdaltest.config_option('GDAL_PAM_ENABLED', 'YES'):
+        yield
+
+    try:
+        os.chmod('tmpdirreadonly', stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+        shutil.rmtree('tmpdirreadonly')
+    except OSError:
+        pass
+    try:
+        shutil.rmtree('tmppamproxydir')
+    except OSError:
+        pass
 
 ###############################################################################
 # Check that we can read PAM metadata for existing PNM file.
 
 
 def test_pam_1():
-
-    gdaltest.pam_setting = gdal.GetConfigOption('GDAL_PAM_ENABLED', "NULL")
-    gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
     ds = gdal.Open("data/byte.pnm")
 
@@ -73,7 +87,7 @@ def test_pam_1():
 def test_pam_2():
 
     driver = gdal.GetDriverByName('PNM')
-    ds = driver.Create('tmp/pam.pnm', 10, 10)
+    ds = driver.Create('tmp/pam.pgm', 10, 10)
     band = ds.GetRasterBand(1)
 
     band.SetMetadata({'other': 'red', 'key': 'value'})
@@ -94,7 +108,7 @@ def test_pam_2():
 
 def test_pam_3():
 
-    ds = gdal.Open("tmp/pam.pnm")
+    ds = gdal.Open("tmp/pam.pgm")
 
     band = ds.GetRasterBand(1)
     base_md = band.GetMetadata()
@@ -116,11 +130,11 @@ def test_pam_3():
     assert band.GetNoDataValue() == 100, 'nodata not saved via pam'
 
     ds = None
-    ds = gdal.Open('tmp/pam.pnm', gdal.GA_Update)
+    ds = gdal.Open('tmp/pam.pgm', gdal.GA_Update)
     assert ds.GetRasterBand(1).DeleteNoDataValue() == 0
     ds = None
 
-    ds = gdal.Open('tmp/pam.pnm')
+    ds = gdal.Open('tmp/pam.pgm')
     assert ds.GetRasterBand(1).GetNoDataValue() is None, \
         'got nodata value whereas none was expected'
 
@@ -179,21 +193,21 @@ def test_pam_6():
 
 def test_pam_7():
 
-    gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
+    with gdaltest.config_option('GDAL_PAM_ENABLED', 'NO'):
 
-    shutil.copyfile('data/stefan_full_rgba.png', 'tmp/stefan_full_rgba.png')
-    ds = gdal.Open('tmp/stefan_full_rgba.png')
-    ds.BuildOverviews('NEAR', [2])
-    ds = None
+        shutil.copyfile('data/stefan_full_rgba.png', 'tmp/stefan_full_rgba.png')
+        ds = gdal.Open('tmp/stefan_full_rgba.png')
+        ds.BuildOverviews('NEAR', [2])
+        ds = None
 
-    ds = gdal.Open('tmp/stefan_full_rgba.png')
-    ovr_count = ds.GetRasterBand(1).GetOverviewCount()
-    ds = None
+        ds = gdal.Open('tmp/stefan_full_rgba.png')
+        ovr_count = ds.GetRasterBand(1).GetOverviewCount()
+        ds = None
 
-    os.remove('tmp/stefan_full_rgba.png')
-    os.remove('tmp/stefan_full_rgba.png.ovr')
+        os.remove('tmp/stefan_full_rgba.png')
+        os.remove('tmp/stefan_full_rgba.png.ovr')
 
-    assert ovr_count == 1
+        assert ovr_count == 1
 
 ###############################################################################
 # Test that Band.SetDescription() goes through PAM (#3780)
@@ -202,19 +216,19 @@ def test_pam_7():
 
 def test_pam_8():
 
-    gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
+    with gdaltest.config_option('GDAL_PAM_ENABLED', 'YES'):
 
-    ds = gdal.GetDriverByName('GTiff').Create('/vsimem/pam_8.tif', 1, 1, 1)
-    ds.GetRasterBand(1).SetDescription('foo')
-    ds = None
+        ds = gdal.GetDriverByName('GTiff').Create('/vsimem/pam_8.tif', 1, 1, 1)
+        ds.GetRasterBand(1).SetDescription('foo')
+        ds = None
 
-    ds = gdal.Open('/vsimem/pam_8.tif')
-    desc = ds.GetRasterBand(1).GetDescription()
-    ds = None
+        ds = gdal.Open('/vsimem/pam_8.tif')
+        desc = ds.GetRasterBand(1).GetDescription()
+        ds = None
 
-    gdal.GetDriverByName('GTiff').Delete('/vsimem/pam_8.tif')
+        gdal.GetDriverByName('GTiff').Delete('/vsimem/pam_8.tif')
 
-    assert desc == 'foo'
+        assert desc == 'foo'
 
 ###############################################################################
 # Test that we can retrieve projection from xml:ESRI domain
@@ -335,7 +349,8 @@ def test_pam_11():
     stats = ds.GetRasterBand(1).ComputeStatistics(False)
     assert stats[0] == 74, 'did not get expected minimum'
     gdal.ErrorReset()
-    ds = None
+    with gdaltest.error_handler():
+        ds = None
     error_msg = gdal.GetLastErrorMsg()
     assert error_msg.startswith('Unable to save auxiliary information'), \
         'warning was expected at that point'
@@ -399,29 +414,17 @@ def test_pam_12():
 
 def test_pam_13():
 
-    gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
+    with gdaltest.config_option('GDAL_PAM_ENABLED', 'NO'):
 
-    ds = gdal.GetDriverByName('PNM').Create('/vsimem/tmp.pnm', 1, 1)
-    # if ds.GetRasterBand(1).SetColorTable(None) == 0:
-    #    gdaltest.post_reason('fail')
-    #    return 'fail'
-    gdal.PushErrorHandler()
-    ret = ds.GetRasterBand(1).SetNoDataValue(0)
-    gdal.PopErrorHandler()
-    assert ret != 0
+        tmpfilename = '/vsimem/tmp.pgm'
+        ds = gdal.GetDriverByName('PNM').Create(tmpfilename, 1, 1)
+        ds.GetRasterBand(1).SetNoDataValue(0)
+        ds = None
 
-    gdal.PushErrorHandler()
-    ret = ds.GetRasterBand(1).DeleteNoDataValue()
-    gdal.PopErrorHandler()
-    assert ret != 0
+        assert gdal.VSIStatL(tmpfilename + '.aux.xml') is None
 
-    ds = None
+        gdal.Unlink(tmpfilename)
 
-    assert gdal.VSIStatL('/vsimem/tmp.pnm.aux.xml') is None
-
-    gdal.Unlink('/vsimem/tmp.pnm')
-
-    gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
 ###############################################################################
 # Test that existing PAM metadata is preserved when new is added
@@ -430,7 +433,7 @@ def test_pam_13():
 
 def test_pam_metadata_preserved():
 
-    tmpfilename = '/vsimem/tmp.pnm'
+    tmpfilename = '/vsimem/tmp.pgm'
     ds = gdal.GetDriverByName('PNM').Create(tmpfilename, 1, 1)
     ds.SetMetadataItem('foo', 'bar')
     ds = None
@@ -515,25 +518,36 @@ def test_pam_esri_GeodataXform_gcp():
     ds = None
 
 ###############################################################################
-# Cleanup.
 
-def test_pam_cleanup():
-    gdaltest.clean_tmp()
-    if gdaltest.pam_setting != 'NULL':
-        gdal.SetConfigOption('GDAL_PAM_ENABLED', gdaltest.pam_setting)
-    else:
-        gdal.SetConfigOption('GDAL_PAM_ENABLED', None)
 
-    try:
-        os.chmod('tmpdirreadonly', stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
-        shutil.rmtree('tmpdirreadonly')
-    except OSError:
-        pass
-    try:
-        shutil.rmtree('tmppamproxydir')
-    except OSError:
-        pass
+def test_pam_metadata_coordinate_epoch():
 
-    
+    tmpfilename = '/vsimem/tmp.pgm'
+    ds = gdal.GetDriverByName('PNM').Create(tmpfilename, 1, 1)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetCoordinateEpoch(2021.3)
+    ds.SetSpatialRef(srs)
+    ds = None
+
+    ds = gdal.Open(tmpfilename)
+    srs = ds.GetSpatialRef()
+    assert srs.GetCoordinateEpoch() == 2021.3
+    ds = None
+
+    gdal.GetDriverByName('PNM').Delete(tmpfilename)
+
+###############################################################################
+# Check that PAM handles correctly equality of NaN nodata values (#4847)
+
+def test_pam_nodata_nan():
+
+    outfilename = '/vsimem/test_pam_nodata_nan.tif'
+    src_ds = gdal.GetDriverByName('MEM').Create('', 1, 1, 1, gdal.GDT_Float32)
+    src_ds.GetRasterBand(1).SetNoDataValue(float('nan'))
+    gdal.GetDriverByName('GTiff').CreateCopy(outfilename, src_ds)
+    # Check that no PAM file is generated
+    assert gdal.VSIStatL(outfilename + '.aux.xml') is None
+    gdal.GetDriverByName('GTiff').Delete(outfilename)
 
 

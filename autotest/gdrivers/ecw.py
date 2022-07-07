@@ -35,6 +35,7 @@ import os.path
 import sys
 import array
 import shutil
+import struct
 from osgeo import gdal
 from osgeo import osr
 
@@ -615,11 +616,12 @@ def test_ecw_19():
 
     ds = gdal.Open('data/jpeg2000/3_13bit_and_1bit.jp2')
 
-    expected_checksums = [64570, 57277, 56048, 61292]
+    # 31324 is got with ECW SDK 5.5 on Windows that seems to promote the 1 bit
+    # channel to 8 bit
+    expected_checksums = [(64570,), (57277,), (56048,), (61292, 31324)]
 
     for i in range(4):
-        assert ds.GetRasterBand(i + 1).Checksum() == expected_checksums[i], \
-            ('unexpected checksum (%d) for band %d' % (expected_checksums[i], i + 1))
+        assert ds.GetRasterBand(i + 1).Checksum() in expected_checksums[i]
 
     assert ds.GetRasterBand(1).DataType == gdal.GDT_UInt16, 'unexpected data type'
 
@@ -706,10 +708,11 @@ def test_ecw_23():
 
     ds = gdal.Open('tmp/spif83.ecw')
 
-    expected_wkt = """PROJCS["OSGB 1936 / British National Grid",GEOGCS["OSGB 1936",DATUM["OSGB_1936",SPHEROID["Airy 1830",6377563.396,299.3249646,AUTHORITY["EPSG","7001"]],TOWGS84[446.448,-125.157,542.06,0.15,0.247,0.842,-20.489],AUTHORITY["EPSG","6277"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4277"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",49],PARAMETER["central_meridian",-2],PARAMETER["scale_factor",0.9996012717],PARAMETER["false_easting",400000],PARAMETER["false_northing",-100000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","27700"]]"""
     wkt = ds.GetProjectionRef()
 
-    assert wkt == expected_wkt, 'did not get expected SRS.'
+    assert '36 / British National Grid' in wkt
+    assert 'TOWGS84[446.448,-125.157,542.06,0.15,0.247,0.842,-20.489]' in wkt
+    assert 'AUTHORITY["EPSG","27700"]' in wkt
 
     gt = ds.GetGeoTransform()
     expected_gt = (6138559.5576418638, 195.5116973254697, 0.0, 2274798.7836679211, 0.0, -198.32414964918371)
@@ -904,7 +907,6 @@ def test_ecw_28():
     data3 = ds.GetRasterBand(3).ReadRaster(x, y, 1, 1)
     ds = None
 
-    import struct
     struct.unpack('B' * 3, multiband_data)
     struct.unpack('B' * 3, data1 + data2 + data3)
 
@@ -1108,7 +1110,6 @@ def test_ecw_33():
 
     # When heuristics is ON, returned values should be the same as
     # 3-band at a time reading
-    import struct
     tab1 = struct.unpack('B' * 3 * 50 * 50, multiband_data)
     tab2 = struct.unpack('B' * 3 * 50 * 50, data1_1 + data2_1 + data3_2)
     assert tab1 == tab2
@@ -1414,9 +1415,7 @@ def test_ecw_41():
     ds = None
 
     # Check that there's no .aux.xml file
-    with pytest.raises(OSError):
-        os.stat('tmp/stefan_full_rgba_ecwv3_meta.ecw.aux.xml')
-
+    assert not os.path.exists('tmp/stefan_full_rgba_ecwv3_meta.ecw.aux.xml')
 
     ds = gdal.Open('tmp/stefan_full_rgba_ecwv3_meta.ecw')
     assert ds.GetRasterBand(1).GetMinimum() == 0
@@ -1710,14 +1709,31 @@ def test_ecw_46():
     cs = mem_ds.GetRasterBand(1).Checksum()
     assert cs == ref_cs
 
+
+###############################################################################
+# Test non nearest upsampling on multiband data
+
+
+def test_ecw_non_nearest_upsampling_multiband():
+
+    if gdaltest.jp2ecw_drv is None:
+        pytest.skip()
+
+    ds = gdal.Open('data/jpeg2000/stefan_full_rgba.jp2')
+    full_res_data = ds.ReadRaster(0, 0, 162, 150)
+    upsampled_data = ds.ReadRaster(0, 0, 162, 150, 162*2, 150*2, resample_alg=gdal.GRIORA_Cubic)
+
+    tmp_ds = gdal.GetDriverByName('MEM').Create('', 162, 150, ds.RasterCount)
+    tmp_ds.WriteRaster(0, 0, 162, 150, full_res_data)
+    ref_upsampled_data = tmp_ds.ReadRaster(0, 0, 162, 150, 162*2, 150*2, resample_alg=gdal.GRIORA_Cubic)
+
+    assert upsampled_data == ref_upsampled_data
+
 ###############################################################################
 # /vsi reading with ECW (#6482)
 
 
 def test_ecw_47():
-
-    if gdaltest.ecw_drv.major_version == 3:
-        pytest.skip()
 
     data = open('data/ecw/jrc.ecw', 'rb').read()
     gdal.FileFromMemBuffer('/vsimem/ecw_47.ecw', data)
@@ -1729,8 +1745,10 @@ def test_ecw_47():
 
     if gdaltest.ecw_drv.major_version == 5:
         (exp_mean, exp_stddev) = (141.606, 67.2919)
-    else:
+    elif gdaltest.ecw_drv.major_version == 4:
         (exp_mean, exp_stddev) = (140.332, 67.611)
+    elif gdaltest.ecw_drv.major_version == 3:
+        (exp_mean, exp_stddev) = (141.172, 67.3636)
 
     (mean, stddev) = ds.GetRasterBand(1).ComputeBandStats()
 
@@ -1771,6 +1789,20 @@ def test_ecw_49():
     # expect Y resolution positive
     expected_gt = (6138559.5576418638, 195.5116973254697, 0.0, 2274798.7836679211, 0.0, 198.32414964918371)
     assert gt == expected_gt, 'did not get expected geotransform.'
+
+###############################################################################
+# Test reading UInt32 file
+
+
+def test_ecw_read_uint32_jpeg2000():
+
+    ds = gdal.OpenEx('data/jpeg2000/uint32_2x2_lossless_nbits_20.j2k', gdal.OF_RASTER)
+    if gdaltest.ecw_drv.major_version == 3:
+        assert ds is not None
+    else:
+        if ds is None:
+            pytest.skip('This version of the ECW SDK has issues to decode UInt32 JPEG2000 files')
+    assert struct.unpack('I' * 4, ds.ReadRaster(0,0,2,2)) == (0, 1048575, 1048574, 524288)
 
 ###############################################################################
 

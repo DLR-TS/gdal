@@ -29,6 +29,7 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
+import os
 import sys
 
 
@@ -45,6 +46,26 @@ require_ogr_sql_sqlite; # to make pyflakes happy
 
 
 pytestmark = pytest.mark.usefixtures('require_ogr_sql_sqlite')
+
+
+###############################################################################
+
+@pytest.fixture()
+def require_auto_load_extension():
+    if ogr.GetDriverByName('SQLite') is None:
+        pytest.skip()
+
+    ds = ogr.Open(':memory:')
+    with gdaltest.error_handler():
+        sql_lyr = ds.ExecuteSQL("PRAGMA compile_options")
+    if sql_lyr:
+        for f in sql_lyr:
+            if f.GetField(0) == 'OMIT_LOAD_EXTENSION':
+                ds.ReleaseResultSet(sql_lyr)
+                pytest.skip('SQLite3 built with OMIT_LOAD_EXTENSION')
+        ds.ReleaseResultSet(sql_lyr)
+
+###############################################################################
 
 
 def ogr_virtualogr_run_sql(sql_statement):
@@ -76,7 +97,7 @@ def ogr_virtualogr_run_sql(sql_statement):
 # Basic tests
 
 
-def test_ogr_virtualogr_1():
+def test_ogr_virtualogr_1(require_auto_load_extension):
     # Invalid syntax
     assert not ogr_virtualogr_run_sql("CREATE VIRTUAL TABLE poly USING VirtualOGR()")
 
@@ -116,7 +137,7 @@ def test_ogr_virtualogr_1():
 # Test detection of suspicious use of VirtualOGR
 
 
-def test_ogr_virtualogr_2():
+def test_ogr_virtualogr_2(require_auto_load_extension):
     ds = ogr.GetDriverByName('SQLite').CreateDataSource('/vsimem/ogr_virtualogr_2.db')
     ds.ExecuteSQL("CREATE VIRTUAL TABLE foo USING VirtualOGR('data/poly.shp')")
     ds.ExecuteSQL("CREATE TABLE spy_table (spy_content VARCHAR)")
@@ -183,7 +204,7 @@ def test_ogr_virtualogr_2():
 # Test GDAL as a SQLite3 dynamically loaded extension
 
 
-def test_ogr_virtualogr_3():
+def test_ogr_virtualogr_3(require_auto_load_extension):
     # Find path of libgdal
     libgdal_name = gdaltest.find_lib('gdal')
     if libgdal_name is None:
@@ -214,7 +235,7 @@ def test_ogr_virtualogr_3():
 # Test ogr_datasource_load_layers()
 
 
-def test_ogr_virtualogr_4():
+def test_ogr_virtualogr_4(require_auto_load_extension):
     ds = ogr.GetDriverByName('SQLite').CreateDataSource('/vsimem/ogr_virtualogr_4.db')
     sql_lyr = ds.ExecuteSQL("SELECT ogr_datasource_load_layers('data/poly.shp')")
     ds.ReleaseResultSet(sql_lyr)
@@ -271,7 +292,7 @@ def test_ogr_virtualogr_4():
 # Test failed CREATE VIRTUAL TABLE USING VirtualOGR
 
 
-def test_ogr_virtualogr_5():
+def test_ogr_virtualogr_5(require_auto_load_extension):
 
     # Create a CSV with duplicate column name
     fp = gdal.VSIFOpenL('/vsimem/ogr_virtualogr_5.csv', 'wt')
@@ -291,4 +312,64 @@ def test_ogr_virtualogr_5():
     gdal.Unlink('/vsimem/ogr_virtualogr_5.csv')
 
 
+###############################################################################
 
+
+def test_ogr_sqlite_load_extensions_load_self(require_auto_load_extension):
+
+    # Find path of libgdal
+    libgdal_name = gdaltest.find_lib('gdal')
+    if libgdal_name is None:
+        pytest.skip()
+
+    # Load ourselves ! not allowed
+    with gdaltest.config_option('OGR_SQLITE_LOAD_EXTENSIONS', libgdal_name):
+        with gdaltest.error_handler():
+            ds = ogr.Open(':memory:')
+            assert ds is not None
+        assert gdal.GetLastErrorMsg() != ''
+
+    # Load ourselves ! not allowed
+    with gdaltest.config_option('OGR_SQLITE_LOAD_EXTENSIONS', 'ENABLE_SQL_LOAD_EXTENSION'):
+        ds = ogr.Open(':memory:')
+        assert ds is not None
+        with gdaltest.error_handler():
+            ds.ReleaseResultSet(ds.ExecuteSQL("SELECT load_extension('" + libgdal_name + "')"))
+        assert gdal.GetLastErrorMsg() != ''
+
+
+###############################################################################
+
+
+def test_ogr_sqlite_load_extensions_load_my_test_sqlite3_ext_name(require_auto_load_extension):
+
+    found = False
+    gdal_driver_path = gdal.GetConfigOption('GDAL_DRIVER_PATH')
+    if gdal_driver_path:
+        for name in ['my_test_sqlite3_ext.so', 'my_test_sqlite3_ext.dll', 'my_test_sqlite3_ext.dylib']:
+            filename = os.path.join(gdal_driver_path, name)
+            if os.path.exists(filename):
+                found = True
+                break
+
+    if not found:
+        pytest.skip()
+
+    with gdaltest.config_option('OGR_SQLITE_LOAD_EXTENSIONS', filename):
+        ds = ogr.Open(':memory:')
+        assert ds is not None
+        sql_lyr = ds.ExecuteSQL('SELECT myext()')
+        assert sql_lyr
+        f = sql_lyr.GetNextFeature()
+        assert f.GetField(0) == 'this works!'
+        ds.ReleaseResultSet(sql_lyr)
+
+    with gdaltest.config_option('OGR_SQLITE_LOAD_EXTENSIONS', 'ENABLE_SQL_LOAD_EXTENSION'):
+        ds = ogr.Open(':memory:')
+        assert ds is not None
+        ds.ReleaseResultSet(ds.ExecuteSQL("SELECT load_extension('" + filename + "')"))
+        sql_lyr = ds.ExecuteSQL('SELECT myext()')
+        assert sql_lyr
+        f = sql_lyr.GetNextFeature()
+        assert f.GetField(0) == 'this works!'
+        ds.ReleaseResultSet(sql_lyr)

@@ -3,11 +3,17 @@ name: Conda
 on:
     push:
         paths-ignore:
-            - 'gdal/doc/**'
-    pull_request:
-        paths-ignore:
-            - 'gdal/doc/**'
+            - 'doc/**'
+        branches-ignore:
+            - 'backport**'
+    # Disabled because of https://github.com/OSGeo/gdal/issues/5618
+    #pull_request:
+    #    paths-ignore:
+    #        - 'doc/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,13 +24,13 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform: ['ubuntu-latest','windows-latest','macos-latest']
+        platform: ['ubuntu-latest','windows-latest','macos-10.15']
 
     env:
       PLATFORM: ${{ matrix.platform }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: conda-incubator/setup-miniconda@v2
       with:
@@ -34,7 +40,7 @@ jobs:
     - name: Setup
       shell: bash -l {0}
       run: |
-          source ./gdal/ci/travis/conda/setup.sh
+          source ./ci/travis/conda/setup.sh
 
     - name: Support longpaths
       run: git config --system core.longpaths true
@@ -43,13 +49,13 @@ jobs:
     - name: Build
       shell: bash -l {0}
       run: |
-          source ../gdal/ci/travis/conda/compile.sh
+          source ../ci/travis/conda/compile.sh
       working-directory: ./gdal-feedstock
 
     - uses: ilammy/msvc-dev-cmd@v1
       if: matrix.platform == 'windows-latest'
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.platform }}-conda-package
         path: ./gdal-feedstock/packages/
@@ -60,5 +66,5 @@ jobs:
       env:
         ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
       run: |
-          source ../gdal/ci/travis/conda/upload.sh || true
+          source ../ci/travis/conda/upload.sh || true
       working-directory: ./gdal-feedstock

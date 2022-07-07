@@ -435,6 +435,10 @@ def test_ogr_flatgeobuf_mixed():
     destDS = ogr.Open('/vsimem/test.fgb')
     srcLyr = srcDS.GetLayer(0)
     destLyr = destDS.GetLayer(0)
+    assert destLyr.TestCapability(ogr.OLCFastFeatureCount)
+    assert destLyr.TestCapability(ogr.OLCFastGetExtent)
+    assert destLyr.GetFeatureCount(force=0) == srcLyr.GetFeatureCount()
+    assert destLyr.GetExtent(force=0) == srcLyr.GetExtent()
     ogrtest.compare_layers(srcLyr, destLyr)
 
     ogr.GetDriverByName('FlatGeobuf').DeleteDataSource('/vsimem/test.fgb')
@@ -722,6 +726,10 @@ def test_ogr_flatgeobuf_editing():
     ds = ogr.Open('/vsimem/test.fgb', update=1)
     lyr = ds.GetLayer(0)
 
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f.SetGeometry(ogr.CreateGeometryFromWkt('POINT (1 1)'))
+    assert lyr.CreateFeature(f) == ogr.OGRERR_NONE
+
     assert lyr.TestCapability(ogr.OLCDeleteFeature) == 1
     assert lyr.DeleteFeature(1) == 0
     assert lyr.DeleteFeature(1) == ogr.OGRERR_NON_EXISTING_FEATURE
@@ -739,7 +747,7 @@ def test_ogr_flatgeobuf_editing():
     lyr = ds.GetLayer(0)
 
     c = lyr.GetFeatureCount()
-    assert c == 1
+    assert c == 2
 
     f = lyr.GetNextFeature()
     assert f is not None
@@ -748,7 +756,16 @@ def test_ogr_flatgeobuf_editing():
     assert f.GetFieldCount() == 1
 
     f = lyr.GetNextFeature()
+    assert f is not None
+    assert f.GetGeometryRef().ExportToWkt() == 'POINT (1 1)'
+
+    f = lyr.GetNextFeature()
     assert f is None
+
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f.SetGeometry(ogr.CreateGeometryFromWkt('POINT (1 1)'))
+    with gdaltest.error_handler():
+        assert lyr.CreateFeature(f) != ogr.OGRERR_NONE
 
     ogr.GetDriverByName('FlatGeobuf').DeleteDataSource('/vsimem/test.fgb')
     assert not gdal.VSIStatL('/vsimem/test.fgb')
@@ -762,3 +779,264 @@ def test_ogr_flatgeobuf_editing():
 ])
 def test_ogr_flatgeobuf_multi_geometries_with_empty(in_wkt, expected_wkt):
     wktRoundtrip(in_wkt, expected_wkt)
+
+
+def test_ogr_flatgeobuf_ossfuzz_bug_29462():
+    ds = ogr.GetDriverByName('FlatGeobuf').CreateDataSource('/vsimem/test.fgb')
+    lyr = ds.CreateLayer('test', geom_type = ogr.wkbPoint)
+
+    fld_defn = ogr.FieldDefn('str', ogr.OFTString)
+    lyr.CreateField(fld_defn)
+
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f['str'] = 'X' * 100000
+    f.SetGeometry(ogr.CreateGeometryFromWkt('POINT (0 0)'))
+    lyr.CreateFeature(f)
+
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f['str'] = 'X'
+    f.SetGeometry(ogr.CreateGeometryFromWkt('POINT (0 0)'))
+    lyr.CreateFeature(f)
+
+    ds = None
+
+    ds = ogr.Open('/vsimem/test.fgb')
+    lyr = ds.GetLayer(0)
+    f = lyr.GetNextFeature()
+    assert f['str'] == 'X' * 100000
+    f = lyr.GetNextFeature()
+    assert f['str'] == 'X'
+    ds = None
+
+    ogr.GetDriverByName('FlatGeobuf').DeleteDataSource('/vsimem/test.fgb')
+    assert not gdal.VSIStatL('/vsimem/test.fgb')
+
+
+###############################################################################
+# Check that we don't crash or leak
+
+
+@pytest.mark.parametrize("filename", ['data/flatgeobuf/invalid_polyhedralsurface_of_curvepolygon.fgb',
+                                      'data/flatgeobuf/invalid_compoundcurve_non_contiguous_curves.fgb',
+                                      'data/flatgeobuf/invalid_curvepolygon_linestring_three_points.fgb',
+                                      'data/flatgeobuf/invalid_multisurface_of_polyhedralsurface.fgb'])
+def test_ogr_flatgeobuf_read_invalid_geometries(filename):
+    with gdaltest.error_handler():
+        ds = gdal.OpenEx(filename)
+        lyr = ds.GetLayer(0)
+        for f in lyr:
+            pass
+
+###############################################################################
+
+
+def test_ogr_flatgeobuf_read_coordinate_metadata_wkt():
+
+    ds = gdal.OpenEx('data/flatgeobuf/test_ogr_flatgeobuf_coordinate_epoch.fgb')
+    lyr = ds.GetLayer(0)
+    got_srs = lyr.GetSpatialRef()
+    assert got_srs is not None
+    assert got_srs.IsGeographic()
+
+
+###############################################################################
+
+
+def test_ogr_flatgeobuf_coordinate_epoch():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetCoordinateEpoch(2021.3)
+
+    filename = '/vsimem/test_ogr_flatgeobuf_coordinate_epoch.fgb'
+    ds = ogr.GetDriverByName('FlatGeobuf').CreateDataSource(filename)
+    ds.CreateLayer('foo', srs=srs)
+    ds = None
+
+    ds = gdal.OpenEx(filename)
+    lyr = ds.GetLayer(0)
+    srs = lyr.GetSpatialRef()
+    assert srs.GetAuthorityCode(None) == '4326'
+    assert srs.GetCoordinateEpoch() == 2021.3
+    assert srs.GetDataAxisToSRSAxisMapping() == [2, 1]
+    ds = None
+
+    ogr.GetDriverByName('FlatGeobuf').DeleteDataSource(filename)
+
+
+###############################################################################
+
+
+def test_ogr_flatgeobuf_coordinate_epoch_custom_wkt():
+
+    srs = osr.SpatialReference()
+    srs.SetFromUserInput("""GEOGCRS["myTRF2021",
+    DYNAMIC[
+        FRAMEEPOCH[2010]],
+    DATUM["myTRF2021",
+        ELLIPSOID["GRS 1980",6378137,298.257222101,
+            LENGTHUNIT["metre",1]]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["degree",0.0174532925199433]],
+    CS[ellipsoidal,2],
+        AXIS["geodetic latitude (Lat)",north,
+            ORDER[1],
+            ANGLEUNIT["degree",0.0174532925199433]],
+        AXIS["geodetic longitude (Lon)",east,
+            ORDER[2],
+            ANGLEUNIT["degree",0.0174532925199433]]]""")
+    srs.SetCoordinateEpoch(2021.3)
+    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    filename = '/vsimem/test_ogr_flatgeobuf_coordinate_epoch.fgb'
+    ds = ogr.GetDriverByName('FlatGeobuf').CreateDataSource(filename)
+    ds.CreateLayer('foo', srs=srs)
+    ds = None
+
+    ds = gdal.OpenEx(filename)
+    lyr = ds.GetLayer(0)
+    got_srs = lyr.GetSpatialRef()
+    assert got_srs.IsSame(srs)
+    assert got_srs.GetCoordinateEpoch() == 2021.3
+    ds = None
+
+    ogr.GetDriverByName('FlatGeobuf').DeleteDataSource(filename)
+
+
+###############################################################################
+
+
+def test_ogr_flatgeobuf_invalid_output_filename():
+
+    ds = ogr.GetDriverByName('FlatGeobuf').CreateDataSource("/i_do/not_exist/my.fgb")
+    with gdaltest.error_handler():
+        assert ds.CreateLayer('foo') is None
+
+
+###############################################################################
+
+
+def test_ogr_flatgeobuf_arrow_stream_numpy():
+    pytest.importorskip('osgeo.gdal_array')
+    numpy = pytest.importorskip('numpy')
+
+    ds = ogr.GetDriverByName('FlatGeoBuf').CreateDataSource('/vsimem/test.fgb')
+    lyr = ds.CreateLayer('test', geom_type = ogr.wkbPoint)
+    assert lyr.TestCapability(ogr.OLCFastGetArrowStream) == 1
+
+    field = ogr.FieldDefn("str", ogr.OFTString)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("bool", ogr.OFTInteger)
+    field.SetSubType(ogr.OFSTBoolean)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("int16", ogr.OFTInteger)
+    field.SetSubType(ogr.OFSTInt16)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("int32", ogr.OFTInteger)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("int64", ogr.OFTInteger64)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("float32", ogr.OFTReal)
+    field.SetSubType(ogr.OFSTFloat32)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("float64", ogr.OFTReal)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("datetime", ogr.OFTDateTime)
+    lyr.CreateField(field)
+
+    field = ogr.FieldDefn("binary", ogr.OFTBinary)
+    lyr.CreateField(field)
+
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f.SetField("bool", 1)
+    f.SetField("int16", -12345)
+    f.SetField("int32", 12345678)
+    f.SetField("int64", 12345678901234)
+    f.SetField("float32", 1.25)
+    f.SetField("float64", 1.250123)
+    f.SetField("str", "abc")
+    f.SetField("datetime", "2022-05-31T12:34:56.789Z")
+    f.SetFieldBinaryFromHexString("binary", 'DEAD')
+    f.SetGeometryDirectly(ogr.CreateGeometryFromWkt('POINT(1 2)'))
+    lyr.CreateFeature(f)
+
+    f2 = ogr.Feature(lyr.GetLayerDefn())
+    f2.SetField("bool", 0)
+    f2.SetField("int16", -123)
+    f2.SetGeometryDirectly(ogr.CreateGeometryFromWkt('POINT(-1 2)'))
+    lyr.CreateFeature(f2)
+
+    ds = None
+    ds = ogr.Open('/vsimem/test.fgb')
+    lyr = ds.GetLayer(0)
+
+    try:
+        import pyarrow
+        pyarrow.__version__
+        has_pyarrow = True
+    except ImportError:
+        has_pyarrow = False
+    if has_pyarrow:
+        stream = lyr.GetArrowStreamAsPyArrow()
+        batches = [ batch for batch in stream ]
+        #print(batches)
+
+    stream = lyr.GetArrowStreamAsNumPy(options = ['USE_MASKED_ARRAYS=NO'])
+    batches = [ batch for batch in stream ]
+    assert len(batches) == 1
+    batch = batches[0]
+
+    assert batch.keys() == {
+        'OGC_FID', 'str', 'bool', 'int16', 'int32', 'int64',
+        'float32', 'float64', 'datetime', 'binary', 'wkb_geometry' }
+
+    assert batch["OGC_FID"][0] == 0
+    for fieldname in ('bool', 'int16', 'int32', 'int64',
+                      'float32', 'float64'):
+        assert batch[fieldname][0] == f.GetField(fieldname)
+    assert batch['str'][0] == f.GetField('str').encode('utf-8')
+    assert batch['datetime'][0] == numpy.datetime64('2022-05-31T12:34:56.789')
+    assert bytes(batch['binary'][0]) == b'\xDE\xAD'
+    assert len(bytes(batch["wkb_geometry"][0])) == 21
+
+    assert batch["OGC_FID"][1] == 1
+    assert batch['bool'][1] == False
+
+    # Test attribute filter
+    lyr.SetAttributeFilter("int16 = -123")
+    stream = lyr.GetArrowStreamAsNumPy()
+    batches = [ batch for batch in stream ]
+    lyr.SetAttributeFilter(None)
+    assert len(batches) == 1
+    assert len(batches[0]["OGC_FID"]) == 1
+    assert batches[0]["OGC_FID"][0] == 1
+
+    # Test spatial filter
+    lyr.SetSpatialFilterRect(0, 0, 10, 10)
+    stream = lyr.GetArrowStreamAsNumPy()
+    batches = [ batch for batch in stream ]
+    lyr.SetSpatialFilter(None)
+    assert len(batches) == 1
+    assert len(batches[0]["OGC_FID"]) == 1
+    assert batches[0]["OGC_FID"][0] == 0
+
+    # Test ignored fields
+    assert lyr.SetIgnoredFields(["OGR_GEOMETRY", "int16"]) == ogr.OGRERR_NONE
+    stream = lyr.GetArrowStreamAsNumPy(options = ['INCLUDE_FID=NO'])
+    batches = [ batch for batch in stream ]
+    lyr.SetIgnoredFields([])
+    batch = batches[0]
+    assert batch.keys() == {
+        'str', 'bool', 'int32', 'int64',
+        'float32', 'float64', 'datetime', 'binary' }
+
+    ds = None
+
+    ogr.GetDriverByName('FlatGeobuf').DeleteDataSource('/vsimem/test.fgb')

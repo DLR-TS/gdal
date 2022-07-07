@@ -117,7 +117,7 @@ def test_ogr_mvt_datatypes():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -136,7 +136,7 @@ def test_ogr_mvt_datatype_promotion():
         assert fld_defn.GetType() == dt, layer_name
         assert fld_defn.GetSubType() == ogr.OFSTNone, layer_name
 
-    
+
 ###############################################################################
 
 
@@ -184,7 +184,7 @@ def test_ogr_mvt_with_extension_fields():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -201,7 +201,7 @@ def test_ogr_mvt_mixed():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -221,7 +221,7 @@ def test_ogr_mvt_linestring():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -241,7 +241,7 @@ def test_ogr_mvt_multilinestring():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 
 ###############################################################################
 
@@ -261,7 +261,7 @@ def test_ogr_mvt_polygon():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -279,7 +279,7 @@ def test_ogr_mvt_point_polygon():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -293,10 +293,13 @@ def test_ogr_mvt_point_polygon_clip():
     f = lyr.GetNextFeature()
     expected_wkt = 'MULTIPOLYGON (((0.0 112515.30563578,0 0,-112515.30563578 0.0,-112515.30563578 112515.30563578,0.0 112515.30563578)))'
     expected_wkt2 = 'MULTIPOLYGON (((-112515.30563578 112515.30563578,0.0 112515.30563578,0 0,-112515.30563578 0.0,-112515.30563578 112515.30563578)))'
-    assert ogrtest.check_feature_geometry(f, expected_wkt) == 0 or ogrtest.check_feature_geometry(f, expected_wkt2) == 0, \
+    expected_wkt3 = 'MULTIPOLYGON (((0 0,-112515.30563578 0.0,-112515.30563578 112515.30563578,0.0 112515.30563578,0 0)))'
+    assert ogrtest.check_feature_geometry(f, expected_wkt) == 0 or \
+           ogrtest.check_feature_geometry(f, expected_wkt2) == 0 or \
+           ogrtest.check_feature_geometry(f, expected_wkt3) == 0, \
             f.GetGeometryRef().ExportToWkt()
 
-    
+
 ###############################################################################
 
 
@@ -397,7 +400,7 @@ def test_ogr_mvt_open_variants():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -411,7 +414,7 @@ def test_ogr_mvt_xyz_options():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -462,7 +465,7 @@ def test_ogr_mvt_mbtiles():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 
 
@@ -635,7 +638,7 @@ def test_ogr_mvt_http_start():
     if gdaltest.webserver_port == 0:
         pytest.skip()
 
-    
+
 ###############################################################################
 
 
@@ -716,7 +719,7 @@ def test_ogr_mvt_http():
         f = lyr.GetNextFeature()
         assert f is not None
 
-    
+
 ###############################################################################
 
 
@@ -955,7 +958,7 @@ def test_ogr_mvt_write_one_layer():
                         {
                             "attribute": "intfield",
                             "count": 2,
-                            "type": "numeric",
+                            "type": "number",
                             "values": [
                                 -1,
                                 1
@@ -966,7 +969,7 @@ def test_ogr_mvt_write_one_layer():
                         {
                             "attribute": "int64field",
                             "count": 2,
-                            "type": "numeric",
+                            "type": "number",
                             "values": [
                                 -123456789012345,
                                 123456789012345
@@ -977,7 +980,7 @@ def test_ogr_mvt_write_one_layer():
                         {
                             "attribute": "realfield",
                             "count": 2,
-                            "type": "numeric",
+                            "type": "number",
                             "values": [
                                 -1.256780,
                                 1.250000
@@ -1208,11 +1211,21 @@ def test_ogr_mvt_write_polygon_repaired():
     assert out_ds is not None
     out_lyr = out_ds.GetLayerByName('mylayer')
     out_f = out_lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((0 0,0.0 498980.920645632,498980.920645632 498980.920645632,498980.920645632 0.0,0 0)))') != 0:
+    # Second expected result is using the HAVE_MAKE_VALID code path with GEOS 3.8
+    # Third expected result is using the HAVE_MAKE_VALID code path with GEOS 3.10
+    if ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((0 0,0.0 498980.920645632,498980.920645632 498980.920645632,498980.920645632 0.0,0 0)))') != 0 and \
+       ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((97839.3962050267 498980.920645632,0.0 498980.920645632,0 0,498980.920645632 0.0,498980.920645632 498980.920645632,97839.3962050267 498980.920645632)))') != 0 and \
+       ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((0.0 498980.920645632,0 0,498980.920645632 0.0,498980.920645632 498980.920645632,97839.3962050267 498980.920645632,0.0 498980.920645632)))') != 0:
+
         out_f.DumpReadable()
         pytest.fail()
+
     out_f = out_lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((0 0,0.0 498980.920645632,498980.920645632 498980.920645632,498980.920645632 0.0,0 0)),((997961.84129126 0.0,997961.84129126 997961.84129126,1995923.68258252 997961.84129126,997961.84129126 0.0)))') != 0:
+    # Second expected result is using the HAVE_MAKE_VALID code path
+    # Third expected result is using the HAVE_MAKE_VALID code path with GEOS 3.10
+    if ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((0 0,0.0 498980.920645632,498980.920645632 498980.920645632,498980.920645632 0.0,0 0)),((997961.84129126 0.0,997961.84129126 997961.84129126,1995923.68258252 997961.84129126,997961.84129126 0.0)))') != 0 and \
+       ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((997961.84129126 0.0,1995923.68258252 997961.84129126,997961.84129126 997961.84129126,997961.84129126 0.0)),((97839.3962050267 498980.920645632,0.0 498980.920645632,0 0,498980.920645632 0.0,498980.920645632 498980.920645632,97839.3962050267 498980.920645632)))') != 0 and \
+       ogrtest.check_feature_geometry(out_f, 'MULTIPOLYGON (((997961.84129126 997961.84129126,997961.84129126 0.0,1995923.68258252 997961.84129126,997961.84129126 997961.84129126)),((0 0,498980.920645632 0.0,498980.920645632 498980.920645632,97839.3962050267 498980.920645632,0.0 498980.920645632,0 0)))') != 0:
         out_f.DumpReadable()
         pytest.fail()
     out_f = out_lyr.GetNextFeature()

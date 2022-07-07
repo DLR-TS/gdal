@@ -33,9 +33,10 @@
 ###############################################################################
 
 from osgeo import gdal
-
+import struct
 
 import gdaltest
+import pytest
 
 ###############################################################################
 # Perform simple read test.
@@ -115,18 +116,13 @@ def test_envi_4():
 def test_envi_5():
 
     tst = gdaltest.GDALTest('envi', 'envi/aea.dat', 1, 24)
-    prj = """PROJCS["OSGB 1936 / British National Grid",
-    GEOGCS["OSGB 1936",
-        DATUM["OSGB_1936",
+    prj = """PROJCS["unnamed",
+    GEOGCS["GCS_unnamed",
+        DATUM["D_unnamed",
             SPHEROID["Airy 1830",6377563.396,299.3249646,
-                AUTHORITY["EPSG","7001"]],
-            TOWGS84[446.448,-125.157,542.06,0.15,0.247,0.842,-20.489],
-            AUTHORITY["EPSG","6277"]],
-        PRIMEM["Greenwich",0,
-            AUTHORITY["EPSG","8901"]],
-        UNIT["degree",0.01745329251994328,
-            AUTHORITY["EPSG","9122"]],
-        AUTHORITY["EPSG","4277"]],
+                AUTHORITY["EPSG","7001"]]],
+        PRIMEM["Greenwich",0],
+        UNIT["degree",0.01745329251994328]],
     PROJECTION["Transverse_Mercator"],
     PARAMETER["latitude_of_origin",49],
     PARAMETER["central_meridian",-2],
@@ -135,24 +131,10 @@ def test_envi_5():
     PARAMETER["false_northing",-100000],
     UNIT["metre",1,
         AUTHORITY["EPSG","9001"]],
-    AUTHORITY["EPSG","27700"]]"""
+    AXIS["Easting",EAST],
+    AXIS["Northing",NORTH]]"""
 
-    # now it goes through ESRI WKT processing.
-    expected_prj = """PROJCS["OSGB_1936_British_National_Grid",
-    GEOGCS["GCS_OSGB 1936",
-        DATUM["OSGB_1936",
-            SPHEROID["Airy_1830",6377563.396,299.3249646]],
-        PRIMEM["Greenwich",0],
-        UNIT["Degree",0.017453292519943295]],
-    PROJECTION["Transverse_Mercator"],
-    PARAMETER["latitude_of_origin",49],
-    PARAMETER["central_meridian",-2],
-    PARAMETER["scale_factor",0.9996012717],
-    PARAMETER["false_easting",400000],
-    PARAMETER["false_northing",-100000],
-    UNIT["Meter",1]]"""
-
-    return tst.testSetProjection(prj=prj, expected_prj=expected_prj)
+    return tst.testSetProjection(prj=prj)
 
 ###############################################################################
 # Test LAEA Projection.
@@ -339,7 +321,7 @@ def test_envi_truncated():
     gdal.GetDriverByName('ENVI').CreateCopy('/vsimem/envi_truncated.dat',
                                             gdal.Open('data/byte.tif'))
 
-    f = gdal.VSIFOpenL('/vsimem/envi_truncated.dat', 'wb+')
+    f = gdal.VSIFOpenL('/vsimem/envi_truncated.dat', 'rb+')
     gdal.VSIFTruncateL(f, int(20 * 20 / 2))
     gdal.VSIFCloseL(f)
 
@@ -411,15 +393,19 @@ def test_envi_bigendian():
 # Test different interleaving
 
 
-def test_envi_interleaving():
+@pytest.mark.parametrize('filename_suffix, expected_interleave', [('bip', 'PIXEL'),
+                                                                  ('bil', 'LINE'),
+                                                                  ('bsq', 'BAND')])
+def test_envi_interleaving(filename_suffix, expected_interleave):
 
-    for filename in ('data/envi/envi_rgbsmall_bip.img', 'data/envi/envi_rgbsmall_bil.img', 'data/envi/envi_rgbsmall_bsq.img'):
-        ds = gdal.Open(filename)
-        assert ds, filename
-        assert ds.GetRasterBand(1).Checksum() == 20718, filename
-        assert ds.GetRasterBand(2).Checksum() == 20669, filename
-        assert ds.GetRasterBand(3).Checksum() == 20895, filename
-        ds = None
+    filename = f'data/envi/envi_rgbsmall_{filename_suffix}.img'
+    ds = gdal.Open(filename)
+    assert ds, filename
+    assert ds.GetMetadataItem('INTERLEAVE', 'IMAGE_STRUCTURE') == expected_interleave
+    assert ds.GetRasterBand(1).Checksum() == 20718, filename
+    assert ds.GetRasterBand(2).Checksum() == 20669, filename
+    assert ds.GetRasterBand(3).Checksum() == 20895, filename
+    ds = None
 
 ###############################################################################
 # Test nodata
@@ -460,3 +446,101 @@ def test_envi_rotation_180():
     ds = None
 
     gdal.GetDriverByName('ENVI').Delete(filename)
+
+###############################################################################
+# Test writing different interleaving
+
+
+@pytest.mark.parametrize('interleaving', ['bip', 'bil', 'bsq'])
+@pytest.mark.parametrize('explicit', [True, False])
+def test_envi_writing_interleaving(interleaving, explicit):
+
+    srcfilename = 'data/envi/envi_rgbsmall_' + interleaving + '.img'
+    dstfilename = '/vsimem/out'
+    try:
+        creationOptions = ['INTERLEAVE=' + interleaving] if explicit else []
+        gdal.Translate(dstfilename, srcfilename,
+                       format = 'ENVI',
+                       creationOptions=creationOptions)
+        ref_data = open(srcfilename, 'rb').read()
+        f = gdal.VSIFOpenL(dstfilename, 'rb')
+        if f:
+            got_data = gdal.VSIFReadL(1, len(ref_data), f)
+            gdal.VSIFCloseL(f)
+            assert got_data == ref_data
+    finally:
+        gdal.Unlink(dstfilename)
+        gdal.Unlink(dstfilename + '.hdr')
+
+###############################################################################
+# Test writing different interleaving (larger file)
+
+
+@pytest.mark.parametrize('interleaving', ['bip', 'bil', 'bsq'])
+def test_envi_writing_interleaving_larger_file(interleaving):
+
+    dstfilename = '/vsimem/out'
+    try:
+        xsize = 10000
+        ysize = 10
+        bands = 100
+        with gdaltest.SetCacheMax(xsize * (ysize // 2)):
+            ds = gdal.GetDriverByName('ENVI').Create(dstfilename, xsize, ysize, bands, options = ['INTERLEAVE=' + interleaving])
+            ds.GetRasterBand(1).Fill(1)
+            for i in range(bands):
+                v = struct.pack('B', i+1)
+                ds.GetRasterBand(i+1).WriteRaster(0, 0, xsize, ysize // 2, v * (xsize * (ysize // 2)))
+            for i in range(bands):
+                v = struct.pack('B', i+1)
+                ds.GetRasterBand(i+1).WriteRaster(0, ysize // 2, xsize, ysize // 2, v * (xsize * (ysize // 2)))
+            ds = None
+
+        ds = gdal.Open(dstfilename)
+        for i in range(bands):
+            v = struct.pack('B', i+1)
+            assert ds.GetRasterBand(i+1).ReadRaster() == v * (xsize * ysize)
+    finally:
+        gdal.Unlink(dstfilename)
+        gdal.Unlink(dstfilename + '.hdr')
+
+
+###############################################################################
+# Test .hdr as an additional extension, not a replacement one
+
+
+def test_envi_add_hdr():
+
+    drv = gdal.GetDriverByName("ENVI")
+
+    ds = drv.Create(
+        "/vsimem/test.int",
+        xsize=10,
+        ysize=10,
+        bands=1,
+        eType=gdal.GDT_CFloat32,
+        options=["SUFFIX=ADD"],
+    )
+    ds = None
+
+    ds = gdal.Open("/vsimem/test.int")
+    assert ds.RasterCount == 1
+    ds = None
+
+    ds = drv.Create(
+        "/vsimem/test.int.mph",
+        xsize=10,
+        ysize=10,
+        bands=2,
+        eType=gdal.GDT_Float32,
+        options=["SUFFIX=ADD"],
+    )
+    # Will check that test.int.mph.hdr is used prioritarily over test.int.hdr
+    assert ds.RasterCount == 2
+    ds = None
+
+    ds = gdal.Open("/vsimem/test.int.mph")
+    assert ds.RasterCount == 2
+    ds = None
+
+    drv.Delete("/vsimem/test.int")
+    drv.Delete("/vsimem/test.int.mph")

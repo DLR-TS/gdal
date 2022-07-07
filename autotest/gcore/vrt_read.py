@@ -79,38 +79,20 @@ def test_vrt_open(filename, checksum):
 ###############################################################################
 # The VRT references a non existing TIF file
 
+@pytest.mark.parametrize('filename', ['data/idontexist.vrt', 'data/idontexist2.vrt'])
+def test_vrt_read_non_existing_source(filename):
 
-def test_vrt_read_1():
-
-    gdal.PushErrorHandler('CPLQuietErrorHandler')
-    ds = gdal.Open('data/idontexist.vrt')
-    gdal.PopErrorHandler()
-
+    ds = gdal.Open(filename)
+    with gdaltest.error_handler():
+        cs = ds.GetRasterBand(1).Checksum()
     if ds is None:
         return
-
-    pytest.fail()
-
-###############################################################################
-# The VRT references a non existing TIF file, but using the proxy pool dataset API (#2837)
-
-
-def test_vrt_read_2():
-
-    ds = gdal.Open('data/idontexist2.vrt')
-    assert ds is not None
-
-    gdal.PushErrorHandler('CPLQuietErrorHandler')
-    cs = ds.GetRasterBand(1).Checksum()
-    gdal.PopErrorHandler()
 
     assert cs == 0
 
     ds.GetMetadata()
     ds.GetRasterBand(1).GetMetadata()
     ds.GetGCPs()
-
-    ds = None
 
 ###############################################################################
 # Test init of band data in case of cascaded VRT (ticket #2867)
@@ -277,15 +259,10 @@ def test_vrt_read_7():
 </VRTDataset>""" % filename
 
     gdal.FileFromMemBuffer(filename, content)
-    gdal.PushErrorHandler('CPLQuietErrorHandler')
     ds = gdal.Open(filename)
-    gdal.PopErrorHandler()
-    error_msg = gdal.GetLastErrorMsg()
+    with gdaltest.error_handler():
+        assert ds.GetRasterBand(1).Checksum() == 0
     gdal.Unlink(filename)
-
-    assert ds is None
-
-    assert error_msg != ''
 
 ###############################################################################
 # Test ComputeRasterMinMax()
@@ -1294,7 +1271,7 @@ def test_vrt_shared_no_proxy_pool():
     assert len(before) == len(after)
 
 
-def test_vrt_shared_no_proxy_pool_error():
+def test_vrt_invalid_source_band():
 
     vrt_text = """<VRTDataset rasterXSize="50" rasterYSize="50">
   <VRTRasterBand dataType="Byte" band="1">
@@ -1303,16 +1280,10 @@ def test_vrt_shared_no_proxy_pool_error():
       <SourceBand>10</SourceBand>
     </SimpleSource>
   </VRTRasterBand>
-  <VRTRasterBand dataType="Byte" band="2">
-    <SimpleSource>
-      <SourceFilename>data/byte.tif</SourceFilename>
-      <SourceBand>11</SourceBand>
-    </SimpleSource>
-  </VRTRasterBand>
 </VRTDataset>"""
+    ds = gdal.Open(vrt_text)
     with gdaltest.error_handler():
-        ds = gdal.Open(vrt_text)
-    assert not ds
+        assert ds.GetRasterBand(1).Checksum() == 0
 
 
 def test_vrt_protocol():
@@ -1636,3 +1607,117 @@ def test_vrt_usemaskband_alpha():
 
     gdal.GetDriverByName('GTiff').Delete('/vsimem/src1.tif')
     gdal.GetDriverByName('GTiff').Delete('/vsimem/src2.tif')
+
+
+def test_vrt_check_dont_open_unneeded_source():
+
+    vrt = """<VRTDataset rasterXSize="20" rasterYSize="20">
+  <VRTRasterBand dataType="Byte" band="1">
+    <ColorInterp>Gray</ColorInterp>
+    <SimpleSource>
+      <SourceFilename>data/byte.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SrcRect xOff="0" yOff="0" xSize="10" ySize="10" />
+      <DstRect xOff="0" yOff="0" xSize="10" ySize="10" />
+    </SimpleSource>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">i_do_not_exist.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SrcRect xOff="10" yOff="10" xSize="10" ySize="10" />
+      <DstRect xOff="10" yOff="10" xSize="10" ySize="10" />
+    </SimpleSource>
+  </VRTRasterBand>
+</VRTDataset>"""
+
+    tmpfilename = '/vsimem/tmp.vrt'
+    gdal.FileFromMemBuffer(tmpfilename, vrt)
+    try:
+        ds = gdal.Translate('', tmpfilename, options = '-of MEM -srcwin 0 0 10 10')
+        assert ds is not None
+
+        with gdaltest.error_handler():
+            ds = gdal.Translate('', tmpfilename, options = '-of MEM -srcwin 0 0 10.1 10.1')
+        assert ds is None
+    finally:
+        gdal.Unlink(tmpfilename)
+
+
+def test_vrt_check_dont_open_unneeded_source_with_complex_source_nodata():
+
+    vrt = """<VRTDataset rasterXSize="20" rasterYSize="20">
+  <VRTRasterBand dataType="Byte" band="1">
+    <ColorInterp>Gray</ColorInterp>
+    <ComplexSource>
+      <SourceFilename>data/byte.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SrcRect xOff="0" yOff="0" xSize="10" ySize="10" />
+      <DstRect xOff="0" yOff="0" xSize="10" ySize="10" />
+      <NODATA>0</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">i_do_not_exist.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SrcRect xOff="10" yOff="10" xSize="10" ySize="10" />
+      <DstRect xOff="10" yOff="10" xSize="10" ySize="10" />
+      <NODATA>0</NODATA>
+    </ComplexSource>
+  </VRTRasterBand>
+</VRTDataset>"""
+
+    tmpfilename = '/vsimem/tmp.vrt'
+    gdal.FileFromMemBuffer(tmpfilename, vrt)
+    try:
+        ds = gdal.Translate('', tmpfilename, options = '-of MEM -srcwin 0 0 10 10')
+        assert ds is not None
+
+        with gdaltest.error_handler():
+            ds = gdal.Translate('', tmpfilename, options = '-of MEM -srcwin 0 0 10.1 10.1')
+        assert ds is None
+    finally:
+        gdal.Unlink(tmpfilename)
+
+
+def test_vrt_nodata_and_implicit_ovr_recursion_issue():
+
+    """ Tests scenario https://github.com/OSGeo/gdal/issues/4620#issuecomment-938636360 """
+
+    vrt = """<VRTDataset rasterXSize="20" rasterYSize="20">
+  <VRTRasterBand dataType="Byte" band="1">
+    <NoDataValue>0</NoDataValue>
+    <ComplexSource>
+      <NODATA>0</NODATA>
+      <SourceFilename>data/byte.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+    </ComplexSource>
+  </VRTRasterBand>
+  <OverviewList resampling="average">2</OverviewList>
+</VRTDataset>"""
+
+    tmpfilename = '/vsimem/tmp.vrt'
+    with gdaltest.tempfile(tmpfilename, vrt):
+        ds = gdal.Open(tmpfilename)
+        assert ds.GetRasterBand(1).GetOverview(0).Checksum() == 1152
+
+
+def test_vrt_statistics_and_implicit_ovr_recursion_issue():
+
+    """ Tests scenario https://github.com/OSGeo/gdal/issues/4661 """
+
+    gdal.Translate('/vsimem/test.tif', 'data/uint16.tif', width = 2048)
+    vrt_ds = gdal.Translate('', '/vsimem/test.tif', format='VRT')
+    with gdaltest.config_option('VRT_VIRTUAL_OVERVIEWS', 'YES'):
+        vrt_ds.BuildOverviews('NEAR', [2, 4])
+
+    stats = vrt_ds.GetRasterBand(1).ComputeStatistics(True) # approx stats
+    assert gdal.GetLastErrorMsg() == ''
+    assert stats[0] == 74
+
+    min_max = vrt_ds.GetRasterBand(1).ComputeRasterMinMax(True) # approx stats
+    assert gdal.GetLastErrorMsg() == ''
+    assert min_max[0] == 74
+
+    hist = vrt_ds.GetRasterBand(1).GetHistogram(True) # approx stats
+    assert gdal.GetLastErrorMsg() == ''
+    assert hist is not None
+
+    gdal.GetDriverByName('GTiff').Delete('/vsimem/test.tif')

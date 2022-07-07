@@ -30,6 +30,7 @@
 
 import contextlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import os
 import subprocess
 import sys
 from threading import Thread
@@ -64,6 +65,15 @@ class RequestResponse(object):
         self.expected_body = expected_body
         self.add_content_length_header = add_content_length_header
         self.unexpected_headers = unexpected_headers
+
+    def __repr__(self):
+        return (
+            f"RequestResponse({self.method}, {self.path}, {self.code}, headers={self.headers}, "
+            f"body={self.body}, custom_method={self.custom_method}, "
+            f"expected_headers={self.expected_headers}, expected_body={self.expected_body}, "
+            f"add_content_length_header={self.add_content_length_header}, "
+            f"unexpected_headers={self.unexpected_headers}"
+        )
 
 
 class FileHandler(object):
@@ -347,6 +357,16 @@ class GDAL_HttpServer(HTTPServer):
         self.running = False
         self.stop_requested = False
 
+    def server_bind(self):
+        # From https://bugs.python.org/issue41135
+        # Needed on Windows so that we don't start as server on a port already
+        # occupied
+        import socket
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            HTTPServer.allow_reuse_address = 0
+        HTTPServer.server_bind(self)
+
     def is_running(self):
         return self.running
 
@@ -370,7 +390,7 @@ class GDAL_ThreadedHttpServer(Thread):
         self.server = 0
         if handlerClass is None:
             handlerClass = GDAL_Handler
-        for port in range(8080, 8100):
+        for port in range(int(os.environ.get('GDAL_TEST_HTTP_PORT', '8080')), 8100):
             try:
                 self.server = GDAL_HttpServer(('', port), handlerClass)
                 self.server.port = port

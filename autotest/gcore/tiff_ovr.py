@@ -34,6 +34,7 @@ import os
 import shutil
 import array
 import stat
+import struct
 from osgeo import osr
 from osgeo import gdal
 
@@ -78,7 +79,7 @@ def tiff_ovr_check(src_ds):
         if ovr_band.Checksum() != 328:
             msg = 'overview wrong checksum: band %d, overview 1, checksum = %d,' % (i, ovr_band.Checksum())
             pytest.fail(msg)
-    
+
 ###############################################################################
 # Create a 3 band floating point GeoTIFF file so we can build overviews on it
 # later.  Build overviews on it.
@@ -183,17 +184,7 @@ def test_tiff_ovr_4(both_endian):
     ovimage = ovband.ReadRaster(0, 0, ovband.XSize, ovband.YSize)
 
     pix_count = ovband.XSize * ovband.YSize
-    total = 0.0
-    is_bytes = False
-    if (isinstance(ovimage, bytes) and not isinstance(ovimage, str)):
-        is_bytes = True
-
-    if is_bytes is True:
-        for i in range(pix_count):
-            total += ovimage[i]
-    else:
-        for i in range(pix_count):
-            total += ord(ovimage[i])
+    total = float(sum(ovimage))
 
     average = total / pix_count
     exp_average = 154.0992
@@ -207,13 +198,7 @@ def test_tiff_ovr_4(both_endian):
                                 ovband.XSize, ovband.YSize)
 
     pix_count = ovband.XSize * ovband.YSize
-    total = 0.0
-    if is_bytes is True:
-        for i in range(pix_count):
-            total += ovimage[i]
-    else:
-        for i in range(pix_count):
-            total += ord(ovimage[i])
+    total = float(sum(ovimage))
     average = total / pix_count
     exp_average = 0.6096
 
@@ -362,21 +347,23 @@ def test_tiff_ovr_9(both_endian):
         ds.BuildOverviews('AVERAGE', overviewlist=[2])
 
     cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
-    exp_cs = 5562
+    exp_cs_list = (5562,
+                   5635,
+                   5601, # libjpeg 9e
+                  )
 
     ds = None
 
-    assert cs == exp_cs or cs == 5635, 'got wrong overview checksum.'
+    assert cs in exp_cs_list
 
     # Re-check after dataset reopening
     ds = gdal.Open('tmp/ovr9.tif', gdal.GA_ReadOnly)
 
     cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
-    exp_cs = 5562
 
     ds = None
 
-    assert cs == exp_cs or cs == 5635, 'got wrong overview checksum.'
+    assert cs in exp_cs_list
 
 ###############################################################################
 # Similar to tiff_ovr_9 but with internal overviews.
@@ -401,11 +388,13 @@ def test_tiff_ovr_10(both_endian):
     assert ds is not None, 'Failed to open copy of test dataset.'
 
     cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
-    exp_cs = 5562
 
     ds = None
 
-    assert cs == exp_cs or cs == 5635, 'got wrong overview checksum.'
+    assert cs in (5562,
+                  5635,
+                  5601, # libjpeg 9e
+                 )
 
 ###############################################################################
 # Overview on a dataset with NODATA_VALUES
@@ -1024,14 +1013,14 @@ def test_tiff_ovr_32(both_endian):
     ds.BuildOverviews('cubic', overviewlist=[2, 5])
 
     cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
-    expected_cs = 21656
-    assert cs == expected_cs, \
-        ('Checksum is %d. Expected checksum is %d for overview 0.' % (cs, expected_cs))
+    expected_cs_band1_overview0 = 21296
+    assert cs == expected_cs_band1_overview0, \
+        ('Checksum is %d. Expected checksum is %d for overview 0.' % (cs, expected_cs_band1_overview0))
 
     cs = ds.GetRasterBand(3).GetOverview(1).Checksum()
-    expected_cs = 2132
-    assert cs == expected_cs, \
-        ('Checksum is %d. Expected checksum is %d for overview 1.' % (cs, expected_cs))
+    expected_cs_band3_overview1 = 1994
+    assert cs == expected_cs_band3_overview1, \
+        ('Checksum is %d. Expected checksum is %d for overview 1.' % (cs, expected_cs_band3_overview1))
 
     ds = None
 
@@ -1070,14 +1059,12 @@ def test_tiff_ovr_32(both_endian):
     ds.BuildOverviews('cubic', overviewlist=[2, 5])
 
     cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
-    expected_cs = 21656
-    assert cs == expected_cs, \
-        ('Checksum is %d. Expected checksum is %d for overview 0.' % (cs, expected_cs))
+    assert cs == expected_cs_band1_overview0, \
+        ('Checksum is %d. Expected checksum is %d for overview 0.' % (cs, expected_cs_band1_overview0))
 
     cs = ds.GetRasterBand(3).GetOverview(1).Checksum()
-    expected_cs = 2132
-    assert cs == expected_cs, \
-        ('Checksum is %d. Expected checksum is %d for overview 1.' % (cs, expected_cs))
+    assert cs == expected_cs_band3_overview1, \
+        ('Checksum is %d. Expected checksum is %d for overview 1.' % (cs, expected_cs_band3_overview1))
 
     ds = None
 
@@ -1247,7 +1234,7 @@ def test_tiff_ovr_39(both_endian):
         assert cs == expected_cs, \
             ('did not get expected checksum for datatype %s' % gdal.GetDataTypeName(datatype))
 
-    
+
 ###############################################################################
 # Test external overviews on 1 bit datasets with AVERAGE_BIT2GRAYSCALE (similar to tiff_ovr_4)
 
@@ -1274,18 +1261,7 @@ def test_tiff_ovr_40(both_endian):
     ovimage = ovband.ReadRaster(0, 0, ovband.XSize, ovband.YSize)
 
     pix_count = ovband.XSize * ovband.YSize
-    total = 0.0
-    is_bytes = False
-    if (isinstance(ovimage, bytes) and not isinstance(ovimage, str)):
-        is_bytes = True
-
-    if is_bytes is True:
-        for i in range(pix_count):
-            total += ovimage[i]
-    else:
-        for i in range(pix_count):
-            total += ord(ovimage[i])
-
+    total = float(sum(ovimage))
     average = total / pix_count
     exp_average = 154.0992
     assert average == pytest.approx(exp_average, abs=0.1), 'got wrong average for overview image'
@@ -1298,13 +1274,7 @@ def test_tiff_ovr_40(both_endian):
                                 ovband.XSize, ovband.YSize)
 
     pix_count = ovband.XSize * ovband.YSize
-    total = 0.0
-    if is_bytes is True:
-        for i in range(pix_count):
-            total += ovimage[i]
-    else:
-        for i in range(pix_count):
-            total += ord(ovimage[i])
+    total = float(sum(ovimage))
     average = total / pix_count
     exp_average = 0.6096
 
@@ -1371,6 +1341,7 @@ def test_tiff_ovr_42(both_endian):
 # jpeg-in-tiff (#3539)
 
 
+@pytest.mark.skipif('SKIP_TIFF_JPEG12' in os.environ, reason='Crashes on build-windows-msys2-mingw')
 def test_tiff_ovr_43(both_endian):
 
     md = gdaltest.tiff_drv.GetMetadata()
@@ -1462,6 +1433,118 @@ def test_tiff_ovr_45(both_endian):
     gdaltest.tiff_drv.Delete('tmp/ovr45.tif')
 
     assert cs == 1087, 'did not get expected checksum'
+
+###############################################################################
+# Test that SPARSE_OK creation option propagates on internal overviews
+
+
+@pytest.mark.parametrize("apply_sparse", [False,True])
+def test_tiff_ovr_propagate_sparse_ok_creation_option(apply_sparse):
+
+    filename = '/vsimem/test_tiff_ovr_propagate_sparse_ok_creation_option.tif'
+    ds = gdaltest.tiff_drv.Create(filename, 100, 100, options=['SPARSE_OK=YES'] if apply_sparse else [])
+    ds.BuildOverviews('NEAREST', overviewlist=[2])
+    ds = None
+    ds = gdal.Open(filename)
+    has_block = ds.GetRasterBand(1).GetOverview(0).GetMetadataItem("BLOCK_OFFSET_0_0", "TIFF") is not None
+    if apply_sparse:
+        assert not has_block
+    else:
+        assert has_block
+    ds = None
+
+    gdaltest.tiff_drv.Delete(filename)
+
+###############################################################################
+# Test that SPARSE_OK open option propagates on internal overviews
+
+
+@pytest.mark.parametrize("apply_sparse", [False,True])
+def test_tiff_ovr_propagate_sparse_ok_open_option_internal(apply_sparse):
+
+    filename = '/vsimem/test_tiff_ovr_propagate_sparse_ok_open_option_internal.tif'
+    gdaltest.tiff_drv.Create(filename, 100, 100)
+    ds = gdal.OpenEx(filename, gdal.OF_UPDATE | gdal.OF_RASTER, open_options=['SPARSE_OK=YES'] if apply_sparse else [])
+    ds.BuildOverviews('NEAREST', overviewlist=[2])
+    ds = None
+    ds = gdal.Open(filename)
+    has_block = ds.GetRasterBand(1).GetOverview(0).GetMetadataItem("BLOCK_OFFSET_0_0", "TIFF") is not None
+    if apply_sparse:
+        assert not has_block
+    else:
+        assert has_block
+    ds = None
+
+    gdaltest.tiff_drv.Delete(filename)
+
+###############################################################################
+# Test that SPARSE_OK open option propagates on internal overviews
+
+
+@pytest.mark.parametrize("apply_sparse", [False,True])
+def test_tiff_ovr_propagate_sparse_ok_open_option_external(apply_sparse):
+
+    filename = '/vsimem/test_tiff_ovr_propagate_sparse_ok_open_option_external.tif'
+    gdaltest.tiff_drv.Create(filename, 100, 100)
+    ds = gdal.OpenEx(filename, open_options = ['SPARSE_OK=YES'] if apply_sparse else [])
+    ds.BuildOverviews('NEAREST', overviewlist=[2])
+    ds = None
+    ds = gdal.Open(filename)
+    has_block = ds.GetRasterBand(1).GetOverview(0).GetMetadataItem("BLOCK_OFFSET_0_0", "TIFF") is not None
+    if apply_sparse:
+        assert not has_block
+    else:
+        assert has_block
+    ds = None
+
+    gdaltest.tiff_drv.Delete(filename)
+
+###############################################################################
+# Test SPARSE_OK_OVERVIEW on internal overview
+
+
+@pytest.mark.parametrize("apply_sparse", [False,True])
+def test_tiff_ovr_sparse_ok_internal_overview(apply_sparse):
+
+    filename = '/vsimem/test_tiff_ovr_sparse_ok_internal_overview.tif'
+    gdaltest.tiff_drv.Create(filename, 100, 100)
+    ds = gdal.Open(filename, gdal.GA_Update)
+    with gdaltest.config_options({'SPARSE_OK_OVERVIEW': 'YES'} if apply_sparse else {}):
+        ds.BuildOverviews('NEAREST', overviewlist=[2])
+    ds = None
+    ds = gdal.Open(filename)
+    has_block = ds.GetRasterBand(1).GetOverview(0).GetMetadataItem("BLOCK_OFFSET_0_0", "TIFF") is not None
+    if apply_sparse:
+        assert not has_block
+    else:
+        assert has_block
+    ds = None
+
+    gdaltest.tiff_drv.Delete(filename)
+
+###############################################################################
+# Test SPARSE_OK_OVERVIEW on external overview
+
+
+@pytest.mark.parametrize("apply_sparse", [False,True])
+def test_tiff_ovr_sparse_ok_external_overview(apply_sparse):
+
+    filename = '/vsimem/test_tiff_ovr_sparse_ok_external_overview.tif'
+    gdaltest.tiff_drv.Create(filename, 100, 100)
+    ds = gdal.Open(filename)
+    with gdaltest.config_options({'SPARSE_OK_OVERVIEW': 'YES'} if apply_sparse else {}):
+        ds.BuildOverviews('NEAREST', overviewlist=[2])
+    ds = None
+    ds = gdal.Open(filename)
+    has_block = ds.GetRasterBand(1).GetOverview(0).GetMetadataItem("BLOCK_OFFSET_0_0", "TIFF") is not None
+    if apply_sparse:
+        assert not has_block
+    else:
+        assert has_block
+    ds = None
+
+    gdaltest.tiff_drv.Delete(filename)
+
 
 ###############################################################################
 # Test overview on a dataset where width * height > 2 billion
@@ -1601,7 +1684,7 @@ def test_tiff_ovr_48(both_endian):
         cs = ds.GetRasterBand(i + 1).Checksum()
         assert cs == 0, i
 
-    
+
 ###############################################################################
 # Test possible stride computation issue in GDALRegenerateOverviewsMultiBand (#5653)
 
@@ -1960,6 +2043,184 @@ def test_tiff_ovr_color_table_bug_3336_bis():
     del ds
     ds = gdal.OpenEx(temp_path, gdal.GA_ReadOnly)
     assert ds.BuildOverviews('nearest', overviewlist=[128]) == 0
+    del ds
+    gdal.GetDriverByName('GTiff').Delete(temp_path)
+
+###############################################################################
+
+
+def test_tiff_ovr_nodata_multiband():
+
+    numpy = pytest.importorskip('numpy')
+
+    temp_path = '/vsimem/test.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(temp_path, 4, 4, 2, gdal.GDT_Float32)
+    ds.GetRasterBand(1).SetNoDataValue(-10000)
+    ds.GetRasterBand(1).WriteArray(numpy.array([[0.5, 1.0], [4.5, -10000]]))
+    ds.GetRasterBand(2).SetNoDataValue(-10000)
+    ds.GetRasterBand(2).WriteArray(numpy.array([[-10000, 4.0], [4.5, 0.5]]))
+
+    ds.FlushCache()
+    ds.BuildOverviews('AVERAGE', overviewlist=[2])
+    ds.FlushCache()
+
+    assert ds.GetRasterBand(1).GetOverviewCount() == 1, \
+        'Overview could not be generated'
+
+    pix = ds.GetRasterBand(1).GetOverview(0).ReadAsArray(win_xsize=1, win_ysize=1)
+    assert pix[0,0] == 2.0
+
+    pix = ds.GetRasterBand(2).GetOverview(0).ReadAsArray(win_xsize=1, win_ysize=1)
+    assert pix[0,0] == 3.0
+
+    ds = None
+
+###############################################################################
+
+@pytest.mark.parametrize("external_ovr", [False,True])
+def test_tiff_ovr_nodata_multiband_interleave_band_non_default_color_interp(external_ovr):
+
+    nodatavalue = -10000
+    data = struct.pack('f' * 4 * 4,
+        0.5, 0.2, 0.5, 0.2,
+        0.2, nodatavalue, 0.2, nodatavalue,
+        0.5, 0.2, nodatavalue, nodatavalue,
+        0.2, nodatavalue, nodatavalue, nodatavalue)
+    numbands = 5
+
+    temp_path = '/vsimem/test.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(
+        temp_path, 4, 4, numbands, gdal.GDT_Float32,
+        options=['INTERLEAVE=BAND', 'PHOTOMETRIC=MINISBLACK', 'ALPHA=YES'])
+    for i in range(1, numbands):
+        ds.GetRasterBand(i).SetColorInterpretation(gdal.GCI_GreenBand)
+        ds.GetRasterBand(i).SetNoDataValue(nodatavalue)
+        ds.GetRasterBand(i).WriteRaster(0, 0, 4, 4, data)
+
+    ds.GetRasterBand(numbands).SetColorInterpretation(gdal.GCI_AlphaBand)
+    ds.GetRasterBand(numbands).SetNoDataValue(nodatavalue)
+    ds.GetRasterBand(numbands).WriteRaster(0, 0, 4, 4, struct.pack('f' * 4 * 4,
+        255, 255, 255, 255,
+        255, 255, 255, 255,
+        255, 0, 0, 0,
+        0, 0, 0, 0))
+
+    if external_ovr:
+        ds = None
+        ds = gdal.Open(temp_path)
+    ds.BuildOverviews('AVERAGE', overviewlist=[2, 4])
+    assert ds.GetRasterBand(1).GetOverview(0).GetColorInterpretation() == gdal.GCI_GreenBand
+
+    ds = None
+    ds = gdal.Open(temp_path)
+    assert ds.GetRasterBand(1).GetOverviewCount() == 2, 'Overview could not be generated'
+    assert ds.GetRasterBand(1).GetOverview(0).GetColorInterpretation() == gdal.GCI_GreenBand
+
+    for i in range(1, numbands):
+        pix = struct.unpack('f', ds.GetRasterBand(i).GetOverview(1).ReadRaster(0,0,1,1))[0]
+        assert abs(pix - 0.3) < 0.01, 'Error in band ' + str(i)
+
+    pix = struct.unpack('f', ds.GetRasterBand(numbands).GetOverview(1).ReadRaster(0,0,1,1))[0]
+    assert pix == 255, 'Error in alpha band '
+    ds = None
+
+    gdal.GetDriverByName('GTiff').Delete(temp_path)
+
+###############################################################################
+
+
+@pytest.mark.parametrize("external_ovr_and_msk", [False,True])
+def test_tiff_ovr_clean_with_mask(external_ovr_and_msk):
+    """ Test fix for https://github.com/OSGeo/gdal/issues/1047 """
+
+    filename = '/vsimem/test_tiff_ovr_clean_with_mask.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(filename, 10, 10)
+    with gdaltest.config_option('GDAL_TIFF_INTERNAL_MASK', 'NO' if external_ovr_and_msk else 'YES'):
+        ds.CreateMaskBand(gdal.GMF_PER_DATASET)
+    if external_ovr_and_msk:
+        ds = None
+        ds = gdal.Open(filename)
+    ds.BuildOverviews('NEAR', [2])
+    ds = None
+
+    # Clear overviews
+    ds = gdal.Open(filename, gdal.GA_Update)
+    ds.BuildOverviews(None, [])
+    assert ds.GetRasterBand(1).GetOverviewCount() == 0
+    assert ds.GetRasterBand(1).GetMaskBand().GetOverviewCount() == 0
+    ds = None
+
+    assert gdal.VSIStatL(filename + '.ovr') is None
+    assert gdal.VSIStatL(filename + '.msk.ovr') is None
+
+    # Check after reopening
+    ds = gdal.Open(filename)
+    assert ds.GetRasterBand(1).GetOverviewCount() == 0
+    assert ds.GetRasterBand(1).GetMaskBand().GetOverviewCount() == 0
+    ds = None
+
+    gdal.GetDriverByName('GTiff').Delete(filename)
+
+
+###############################################################################
+# Test BuildOverviews(NEAR) on a tiled interleave=band raster that is large compared to
+# the allowed chunk size. This will fallbacks to the tiled based approach instead
+# of the default scanlines based one
+
+
+def test_tiff_ovr_fallback_to_multiband_overview_generate():
+
+    filename = '/vsimem/test_tiff_ovr_issue_4932_src.tif'
+    ds = gdal.Translate(filename, 'data/byte.tif',
+                        options='-b 1 -b 1 -b 1 -co INTERLEAVE=BAND -co TILED=YES -outsize 1024 1024')
+    with gdaltest.config_option('GDAL_OVR_CHUNK_MAX_SIZE', '1000'):
+        ds.BuildOverviews('NEAR', overviewlist=[2, 4, 8])
+    ds = None
+
+    ds = gdal.Open(filename)
+    cs = ds.GetRasterBand(1).GetOverview(0).Checksum()
+    assert cs == 37308
+    ds = None
+
+    gdal.GetDriverByName('GTiff').Delete(filename)
+
+
+###############################################################################
+
+
+def test_tiff_ovr_int64():
+
+    temp_path = '/vsimem/test.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(temp_path, 2, 1, 1, gdal.GDT_Int64)
+    ds.GetRasterBand(1).WriteRaster(0, 0, 2, 1,
+                                    struct.pack('q' * 2, -10000000000, -10000000000))
+    del ds
+    ds = gdal.OpenEx(temp_path, gdal.GA_ReadOnly)
+    assert ds.GetRasterBand(1).DataType == gdal.GDT_Int64
+    assert ds.BuildOverviews('nearest', overviewlist=[2]) == 0
+    del ds
+    ds = gdal.OpenEx(temp_path, gdal.GA_ReadOnly)
+    assert struct.unpack('q', ds.GetRasterBand(1).GetOverview(0).ReadRaster()) == (-10000000000,)
+    del ds
+    gdal.GetDriverByName('GTiff').Delete(temp_path)
+
+
+###############################################################################
+
+
+def test_tiff_ovr_uint64():
+
+    temp_path = '/vsimem/test.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(temp_path, 2, 1, 1, gdal.GDT_UInt64)
+    ds.GetRasterBand(1).WriteRaster(0, 0, 2, 1,
+                                    struct.pack('Q' * 2, 10000000000, 10000000000))
+    del ds
+    ds = gdal.OpenEx(temp_path, gdal.GA_ReadOnly)
+    assert ds.GetRasterBand(1).DataType == gdal.GDT_UInt64
+    assert ds.BuildOverviews('nearest', overviewlist=[2]) == 0
+    del ds
+    ds = gdal.OpenEx(temp_path, gdal.GA_ReadOnly)
+    assert struct.unpack('Q', ds.GetRasterBand(1).GetOverview(0).ReadRaster()) == (10000000000,)
     del ds
     gdal.GetDriverByName('GTiff').Delete(temp_path)
 

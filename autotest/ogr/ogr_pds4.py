@@ -45,6 +45,29 @@ def validate_xml(filename):
     if ogr.GetDriverByName('GMLAS') is None:
         pytest.skip()
 
+    # for GDAL 3.4 / PDS4_PDS_1G00
+
+    if not gdaltest.download_file('https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1G00.xsd',
+                                  'pds.nasa.gov_pds4_pds_v1_PDS4_PDS_1G00.xsd',
+                                  force_download=True):
+        pytest.skip()
+
+    if not gdaltest.download_file('https://pds.nasa.gov/pds4/cart/v1/PDS4_CART_1G00_1950.xsd',
+                                  'pds.nasa.gov_pds4_cart_v1_PDS4_CART_1G00_1950.xsd',
+                                  force_download=True):
+        pytest.skip()
+
+    if not gdaltest.download_file('https://pds.nasa.gov/pds4/disp/v1/PDS4_DISP_1G00_1500.xsd',
+                                  'pds.nasa.gov_pds4_disp_v1_PDS4_DISP_1G00_1500.xsd',
+                                  force_download=True):
+        pytest.skip()
+
+    # Used by PDS4_CART_1G00_1950.xsd
+    if not gdaltest.download_file('https://pds.nasa.gov/pds4/geom/v1/PDS4_GEOM_1G00_1920.xsd',
+                                  'pds.nasa.gov_pds4_geom_v1_PDS4_GEOM_1G00_1920.xsd',
+                                  force_download=True):
+        pytest.skip()
+
     if not gdaltest.download_file('https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1D00.xsd',
                                   'pds.nasa.gov_pds4_pds_v1_PDS4_PDS_1D00.xsd',
                                   force_download=True):
@@ -269,19 +292,28 @@ def test_ogr_pds4_read_write_table_character_test_ogrsf():
     assert 'INFO' in ret and 'ERROR' not in ret, ret
 
 
-def test_ogr_pds4_create_table_character():
+@pytest.mark.parametrize('line_ending', [None, 'CRLF', 'LF', 'error'])
+def test_ogr_pds4_create_table_character(line_ending):
 
-    options = ['VAR_LOGICAL_IDENTIFIER=logical_identifier',
+    options = ['VAR_LOGICAL_IDENTIFIER=urn:foo:bar:baz:logical_identifier',
                'VAR_TITLE=title',
                'VAR_INVESTIGATION_AREA_NAME=ian',
-               'VAR_INVESTIGATION_AREA_LID_REFERENCE=INVESTIGATION_AREA_LID_REFERENCE',
+               'VAR_INVESTIGATION_AREA_LID_REFERENCE=urn:foo:bar:baz:ialr',
                'VAR_OBSERVING_SYSTEM_NAME=osn',
                'VAR_TARGET=target',
                'VAR_TARGET_TYPE=target']
 
     ds = ogr.GetDriverByName('PDS4').CreateDataSource('/vsimem/test.xml',
                                                       options=options)
-    lyr = ds.CreateLayer('foo', options=['TABLE_TYPE=CHARACTER'])
+
+    layer_creation_options = ['TABLE_TYPE=CHARACTER']
+    if line_ending:
+        layer_creation_options.append('LINE_ENDING=' + line_ending)
+    if line_ending == 'error':
+        with gdaltest.error_handler():
+            lyr = ds.CreateLayer('0f:oo', options=layer_creation_options)
+    else:
+        lyr = ds.CreateLayer('0f:oo', options=layer_creation_options)
     fld = ogr.FieldDefn('bool', ogr.OFTInteger)
     fld.SetSubType(ogr.OFSTBoolean)
     lyr.CreateField(fld)
@@ -310,12 +342,28 @@ def test_ogr_pds4_create_table_character():
 
     assert '_Character' in data
     assert '_Binary' not in data
+    if line_ending == 'LF':
+        assert '<record_delimiter>Line-Feed</record_delimiter>' in data
+    else:
+        assert '<record_delimiter>Carriage-Return Line-Feed</record_delimiter>' in data
     assert 'LSB' not in data
     assert 'MSB' not in data
+    assert '<local_identifier>_0f_oo</local_identifier>' in data
 
-    assert validate_xml('/vsimem/test.xml')
+    if line_ending is None:
+        # Only do that check in that configuration for faster test execution
+        assert validate_xml('/vsimem/test.xml')
 
-    assert gdal.VSIStatL('/vsimem/test/foo.dat')
+    assert gdal.VSIStatL('/vsimem/test/0f_oo.dat')
+
+    f = gdal.VSIFOpenL('/vsimem/test/0f_oo.dat', 'rb')
+    data = gdal.VSIFReadL(1, 100000, f).decode('ascii')
+    gdal.VSIFCloseL(f)
+    if line_ending == 'LF':
+        assert '\n' in data
+        assert '\r\n' not in data
+    else:
+        assert '\r\n' in data
 
     ds = ogr.Open('/vsimem/test.xml')
     lyr = ds.GetLayer(0)
@@ -331,27 +379,30 @@ def test_ogr_pds4_create_table_character():
     assert f['time'] == '12:34:56.789'
     ds = None
 
-    # Add new layer
-    ds = ogr.Open('/vsimem/test.xml', update = 1)
-    lyr = ds.CreateLayer('bar', options=['TABLE_TYPE=CHARACTER'])
-    lyr.CreateField(ogr.FieldDefn('int', ogr.OFTInteger))
-    f = ogr.Feature(lyr.GetLayerDefn())
-    f['int'] = 123
-    lyr.CreateFeature(f)
-    ds = None
+    if line_ending is None:
+        # Only do that part in that configuration for faster test execution
 
-    assert validate_xml('/vsimem/test.xml')
+        # Add new layer
+        ds = ogr.Open('/vsimem/test.xml', update = 1)
+        lyr = ds.CreateLayer('bar', options=['TABLE_TYPE=CHARACTER'])
+        lyr.CreateField(ogr.FieldDefn('int', ogr.OFTInteger))
+        f = ogr.Feature(lyr.GetLayerDefn())
+        f['int'] = 123
+        lyr.CreateFeature(f)
+        ds = None
 
-    ds = ogr.Open('/vsimem/test.xml')
-    lyr = ds.GetLayerByName('bar')
-    f = lyr.GetNextFeature()
-    assert f['int'] == 123
+        assert validate_xml('/vsimem/test.xml')
 
-    lyr = ds.GetLayer(0)
-    f = lyr.GetNextFeature()
-    assert f['int'] == -123456789
+        ds = ogr.Open('/vsimem/test.xml')
+        lyr = ds.GetLayerByName('bar')
+        f = lyr.GetNextFeature()
+        assert f['int'] == 123
 
-    ds = None
+        lyr = ds.GetLayer(0)
+        f = lyr.GetNextFeature()
+        assert f['int'] == -123456789
+
+        ds = None
 
     ogr.GetDriverByName('PDS4').DeleteDataSource('/vsimem/test.xml')
     gdal.Rmdir('/vsimem/test')
@@ -359,7 +410,11 @@ def test_ogr_pds4_create_table_character():
 
 def test_ogr_pds4_create_with_srs():
 
-    ds = ogr.GetDriverByName('PDS4').CreateDataSource('/vsimem/test.xml')
+    options = ['VAR_LOGICAL_IDENTIFIER=urn:foo:bar:baz:logical_identifier',
+               'VAR_INVESTIGATION_AREA_LID_REFERENCE=urn:foo:bar:baz:ialr']
+
+    ds = ogr.GetDriverByName('PDS4').CreateDataSource('/vsimem/test.xml',
+                                                      options=options)
     sr = osr.SpatialReference()
     sr.SetFromUserInput('WGS84')
     lyr = ds.CreateLayer('bar', geom_type = ogr.wkbPoint25D, srs = sr,
@@ -392,10 +447,10 @@ def test_ogr_pds4_create_with_srs():
 
 def test_ogr_pds4_create_table_binary():
 
-    options = ['VAR_LOGICAL_IDENTIFIER=logical_identifier',
+    options = ['VAR_LOGICAL_IDENTIFIER=urn:foo:bar:baz:logical_identifier',
                'VAR_TITLE=title',
                'VAR_INVESTIGATION_AREA_NAME=ian',
-               'VAR_INVESTIGATION_AREA_LID_REFERENCE=INVESTIGATION_AREA_LID_REFERENCE',
+               'VAR_INVESTIGATION_AREA_LID_REFERENCE=urn:foo:bar:baz:ialr',
                'VAR_OBSERVING_SYSTEM_NAME=osn',
                'VAR_TARGET=target',
                'VAR_TARGET_TYPE=target']
@@ -459,6 +514,8 @@ def test_ogr_pds4_create_table_binary():
 
             assert '_Binary' in data
             assert '_Character' not in data
+            assert '<record_delimiter>' not in data
+
             if endianness == 'LSB':
                 assert 'LSB' in data, data
                 assert 'MSB' not in data, data
@@ -517,19 +574,29 @@ def test_ogr_pds4_create_table_binary():
     gdal.Rmdir('/vsimem/test')
 
 
-def test_ogr_pds4_create_table_delimited():
+@pytest.mark.parametrize('line_ending', [None, 'CRLF', 'LF', 'error'])
+def test_ogr_pds4_create_table_delimited(line_ending):
 
-    options = ['VAR_LOGICAL_IDENTIFIER=logical_identifier',
+    options = ['VAR_LOGICAL_IDENTIFIER=urn:foo:bar:baz:logical_identifier',
                'VAR_TITLE=title',
                'VAR_INVESTIGATION_AREA_NAME=ian',
-               'VAR_INVESTIGATION_AREA_LID_REFERENCE=INVESTIGATION_AREA_LID_REFERENCE',
+               'VAR_INVESTIGATION_AREA_LID_REFERENCE=urn:foo:bar:baz:ialr',
                'VAR_OBSERVING_SYSTEM_NAME=osn',
                'VAR_TARGET=target',
                'VAR_TARGET_TYPE=target']
 
     ds = ogr.GetDriverByName('PDS4').CreateDataSource('/vsimem/test.xml',
                                                       options=options)
-    lyr = ds.CreateLayer('foo')
+
+    layer_creation_options = []
+    if line_ending:
+        layer_creation_options.append('LINE_ENDING=' + line_ending)
+    if line_ending == 'error':
+        with gdaltest.error_handler():
+            lyr = ds.CreateLayer('foo', options=layer_creation_options)
+    else:
+        lyr = ds.CreateLayer('foo', options=layer_creation_options)
+
     fld = ogr.FieldDefn('bool', ogr.OFTInteger)
     fld.SetSubType(ogr.OFSTBoolean)
     lyr.CreateField(fld)
@@ -559,10 +626,16 @@ def test_ogr_pds4_create_table_delimited():
 
     assert '_Character' not in data
     assert '_Binary' not in data
+    if line_ending == 'LF':
+        assert '<record_delimiter>Line-Feed</record_delimiter>' in data
+    else:
+        assert '<record_delimiter>Carriage-Return Line-Feed</record_delimiter>' in data
     assert 'LSB' not in data
     assert 'MSB' not in data
 
-    assert validate_xml('/vsimem/test.xml')
+    if line_ending is None:
+        # Only do that check in that configuration for faster test execution
+        assert validate_xml('/vsimem/test.xml')
 
     ds = gdal.OpenEx('/vsimem/test.xml')
     assert ds
@@ -573,6 +646,15 @@ def test_ogr_pds4_create_table_delimited():
     assert 'foo.csv' in fl[1]
     assert 'foo.vrt' in fl[2]
     ds= None
+
+    f = gdal.VSIFOpenL('/vsimem/test/foo.csv', 'rb')
+    data = gdal.VSIFReadL(1, 100000, f).decode('ascii')
+    gdal.VSIFCloseL(f)
+    if line_ending == 'LF':
+        assert '\n' in data
+        assert '\r\n' not in data
+    else:
+        assert '\r\n' in data
 
     for filename in [ '/vsimem/test.xml', '/vsimem/test/foo.vrt' ]:
         ds = ogr.Open(filename)
@@ -590,27 +672,30 @@ def test_ogr_pds4_create_table_delimited():
         assert f.GetGeometryRef().ExportToIsoWkt() == 'LINESTRING (1 2,3 4)'
         ds = None
 
-    # Add new layer
-    ds = ogr.Open('/vsimem/test.xml', update = 1)
-    lyr = ds.CreateLayer('no_geom', geom_type = ogr.wkbNone, options=['TABLE_TYPE=DELIMITED'])
-    lyr.CreateField(ogr.FieldDefn('int', ogr.OFTInteger))
-    f = ogr.Feature(lyr.GetLayerDefn())
-    f['int'] = 123
-    lyr.CreateFeature(f)
-    ds = None
+    if line_ending is None:
+        # Only do that part in that configuration for faster test execution
 
-    assert validate_xml('/vsimem/test.xml')
+        # Add new layer
+        ds = ogr.Open('/vsimem/test.xml', update = 1)
+        lyr = ds.CreateLayer('no_geom', geom_type = ogr.wkbNone, options=['TABLE_TYPE=DELIMITED'])
+        lyr.CreateField(ogr.FieldDefn('int', ogr.OFTInteger))
+        f = ogr.Feature(lyr.GetLayerDefn())
+        f['int'] = 123
+        lyr.CreateFeature(f)
+        ds = None
 
-    ds = ogr.Open('/vsimem/test.xml')
-    lyr = ds.GetLayerByName('no_geom')
-    f = lyr.GetNextFeature()
-    assert f['int'] == 123
+        assert validate_xml('/vsimem/test.xml')
 
-    lyr = ds.GetLayer(0)
-    f = lyr.GetNextFeature()
-    assert f['int'] == -123456789
+        ds = ogr.Open('/vsimem/test.xml')
+        lyr = ds.GetLayerByName('no_geom')
+        f = lyr.GetNextFeature()
+        assert f['int'] == 123
 
-    ds = None
+        lyr = ds.GetLayer(0)
+        f = lyr.GetNextFeature()
+        assert f['int'] == -123456789
+
+        ds = None
 
     ogr.GetDriverByName('PDS4').DeleteDataSource('/vsimem/test.xml')
     gdal.Rmdir('/vsimem/test')
@@ -631,10 +716,10 @@ def test_ogr_pds4_read_table_binary_group_field():
 def test_ogr_pds4_create_table_delimited_with_srs_no_vrt():
 
 
-    options = ['VAR_LOGICAL_IDENTIFIER=logical_identifier',
+    options = ['VAR_LOGICAL_IDENTIFIER=urn:foo:bar:baz:logical_identifier',
                'VAR_TITLE=title',
                'VAR_INVESTIGATION_AREA_NAME=ian',
-               'VAR_INVESTIGATION_AREA_LID_REFERENCE=INVESTIGATION_AREA_LID_REFERENCE',
+               'VAR_INVESTIGATION_AREA_LID_REFERENCE=urn:foo:bar:baz:ialr',
                'VAR_OBSERVING_SYSTEM_NAME=osn',
                'VAR_TARGET=target',
                'VAR_TARGET_TYPE=target']

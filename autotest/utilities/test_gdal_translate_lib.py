@@ -30,6 +30,7 @@
 ###############################################################################
 
 import os
+import shutil
 import struct
 
 
@@ -207,6 +208,36 @@ def test_gdal_translate_lib_9():
     ds = None
 
 ###############################################################################
+# Test nodata option
+
+
+def test_gdal_translate_lib_nodata_uint64():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    noData = (1 << 64) - 1
+    ds = gdal.Translate('', ds, format = 'MEM', outputType = gdal.GDT_UInt64, noData=noData)
+    assert ds is not None
+
+    assert ds.GetRasterBand(1).GetNoDataValue() == noData, 'Bad nodata value'
+
+    ds = None
+
+###############################################################################
+# Test nodata option
+
+
+def test_gdal_translate_lib_nodata_int64():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    noData = -(1 << 63)
+    ds = gdal.Translate('', ds, format = 'MEM', outputType = gdal.GDT_Int64, noData=noData)
+    assert ds is not None
+
+    assert ds.GetRasterBand(1).GetNoDataValue() == noData, 'Bad nodata value'
+
+    ds = None
+
+###############################################################################
 # Test srcWin option
 
 
@@ -313,7 +344,7 @@ def test_gdal_translate_lib_100():
     except:
         pass
 
-    
+
 ###############################################################################
 # Test behaviour with SIGNEDBYTE
 
@@ -351,7 +382,7 @@ def test_gdal_translate_lib_102():
     for i in range(4):
         assert stats[i] == pytest.approx(expected_stats[i], abs=1e-3)
 
-    
+
 ###############################################################################
 # Test that -projwin with nearest neighbor resampling uses integer source
 # pixel boundaries (#6610)
@@ -393,7 +424,7 @@ def test_gdal_translate_lib_gcp_vrt_path():
         assert ds.GetGCPs()[i].GCPPixel == src_ds.GetGCPs()[i].GCPPixel
         assert ds.GetGCPs()[i].GCPLine == src_ds.GetGCPs()[i].GCPLine
 
-    
+
 ###############################################################################
 # Test RPC propagation in "VRT path"
 
@@ -446,7 +477,7 @@ def test_gdal_translate_lib_colorinterp():
     with pytest.raises(Exception):
         with gdaltest.error_handler():
             gdal.Translate('', src_ds, options='-f MEM -colorinterp_0 alpha')
-            
+
 
 ###############################################################################
 # Test nogcp options
@@ -531,7 +562,7 @@ def test_gdal_translate_lib_generate_ovr():
     gdal.GetDriverByName('GTiff').Create('/vsimem/foo.tif.ovr', 10, 10)
     ds = gdal.Translate('/vsimem/foo.tif.ovr',
                         '/vsimem/foo.tif',
-                        resampleAlg = gdal.GRA_Average,
+                        resampleAlg = gdal.GRIORA_Average,
                         format = 'GTiff', width = 10, height = 10)
     assert ds
     assert ds.GetRasterBand(1).Checksum() == 1152, 'Bad checksum'
@@ -560,7 +591,7 @@ def test_gdal_translate_lib_tr_non_nearest_case_1():
 
     ds = gdal.Translate('',
                         _get_src_ds_test_gdal_translate_lib_tr_non_nearest(),
-                        resampleAlg = gdal.GRA_Average,
+                        resampleAlg = gdal.GRIORA_Average,
                         format = 'MEM', xRes = 20, yRes = 20)
     assert ds.RasterXSize == 3 # case where we round up
     assert ds.RasterYSize == 2
@@ -571,7 +602,7 @@ def test_gdal_translate_lib_tr_non_nearest_case_2():
 
     ds = gdal.Translate('',
                         _get_src_ds_test_gdal_translate_lib_tr_non_nearest(),
-                        resampleAlg = gdal.GRA_Average,
+                        resampleAlg = gdal.GRIORA_Average,
                         format = 'MEM', xRes = 40, yRes = 20)
     assert ds.RasterXSize == 1 # case where we round down
     assert ds.RasterYSize == 2
@@ -582,7 +613,7 @@ def test_gdal_translate_lib_tr_non_nearest_case_3():
 
     ds = gdal.Translate('',
                         _get_src_ds_test_gdal_translate_lib_tr_non_nearest(),
-                        resampleAlg = gdal.GRA_Average,
+                        resampleAlg = gdal.GRIORA_Average,
                         format = 'MEM', xRes = 25, yRes = 20)
     assert ds.RasterXSize == 2 # case where src_w * src_res / dst_res is integer
     assert ds.RasterYSize == 2
@@ -594,7 +625,7 @@ def test_gdal_translate_lib_tr_non_nearest_oversampling():
 
     ds = gdal.Translate('',
                         _get_src_ds_test_gdal_translate_lib_tr_non_nearest(),
-                        resampleAlg = gdal.GRA_Bilinear,
+                        resampleAlg = gdal.GRIORA_Bilinear,
                         format = 'MEM', xRes = 4, yRes = 10)
     assert ds.RasterXSize == 13
     assert ds.RasterYSize == 3
@@ -615,6 +646,50 @@ def test_gdal_translate_lib_preserve_block_size():
     assert ds.GetRasterBand(1).GetBlockSize() == [32, 64]
     src_ds = None
     gdal.Unlink('/vsimem/tmp.tif')
+
+###############################################################################
+# Test parsing all resampling methods
+
+@pytest.mark.parametrize("resampleAlg,resampleAlgStr",
+                         [ (gdal.GRIORA_NearestNeighbour, "near"),
+                           (gdal.GRIORA_Cubic, "cubic"),
+                           (gdal.GRIORA_CubicSpline, "cubicspline"),
+                           (gdal.GRIORA_Lanczos, "lanczos"),
+                           (gdal.GRIORA_Average, "average"),
+                           (gdal.GRIORA_RMS, "rms"),
+                           (gdal.GRIORA_Mode, "mode"),
+                           (gdal.GRIORA_Gauss, "gauss") ])
+def test_gdal_translate_lib_resampling_methods(resampleAlg, resampleAlgStr):
+
+    option_list = gdal.TranslateOptions(resampleAlg=resampleAlg, options='__RETURN_OPTION_LIST__')
+    assert option_list == ['-r', resampleAlgStr]
+    assert gdal.Translate('', '../gcore/data/byte.tif',
+                          format='MEM', width=2, height=2, resampleAlg=resampleAlg) is not None
+
+
+###############################################################################
+# Test not deleting auxiliary files shared by the source and a target being
+# overwritten (https://github.com/OSGeo/gdal/issues/5633)
+
+
+def test_gdal_translate_lib_not_delete_shared_auxiliary_files():
+
+    # Yes, we do intend to copy a .TIF as a fake .JP2
+    shutil.copy('../gdrivers/data/dimap2/bundle/IMG_foo_R1C1.TIF', 'tmp/IMG_foo_R1C1.JP2')
+    shutil.copy('../gdrivers/data/dimap2/bundle/DIM_foo.XML', 'tmp/DIM_foo.XML')
+
+    gdal.Translate('tmp/IMG_foo_R1C1.tif', 'tmp/IMG_foo_R1C1.JP2')
+
+    os.unlink('tmp/IMG_foo_R1C1.IMD')
+
+    gdal.Translate('tmp/IMG_foo_R1C1.tif', 'tmp/IMG_foo_R1C1.JP2')
+
+    assert os.path.exists('tmp/DIM_foo.XML')
+
+    os.unlink('tmp/IMG_foo_R1C1.JP2')
+    os.unlink('tmp/IMG_foo_R1C1.tif')
+    os.unlink('tmp/IMG_foo_R1C1.IMD')
+    os.unlink('tmp/DIM_foo.XML')
 
 ###############################################################################
 # Cleanup

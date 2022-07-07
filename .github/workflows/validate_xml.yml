@@ -2,12 +2,20 @@ name: Validate XML
 
 on:
     push:
-        paths-ignore:
-            - 'gdal/doc/**'
+        paths:
+            - 'data/**'
+        branches-ignore:
+            - 'backport**'
     pull_request:
-        paths-ignore:
-            - 'gdal/doc/**'
+        paths:
+            - 'data/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   validate_xml:
@@ -15,7 +23,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install requirements
         run: |
@@ -24,6 +32,6 @@ jobs:
 
       - name: Run xmllint checks
         run: |
-          xmllint --schema ./gdal/data/nitf_spec.xsd ./gdal/data/nitf_spec.xml --noout
-          xmllint --schema ./gdal/data/vdv452.xsd ./gdal/data/vdv452.xml --noout
-          xmllint --schema ./gdal/data/gmlasconf.xsd ./gdal/data/gmlasconf.xml --noout
+          xmllint --schema ./data/nitf_spec.xsd ./data/nitf_spec.xml --noout
+          xmllint --schema ./data/vdv452.xsd ./data/vdv452.xml --noout
+          xmllint --schema ./data/gmlasconf.xsd ./data/gmlasconf.xml --noout

@@ -87,6 +87,7 @@ def compare_ogrinfo_output(gmlfile, reffile, options=''):
                                encoding='utf-8')
     ret = ret.replace('\r\n', '\n')
     ret = ret.replace('data\\gmlas\\', 'data/gmlas/')  # Windows
+    ret = ret.replace('data/gmlas\\', 'data/gmlas/')  # Windows
     expected = open(reffile, 'rb').read().decode('utf-8')
     expected = expected.replace('\r\n', '\n')
     if ret != expected:
@@ -96,7 +97,7 @@ def compare_ogrinfo_output(gmlfile, reffile, options=''):
         os.system('diff -u ' + reffile + ' ' + tmpfilename)
         # os.unlink(tmpfilename)
         pytest.fail('Got:')
-    
+
 ###############################################################################
 # Basic test
 
@@ -282,7 +283,7 @@ def test_ogr_gmlas_gml_Reference():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test that we fix ambiguities in class names
 
@@ -471,7 +472,7 @@ def test_ogr_gmlas_geometryproperty():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test reading geometries referenced by a AbstractGeometry element
 
@@ -500,7 +501,7 @@ def test_ogr_gmlas_abstractgeometry():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test validation against schema
 
@@ -597,7 +598,7 @@ def test_ogr_gmlas_test_ns_prefix():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test parsing documents without namespace
 
@@ -611,7 +612,7 @@ def test_ogr_gmlas_no_namespace():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test CONFIG_FILE
 
@@ -836,7 +837,7 @@ class GMLASHTTPHandler(BaseHTTPRequestHandler):
 ###############################################################################
 # Test schema caching
 
-
+@pytest.mark.skipif('SKIP_OGR_GMLAS_HTTP_RELATED' in os.environ, reason='test skipped on CI due to timeout on Windows Conda builds with parallel ctest')
 def test_ogr_gmlas_cache():
 
     drv = gdal.GetDriverByName('HTTP')
@@ -972,7 +973,7 @@ def test_ogr_gmlas_link_nested_independant_child():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test some pattern found in geosciml schemas
 
@@ -1001,7 +1002,7 @@ def test_ogr_gmlas_composition_compositionPart():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test that when importing GML we expose by default only elements deriving
 # from _Feature/AbstractFeature
@@ -1036,7 +1037,7 @@ def test_ogr_gmlas_timestamp_ignored_for_hash():
         f.DumpReadable()
         pytest.fail(pkid)
 
-    
+
 ###############################################################################
 # Test dataset GetNextFeature()
 
@@ -1233,11 +1234,11 @@ def test_ogr_gmlas_remove_unused_layers_and_fields():
             f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 #  Test xlink resolution
 
-
+@pytest.mark.skipif('SKIP_OGR_GMLAS_HTTP_RELATED' in os.environ, reason='test skipped on CI due to timeout on Windows Conda builds with parallel ctest')
 def test_ogr_gmlas_xlink_resolver():
 
     drv = gdal.GetDriverByName('HTTP')
@@ -1700,7 +1701,7 @@ def test_ogr_gmlas_recoding():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test schema without namespace prefix
 
@@ -1737,7 +1738,7 @@ def test_ogr_gmlas_schema_without_namespace_prefix():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test parsing truncated XML
 
@@ -1752,7 +1753,7 @@ def test_ogr_gmlas_truncated_xml():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test identifier truncation
 
@@ -1872,7 +1873,7 @@ def test_ogr_gmlas_writer_check_xml_xsd():
         os.system('diff -u data/gmlas/gmlas_test1_generated.xsd tmp/gmlas_test1_generated.xsd')
         pytest.fail('Got:')
 
-    
+
 ###############################################################################
 # Check that the .xml read back by the GMLAS driver has the same content
 # as the original one.
@@ -2504,7 +2505,7 @@ def test_ogr_gmlas_any_field_at_end_of_declaration():
     if f.GetField('value') != '<something>baz</something>':
         print('Expected fail: value != <something>baz</something>')
 
-    
+
 ###############################################################################
 #  Test auxiliary schema without namespace prefix
 
@@ -2518,7 +2519,7 @@ def test_ogr_gmlas_aux_schema_without_namespace_prefix():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test importing a GML geometry that is in an element that is a substitutionGroup
 # of another one (#6990)
@@ -2532,6 +2533,18 @@ def test_ogr_gmlas_geometry_as_substitutiongroup():
     if f.GetGeometryRef() is None:
         f.DumpReadable()
         pytest.fail()
+    ds = None
+
+###############################################################################
+# Test importing a GML geometry whose coordinates elements has leading spaces
+
+
+def test_ogr_gmlas_coordinates_with_leading_space():
+
+    ds = gdal.OpenEx('GMLAS:data/gmlas/coordinates_with_leading_space.gml')
+    lyr = ds.GetLayer(0)
+    f = lyr.GetNextFeature()
+    assert f.GetGeometryRef().ExportToIsoWkt() == "POLYGON Z ((1372074.89354568 6205942.4974615 40.4258117361937,1372074.55352024 6205942.4356387 40.4258117361937,1372074.50715313 6205942.69065778 40.4258117361937,1372074.84717857 6205942.75248059 40.4258117361937,1372074.89354568 6205942.4974615 40.4258117361937))"
     ds = None
 
 ###############################################################################
@@ -2568,7 +2581,7 @@ def test_ogr_gmlas_no_element_in_first_choice_schema():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 
 ###############################################################################
 # Test cross-layer links with xlink:href="#my_id"
@@ -2702,3 +2715,40 @@ def test_ogr_gmlas_internal_xlink_href():
        f['child_pkid'] != 'ogr_pkid':
         f.DumpReadable()
         pytest.fail()
+
+###############################################################################
+# Test opening a file whose .xsd has a bad version attribute in the <?xml processing instruction
+
+
+def test_ogr_gmlas_invalid_version_xsd():
+
+    with gdaltest.error_handler():
+        ds = gdal.OpenEx('GMLAS:data/gmlas/gmlas_invalid_version_xsd.xml')
+    assert ds is None
+
+
+###############################################################################
+# Test opening a file whose .xsd leads to huge memory allocation
+# Related to https://issues.apache.org/jira/browse/XERCESC-1051
+
+
+def test_ogr_gmlas_huge_memory_allocation():
+
+    with gdaltest.config_option('OGR_GMLAS_XERCES_MAX_TIME', '0'):
+        with gdaltest.error_handler():
+            ds = gdal.OpenEx('GMLAS:data/gmlas/test_max_mem_xerces.xml')
+        assert ds is None
+
+
+###############################################################################
+# Test opening a file whose .xsd leads to huge processing time
+# Related to https://issues.apache.org/jira/browse/XERCESC-1051
+
+
+@pytest.mark.skipif('SKIP_OGR_GMLAS_HUGE_PROCESSING_TIME' in os.environ, reason='test skipped on CI due to random crash on Windows Conda builds with parallel ctest')
+def test_ogr_gmlas_huge_processing_time():
+
+    with gdaltest.config_option('OGR_GMLAS_XERCES_MAX_TIME', '0.5'):
+        with gdaltest.error_handler():
+            ds = gdal.OpenEx('GMLAS:data/gmlas/test_max_time_xerces.xml')
+        assert ds is None

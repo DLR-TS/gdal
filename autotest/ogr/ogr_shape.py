@@ -856,7 +856,7 @@ def test_ogr_shape_23():
     read_lyr = gdaltest.shape_ds.GetLayerByName(layer_name)
     feat_read = read_lyr.GetNextFeature()
 
-    assert (ogrtest.check_feature_geometry(feat_read, ogr.CreateGeometryFromWkt('MULTIPOLYGON(((0 0 0,0 10,10 10,0 0),(0.25 0.5,1 1,0.5 1,0.25 0.5)),((100 0,100 10,110 10,100 0),(100.25 0.5,100.5 1,100 1,100.25 0.5)))'),
+    assert (ogrtest.check_feature_geometry(feat_read, ogr.CreateGeometryFromWkt('MULTIPOLYGON (((0 0,0 10,10 10,0 0),(0.25 0.5,1 1,0.5 1.0,0.25 0.5)),((100 0,100 10,110 10,100 0),(100.25 0.5,100.5 1.0,100 1,100.25 0.5)))'),
                                       max_error=0.000000001) == 0), \
         feat_read.GetGeometryRef().ExportToWkt()
 
@@ -3808,47 +3808,44 @@ def test_ogr_shape_98():
     assert ref_shx == got_shx, 'Rebuilt shx is different from original shx.'
 
 ###############################################################################
-# Import TOWGS84 from EPSG when possible (#6485)
+# Test WGS 84 with a TOWGS84[0,0,0,0,0,0]
 
 
-def test_ogr_shape_99():
+def test_ogr_shape_wgs84_with_zero_TOWGS84():
 
-    ds = ogr.GetDriverByName('ESRI Shapefile').CreateDataSource('/vsimem/ogr_shape_99.shp')
-    lyr = ds.CreateLayer('ogr_shape_99')
+    ds = ogr.GetDriverByName('ESRI Shapefile').CreateDataSource('/vsimem/test_ogr_shape_wgs84_with_zero_TOWGS84.shp')
+    lyr = ds.CreateLayer('test_ogr_shape_wgs84_with_zero_TOWGS84')
     ds = None
-    gdal.FileFromMemBuffer('/vsimem/ogr_shape_99.prj', """PROJCS["CH1903_LV03",GEOGCS["GCS_CH1903",DATUM["D_CH1903",SPHEROID["Bessel_1841",6377397.155,299.1528128]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Hotine_Oblique_Mercator_Azimuth_Center"],PARAMETER["False_Easting",600000.0],PARAMETER["False_Northing",200000.0],PARAMETER["Scale_Factor",1.0],PARAMETER["Azimuth",90.0],PARAMETER["Longitude_Of_Center",7.439583333333333],PARAMETER["Latitude_Of_Center",46.95240555555556],UNIT["Meter",1.0],AUTHORITY["EPSG",21781]]""")
-    ds = ogr.Open('/vsimem/ogr_shape_99.shp')
+    gdal.FileFromMemBuffer('/vsimem/test_ogr_shape_wgs84_with_zero_TOWGS84.prj', """GEOGCS["WGS84 Coordinate System",DATUM["WGS 1984",SPHEROID["WGS 1984",6378137,298.257223563],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4326"],AUTHORITY["SBMG","LAT-LONG,LAT-LONG,WGS84,METERS"]]""")
+    ds = ogr.Open('/vsimem/test_ogr_shape_wgs84_with_zero_TOWGS84.shp')
     lyr = ds.GetLayer(0)
     got_wkt = lyr.GetSpatialRef().ExportToPrettyWkt()
-    expected_wkt = """PROJCS["CH1903 / LV03",
-    GEOGCS["CH1903",
-        DATUM["CH1903",
-            SPHEROID["Bessel 1841",6377397.155,299.1528128,
-                AUTHORITY["EPSG","7004"]],
-            AUTHORITY["EPSG","6149"]],
-        PRIMEM["Greenwich",0,
-            AUTHORITY["EPSG","8901"]],
-        UNIT["degree",0.0174532925199433,
-            AUTHORITY["EPSG","9122"]],
-        AUTHORITY["EPSG","4149"]],
-    PROJECTION["Hotine_Oblique_Mercator_Azimuth_Center"],
-    PARAMETER["latitude_of_center",46.9524055555556],
-    PARAMETER["longitude_of_center",7.43958333333333],
-    PARAMETER["azimuth",90],
-    PARAMETER["rectified_grid_angle",90],
-    PARAMETER["scale_factor",1],
-    PARAMETER["false_easting",600000],
-    PARAMETER["false_northing",200000],
-    UNIT["metre",1,
-        AUTHORITY["EPSG","9001"]],
-    AXIS["Easting",EAST],
-    AXIS["Northing",NORTH],
-    AUTHORITY["EPSG","21781"]]"""
     ds = None
 
-    assert got_wkt == expected_wkt, ('Projections differ: got %s' % got_wkt)
+    assert got_wkt.startswith('GEOGCS[')
+    assert '4326' in got_wkt
 
-    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('/vsimem/ogr_shape_99.shp')
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('/vsimem/test_ogr_shape_wgs84_with_zero_TOWGS84.shp')
+
+###############################################################################
+# Test a ETRS89-based CRS with a TOWGS84[0,0,0,0,0,0]
+# Test case of https://lists.osgeo.org/pipermail/qgis-developer/2021-November/064340.html
+
+
+def test_ogr_shape_etrs89_with_zero_TOWGS84():
+
+    ds = ogr.GetDriverByName('ESRI Shapefile').CreateDataSource('/vsimem/test_ogr_shape_etrs89_with_zero_TOWGS84.shp')
+    lyr = ds.CreateLayer('test_ogr_shape_etrs89_with_zero_TOWGS84')
+    ds = None
+    gdal.FileFromMemBuffer('/vsimem/test_ogr_shape_etrs89_with_zero_TOWGS84.prj', """PROJCS["ETRS89 / Portugal TM06", GEOGCS["ETRS89", DATUM["European Terrestrial Reference System 1989", SPHEROID["GRS 1980", 6378137.0, 298.257222101, AUTHORITY["EPSG","7019"]], TOWGS84[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], AUTHORITY["EPSG","6258"]], PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH], AUTHORITY["EPSG","4258"]], PROJECTION["Transverse_Mercator", AUTHORITY["EPSG","9807"]], PARAMETER["central_meridian", -8.133108333333334], PARAMETER["latitude_of_origin", 39.66825833333334], PARAMETER["scale_factor", 1.0], PARAMETER["false_easting", 0.0], PARAMETER["false_northing", 0.0], UNIT["m", 1.0], AXIS["Easting", EAST], AXIS["Northing", NORTH], AUTHORITY["EPSG","3763"]]""")
+    ds = ogr.Open('/vsimem/test_ogr_shape_etrs89_with_zero_TOWGS84.shp')
+    lyr = ds.GetLayer(0)
+    srs = lyr.GetSpatialRef()
+    assert srs.GetAuthorityCode(None) == '3763'
+    assert 'BOUNDCRS' not in srs.ExportToWkt(['FORMAT=WKT2'])
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('/vsimem/test_ogr_shape_etrs89_with_zero_TOWGS84.shp')
 
 ###############################################################################
 # Test REPACK with both implementations
@@ -4915,6 +4912,211 @@ def test_ogr_shape_write_multipolygon_z_non_finite():
         assert lyr.CreateFeature(f) != ogr.OGRERR_NONE
     ds = None
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('/vsimem/test.shp')
+
+###############################################################################
+# Test writing a multipolygon with parts slightly overlapping
+
+
+def test_ogr_shape_write_multipolygon_parts_slightly_overlapping():
+
+    outfilename = '/vsimem/out.shp'
+    gdal.VectorTranslate(outfilename, 'data/shp/slightly_overlapping_polygons.shp')
+    ds = ogr.Open(outfilename)
+    lyr = ds.GetLayer(0)
+
+    f = lyr.GetNextFeature()
+    geom = f.GetGeometryRef()
+    assert geom.GetGeometryType() == ogr.wkbMultiPolygon
+    assert geom.GetGeometryCount() == 3
+
+    # When using the full analyzer mode, one of the ring will be considered as
+    # the inner ring of another one (which is arguable, as they are slightly
+    # overlapping.
+    with gdaltest.config_option('OGR_ORGANIZE_POLYGONS', 'DEFAULT'):
+        lyr.ResetReading()
+        f = lyr.GetNextFeature()
+        geom = f.GetGeometryRef()
+        assert geom.GetGeometryType() == ogr.wkbMultiPolygon
+        assert geom.GetGeometryCount() == 2
+
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(outfilename)
+
+###############################################################################
+# Test writing a multipolygon with parts of non constant Z (#5315)
+
+
+def test_ogr_shape_write_multipolygon_parts_non_constant_z():
+
+    outfilename = '/vsimem/out.shp'
+    gdal.VectorTranslate(outfilename, 'data/shp/multipointz_non_constant_z.shp')
+    ds = ogr.Open(outfilename)
+    lyr = ds.GetLayer(0)
+
+    f = lyr.GetNextFeature()
+    geom = f.GetGeometryRef()
+    assert geom.GetGeometryType() == ogr.wkbMultiPolygon25D
+    assert geom.GetGeometryCount() == 7
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(outfilename)
+
+###############################################################################
+# Test renaming a layer
+
+
+def test_ogr_shape_rename_layer():
+
+    outfilename = 'tmp/test_rename.shp'
+    gdal.VectorTranslate(outfilename, 'data/poly.shp')
+
+    ds = ogr.Open(outfilename, update = 1)
+    lyr = ds.GetLayer(0)
+    assert lyr.TestCapability(ogr.OLCRename) == 1
+
+    with gdaltest.error_handler():
+        assert lyr.Rename('test_rename') != ogr.OGRERR_NONE
+
+    f = gdal.VSIFOpenL('tmp/test_rename_foo.dbf', 'wb')
+    assert f
+    gdal.VSIFCloseL(f)
+
+    with gdaltest.error_handler():
+        assert lyr.Rename('test_rename_foo') != ogr.OGRERR_NONE
+
+    gdal.Unlink('tmp/test_rename_foo.dbf')
+
+    assert sum(1 for f in lyr) == 10
+
+    assert lyr.Rename('test_rename_foo') == ogr.OGRERR_NONE
+    assert gdal.VSIStatL('tmp/test_rename_foo.shp') is not None
+    assert gdal.VSIStatL('tmp/test_rename_foo.shx') is not None
+    assert gdal.VSIStatL('tmp/test_rename_foo.dbf') is not None
+    assert gdal.VSIStatL('tmp/test_rename_foo.prj') is not None
+    assert lyr.GetDescription() == 'test_rename_foo'
+    assert lyr.GetLayerDefn().GetName() == 'test_rename_foo'
+
+    assert sum(1 for f in lyr) == 10
+
+    ds.ExecuteSQL('ALTER TABLE test_rename_foo RENAME TO test_rename_bar')
+    assert gdal.VSIStatL('tmp/test_rename_bar.shp') is not None
+    assert gdal.VSIStatL('tmp/test_rename_bar.shx') is not None
+    assert gdal.VSIStatL('tmp/test_rename_bar.dbf') is not None
+    assert gdal.VSIStatL('tmp/test_rename_bar.prj') is not None
+    assert lyr.GetDescription() == 'test_rename_bar'
+    assert lyr.GetLayerDefn().GetName() == 'test_rename_bar'
+
+    assert sum(1 for f in lyr) == 10
+
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/test_rename_bar.shp')
+
+###############################################################################
+# Test renaming a layer in a .shp.zip
+
+
+def test_ogr_shape_rename_layer_zip():
+
+    outfilename = 'tmp/test_rename.shp.zip'
+    gdal.VectorTranslate(outfilename, 'data/poly.shp')
+
+    ds = ogr.Open(outfilename, update = 1)
+    lyr = ds.GetLayer(0)
+    assert lyr.TestCapability(ogr.OLCRename) == 1
+
+    assert lyr.Rename('test_rename_foo') == ogr.OGRERR_NONE
+    assert lyr.GetDescription() == 'test_rename_foo'
+    assert lyr.GetLayerDefn().GetName() == 'test_rename_foo'
+
+    assert sum(1 for f in lyr) == 10
+
+    assert lyr.Rename('test_rename_bar') == ogr.OGRERR_NONE
+    assert lyr.GetDescription() == 'test_rename_bar'
+    assert lyr.GetLayerDefn().GetName() == 'test_rename_bar'
+
+    assert sum(1 for f in lyr) == 10
+
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(outfilename)
+
+###############################################################################
+# Test AlterGeomFieldDefn()
+
+
+def test_ogr_shape_alter_geom_field_defn():
+
+    outfilename = '/vsimem/test_ogr_shape_alter_geom_field_defn.shp'
+    ds = ogr.GetDriverByName('ESRI Shapefile').CreateDataSource(outfilename)
+    srs_4326 = osr.SpatialReference()
+    srs_4326.ImportFromEPSG(4326)
+    lyr = ds.CreateLayer('test_ogr_shape_alter_geom_field_defn', geom_type = ogr.wkbPoint, srs = srs_4326)
+    ds = None
+
+    ds = ogr.Open(outfilename, update=1)
+    lyr = ds.GetLayer(0)
+    assert lyr.TestCapability(ogr.OLCAlterGeomFieldDefn)
+
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbPoint)
+    other_srs = osr.SpatialReference()
+    other_srs.ImportFromEPSG(4269)
+    new_geom_field_defn.SetSpatialRef(other_srs)
+    assert lyr.AlterGeomFieldDefn(0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) == ogr.OGRERR_NONE
+    assert lyr.GetSpatialRef().IsSame(other_srs)
+
+    ds = None
+
+    ds = ogr.Open(outfilename, update=1)
+    lyr = ds.GetLayer(0)
+    srs = lyr.GetSpatialRef()
+    assert srs is not None
+    assert srs.GetAuthorityCode(None) == '4269'
+
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbPoint)
+    assert lyr.AlterGeomFieldDefn(0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) == ogr.OGRERR_NONE
+    assert lyr.GetSpatialRef() is None
+    ds = None
+
+    ds = ogr.Open(outfilename, update=1)
+    lyr = ds.GetLayer(0)
+    srs = lyr.GetSpatialRef()
+    assert srs is None
+
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbPoint)
+    new_geom_field_defn.SetSpatialRef(srs_4326)
+    assert lyr.AlterGeomFieldDefn(0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) == ogr.OGRERR_NONE
+    ds = None
+
+    ds = ogr.Open(outfilename, update=1)
+    lyr = ds.GetLayer(0)
+    srs = lyr.GetSpatialRef()
+    assert srs is not None
+    assert srs.GetAuthorityCode(None) == '4326'
+
+    # Wrong index
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbPoint)
+    with gdaltest.error_handler():
+        assert lyr.AlterGeomFieldDefn(-1, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) != ogr.OGRERR_NONE
+
+    # Changing geometry type ==> unsupported
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbLineString)
+    with gdaltest.error_handler():
+        assert lyr.AlterGeomFieldDefn(0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) != ogr.OGRERR_NONE
+
+    # Setting coordinate epoch ==> unsupported
+    new_geom_field_defn = ogr.GeomFieldDefn('', ogr.wkbPoint)
+    srs_with_epoch = osr.SpatialReference()
+    srs_with_epoch.ImportFromEPSG(4326)
+    srs_with_epoch.SetCoordinateEpoch(2022)
+    new_geom_field_defn.SetSpatialRef(srs_with_epoch)
+    with gdaltest.error_handler():
+        assert lyr.AlterGeomFieldDefn(0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_ALL_FLAG) != ogr.OGRERR_NONE
+
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(outfilename)
 
 ###############################################################################
 

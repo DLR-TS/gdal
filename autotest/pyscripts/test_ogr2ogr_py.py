@@ -665,30 +665,17 @@ def test_ogr2ogr_py_21():
     if script_path is None:
         pytest.skip()
 
+
     try:
-        os.remove('tmp/testogr2ogr21.gtm')
+        os.remove('tmp/testogr2ogr21.gpx')
     except OSError:
         pass
 
     test_py_scripts.run_py_script(script_path, 'ogr2ogr',
-                                  '-f GPSTrackMaker tmp/testogr2ogr21.gtm '+test_py_scripts.get_data_path('utilities')+'dataforogr2ogr21.csv ' +
-                                  '-sql "SELECT comment, name FROM dataforogr2ogr21" -nlt POINT')
-    ds = ogr.Open('tmp/testogr2ogr21.gtm')
-
-    assert ds is not None
-    ds.GetLayer(0).GetLayerDefn()
-    lyr = ds.GetLayer(0)
-    feat = lyr.GetNextFeature()
-    if feat.GetFieldAsString('name') != 'NAME' or \
-       feat.GetFieldAsString('comment') != 'COMMENT':
-        print(feat.GetFieldAsString('comment'))
-        ds.Destroy()
-        os.remove('tmp/testogr2ogr21.gtm')
-        pytest.fail(feat.GetFieldAsString('name'))
-
-    ds.Destroy()
-    os.remove('tmp/testogr2ogr21.gtm')
-
+                         ' -f GPX tmp/testogr2ogr21.gpx '+test_py_scripts.get_data_path('utilities')+'dataforogr2ogr21.csv ' +
+                         '-sql "SELECT name AS route_name, 0 as route_fid FROM dataforogr2ogr21" -nlt POINT -nln route_points')
+    assert '<name>NAME</name>' in open('tmp/testogr2ogr21.gpx', 'rt').read()
+    os.remove('tmp/testogr2ogr21.gpx')
 
 ###############################################################################
 # Test ogr2ogr when the output driver delays the destination layer defn creation (#3384)
@@ -1270,7 +1257,7 @@ def test_ogr2ogr_py_44():
     lyr.CreateFeature(feat)
     ds = None
 
-    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML tmp/test_ogr2ogr_44.gml tmp/test_ogr2ogr_44_src.shp -nlt PROMOTE_TO_MULTI')
+    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML -dsco FORMAT=GML2 tmp/test_ogr2ogr_44.gml tmp/test_ogr2ogr_44_src.shp -nlt PROMOTE_TO_MULTI')
 
     f = open('tmp/test_ogr2ogr_44.xsd')
     data = f.read()
@@ -1317,7 +1304,7 @@ def test_ogr2ogr_py_45():
     lyr.CreateFeature(feat)
     ds = None
 
-    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML tmp/test_ogr2ogr_44.gml tmp/test_ogr2ogr_44_src.shp -nlt PROMOTE_TO_MULTI')
+    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML -dsco FORMAT=GML2 tmp/test_ogr2ogr_44.gml tmp/test_ogr2ogr_44_src.shp -nlt PROMOTE_TO_MULTI')
 
     f = open('tmp/test_ogr2ogr_44.xsd')
     data = f.read()
@@ -1364,7 +1351,7 @@ def test_ogr2ogr_py_46():
     lyr.CreateFeature(feat)
     ds = None
 
-    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML tmp/test_ogr2ogr_45.gml tmp/test_ogr2ogr_45_src.shp -nlt PROMOTE_TO_MULTI')
+    test_py_scripts.run_py_script(script_path, 'ogr2ogr', ' -f GML -dsco FORMAT=GML2 tmp/test_ogr2ogr_45.gml tmp/test_ogr2ogr_45_src.shp -nlt PROMOTE_TO_MULTI')
 
     f = open('tmp/test_ogr2ogr_45.xsd')
     data = f.read()

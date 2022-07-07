@@ -36,6 +36,7 @@ The XODR driver is tested to work for GDAL 3.x. It depends on the following libr
 - [GEOS](https://trac.osgeo.org/geos/); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
 - [PROJ >= 6](https://proj.org/download.html#current-release); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
 - [SQLite3](https://www.sqlite.org/index.html); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
+- [Xerces-C](https://xerces.apache.org/xerces-c/); on Windows we recommend simply using the development package distributed with [OSGeo4W](https://trac.osgeo.org/osgeo4w/)
 
 Building it is divided into
 
@@ -56,8 +57,8 @@ sudo apt install libsqlite3-dev
 In the following steps we basically follow the official [GDAL building instructions for Unix](https://trac.osgeo.org/gdal/wiki/BuildingOnUnix). Configure GDAL to support creation of shared libraries. At least for our Ubuntu 20.04 test environment we also had to disable libtool because it caused problems during later linking of the driver shared library. With `--prefix` you specify the target directory for the resulting binaries and library:
 
 ```bash
-cd <gdal>/gdal/
-./configure --prefix ~/dev/gdal/gdal/build -enable-shared --without-libtool --with-geos=yes
+cd <gdal>/
+./configure --prefix ~/dev/gdal/build -enable-shared --without-libtool --with-geos=yes
 ```
 
 Check the output for successful recognition of geos and xerces. For Debug configuration append `--enable-debug`. Build with
@@ -78,7 +79,7 @@ which copies the resulting GDAL binaries and library into the specified `--prefi
 Navigate into the OpenDRIVE OGR driver directory
 
 ```bash
-cd <gdal>/gdal/ogr/ogrsf_frmts/xodr/
+cd <gdal>/ogr/ogrsf_frmts/xodr/
 ```
 Configure the paths for all required Unix dependencies in `XODRmake.opt`. Then
 
@@ -99,7 +100,7 @@ generate_vcxproj.bat 15.0 64 gdal_vs2017
 Now configure your GEOS and Xerces dependencies by adding the corresponding include directory and library paths into a _new_ lokal NMake configuration file `nmake.local`. It should contain something like the following (consider `nmake.opt` as a reference):
 
 ```bash
-GDAL_HOME = "D:\dev\gdal\gdal\build"
+GDAL_HOME = D:\dev\gdal\build
 
 OSGEO4W_DIR = C:\OSGeo4W
 
@@ -113,7 +114,8 @@ GEOS_CPPLIB    = $(GEOS_DIR)\lib\geos.lib
 GEOS_BIN_DIR    = $(GEOS_DIR)\bin
 
 # Xerces
-XERCES_DIR = D:\dev\xerces-c-3.2.3\distro
+XERCES_DIR = $(OSGEO4W_DIR)
+#XERCES_DIR = D:\dev\xerces-c-3.2.3\distro
 XERCES_INCLUDE = -I$(XERCES_DIR)\include -I$(XERCES_DIR)\include\xercesc
 !IFNDEF DEBUG
 XERCES_LIB = $(XERCES_DIR)\lib\xerces-c_3.lib
@@ -142,14 +144,13 @@ SQLITE_LIB = $(OSGEO4W_DIR)\lib\sqlite3_i.lib
 Build the base GDAL library with `nmake` from the Visual Studio Command Prompt for the desired configuration. Attach `DEBUG=1` for a Debug build:
 
 ```bash
-cd <gdal>/gdal/
 nmake -f makefile.vc MSVC_VER=1910 WIN64=1
 ```
 
 Lean back, enjoy a freshly brewed Lapsang Souchong and after a few minutes your raw GDAL library is built. To pack all executables and the library conveniently together, make sure to specify the desired output directory `GDAL_HOME` in your lokal configuration file `nmake.local`
 
 ```bash
-GDAL_HOME="D:\dev\gdal\gdal\build"
+GDAL_HOME="D:\dev\gdal\build"
 ```
 
 and run `nmake install` afterwards
@@ -162,7 +163,7 @@ nmake -f makefile.vc MSVC_VER=1910 WIN64=1 install
 Navigate into the OpenDRIVE OGR driver directory
 
 ```bash
-cd <gdal>/gdal/ogr/ogrsf_frmts/xodr/
+cd <gdal>/ogr/ogrsf_frmts/xodr/
 ```
 
 Configure the paths for all required Windows dependencies in the provided `XODRnmake.opt`. Then
@@ -176,10 +177,10 @@ This also copies the required Xerces DLL into GDAL's binary install directory.
 ### 3 Testing the OGR OpenDRIVE Driver
 GDAL/OGR is now extended by our OpenDRIVE driver which can be tested by running one of the utility programs, for example `ogrinfo`:
 
-| Linux  		                  | Windows                      |
-| --------------------------- | ---------------------------- |
-| `cd <gdal>/gdal/build/bin/` | `cd <gdal>/gdal/build/bin/`  |
-| `./ogrinfo --formats`       | `ogrinfo.exe --formats`	     |
+| Linux  		             | Windows                      |
+| ---------------------- | ---------------------------- |
+| `cd <gdal>/build/bin/` | `cd <gdal>/build/bin/`  |
+| `./ogrinfo --formats`  | `ogrinfo.exe --formats`	     |
 
 This will print a list of supported OGR formats with the new format **`XODR -vector- (ro): OpenDRIVE`** in the first row. 
 
@@ -192,8 +193,8 @@ error while loading shared libraries: libgdal.so: cannot open shared object file
 In such a case set the following environment variables:
 
 ```bash
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/gdal/build/lib
-export GDAL_DRIVER_PATH=<gdal>/gdal/build/lib/gdalplugins
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/build/lib
+export GDAL_DRIVER_PATH=<gdal>/build/lib/gdalplugins
 ```
 
 To convert reference lines of an OpenDRIVE file into, e.g., an ESRI Shapefile, use the provided utility `ogr2ogr`:

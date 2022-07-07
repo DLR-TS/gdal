@@ -31,16 +31,20 @@
 
 import os
 import sys
+import shlex
+
 import gdaltest
+import importlib
 
 ###############################################################################
 # Return the path in which the Python script is found
 #
 
 # path relative to gdal root
-utils_subdir = 'swig/python/osgeo/utils'
-samples_subdir = 'swig/python/samples'
-samples_path = '../../gdal/' + samples_subdir
+scripts_subdir = 'swig/python/gdal-utils/scripts'
+utils_subdir = 'swig/python/gdal-utils/osgeo_utils'
+samples_subdir = utils_subdir + '/samples'
+samples_path = '../../' + samples_subdir
 
 
 def get_data_path(dir):
@@ -49,9 +53,9 @@ def get_data_path(dir):
 
 def get_py_script(script_name):
     # how to get to {root_dir}/gdal from {root_dir}/autotest/X
-    base_gdal_path = os.path.join(os.getcwd(), '..', '..', 'gdal')
+    base_gdal_path = os.path.join(os.getcwd(), '..', '..')
     # now we need to look for the script in the utils or samples subdirs...
-    for subdir in [utils_subdir, samples_subdir]:
+    for subdir in [scripts_subdir, samples_subdir]:
         try:
             test_path = os.path.join(base_gdal_path, subdir)
             test_file_path = os.path.join(test_path, script_name + '.py')
@@ -67,8 +71,19 @@ def get_py_script(script_name):
 # Runs a Python script
 # Alias of run_py_script_as_external_script()
 #
-def run_py_script(script_path, script_name, concatenated_argv):
-    return run_py_script_as_external_script(script_path, script_name, concatenated_argv)
+def run_py_script(script_path: str, script_name: str, concatenated_argv: str,
+                  run_as_script: bool = True, run_as_module: bool = False):
+    result = None
+    if run_as_module:
+        try:
+            module = importlib.import_module('osgeo_utils.' + script_name)
+        except ImportError:
+            module = importlib.import_module('osgeo_utils.samples.' + script_name)
+        argv = [module.__file__] + shlex.split(concatenated_argv)
+        result = module.main(argv)
+    if run_as_script:
+        result = run_py_script_as_external_script(script_path, script_name, concatenated_argv)
+    return result
 
 
 ###############################################################################

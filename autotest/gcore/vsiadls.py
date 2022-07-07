@@ -52,13 +52,19 @@ def startup_and_cleanup():
 
     # Unset all env vars that could influence the tests
     az_vars = {}
-    for var in ('AZURE_STORAGE_CONNECTION_STRING', 'AZURE_STORAGE_ACCOUNT',
-                'AZURE_STORAGE_ACCESS_KEY', 'AZURE_SAS', 'AZURE_NO_SIGN_REQUEST'):
+    for var, reset_val in (
+                ('AZURE_STORAGE_CONNECTION_STRING', None),
+                ('AZURE_STORAGE_ACCOUNT', None),
+                ('AZURE_STORAGE_ACCESS_KEY', None),
+                ('AZURE_STORAGE_SAS_TOKEN', None),
+                ('AZURE_NO_SIGN_REQUEST', None),
+                ('AZURE_CONFIG_DIR', ''),
+                ('AZURE_STORAGE_ACCESS_TOKEN', '')):
         az_vars[var] = gdal.GetConfigOption(var)
-        if az_vars[var] is not None:
-            gdal.SetConfigOption(var, "")
+        gdal.SetConfigOption(var, reset_val)
 
-    assert gdal.GetSignedURL('/vsiadls/foo/bar') is None
+    with gdaltest.config_option('CPL_AZURE_VM_API_ROOT_URL', 'disabled'):
+        assert gdal.GetSignedURL('/vsiadls/foo/bar') is None
 
     gdaltest.webserver_process = None
     gdaltest.webserver_port = 0
@@ -71,7 +77,7 @@ def startup_and_cleanup():
         pytest.skip()
 
     gdal.SetConfigOption('AZURE_STORAGE_CONNECTION_STRING',
-                         'DefaultEndpointsProtocol=http;AccountName=myaccount;AccountKey=MY_ACCOUNT_KEY;EndpointSuffix=127.0.0.1:%d' % gdaltest.webserver_port)
+                         'DefaultEndpointsProtocol=http;AccountName=myaccount;AccountKey=MY_ACCOUNT_KEY;BlobEndpoint=http://127.0.0.1:%d/azure/blob/myaccount' % gdaltest.webserver_port)
     gdal.SetConfigOption('AZURE_STORAGE_ACCOUNT', '')
     gdal.SetConfigOption('AZURE_STORAGE_ACCESS_KEY', '')
     gdal.SetConfigOption('CPL_AZURE_TIMESTAMP', 'my_timestamp')
@@ -107,7 +113,7 @@ def test_vsiadls_fake_basic():
         request.protocol_version = 'HTTP/1.1'
         h = request.headers
         if 'Authorization' not in h or \
-           h['Authorization'] != 'SharedKey myaccount:C0sSaBzGbvadfuuMMjQiHCXCUzsGWj3uuE+UO8dDl0U=' or \
+           h['Authorization'] != 'SharedKey myaccount:+n9wC1twBBP4T84fioDIGi9bz/CrbwRaQL0LV4sACnw=' or \
            'x-ms-date' not in h or h['x-ms-date'] != 'my_timestamp':
             sys.stderr.write('Bad headers: %s\n' % str(h))
             request.send_response(403)
@@ -286,6 +292,43 @@ def test_vsiadls_opendir():
 
     gdal.CloseDir(d)
 
+    # Prefix filtering on subdir
+    handler = webserver.SequentialHandler()
+    handler.add('GET', '/azure/blob/myaccount/fs1?directory=sub_dir&recursive=true&resource=filesystem', 200,
+                {'Content-type': 'application/json;charset=utf-8'},
+                """
+                {"paths":[{"name":"sub_dir/foo.txt","contentLength":"123456","lastModified": "Mon, 01 Jan 1970 00:00:01"},
+                          {"name":"sub_dir/my_prefix_test.txt","contentLength":"40","lastModified": "Mon, 01 Jan 1970 00:00:01"}]}
+                """)
+    with webserver.install_http_handler(handler):
+        d = gdal.OpenDir('/vsiadls/fs1/sub_dir', -1, ['PREFIX=my_prefix'])
+    assert d is not None
+
+    handler = webserver.SequentialHandler()
+    with webserver.install_http_handler(handler):
+        entry = gdal.GetNextDirEntry(d)
+    assert entry.name == 'my_prefix_test.txt'
+    assert entry.size == 40
+    assert entry.mode == 32768
+    assert entry.mtime == 1
+
+    entry = gdal.GetNextDirEntry(d)
+    assert entry is None
+
+    gdal.CloseDir(d)
+
+    # No network access done
+    s = gdal.VSIStatL('/vsiadls/fs1/sub_dir/my_prefix_test.txt',
+                      gdal.VSI_STAT_EXISTS_FLAG | gdal.VSI_STAT_NATURE_FLAG | gdal.VSI_STAT_SIZE_FLAG |gdal.VSI_STAT_CACHE_ONLY)
+    assert s
+    assert (s.mode & 32768) != 0
+    assert s.size == 40
+    assert s.mtime == 1
+
+    # No network access done
+    assert gdal.VSIStatL('/vsiadls/fs1/sub_dir/i_do_not_exist.txt',
+                         gdal.VSI_STAT_EXISTS_FLAG | gdal.VSI_STAT_NATURE_FLAG | gdal.VSI_STAT_SIZE_FLAG | gdal.VSI_STAT_CACHE_ONLY) is None
+
 ###############################################################################
 # Test write
 
@@ -315,11 +358,12 @@ def test_vsiadls_fake_write():
 
     # Small file
     handler = webserver.SequentialHandler()
-    handler.add('PUT', '/azure/blob/myaccount/test_copy/file.bin?resource=file', 201)
+    handler.add('PUT', '/azure/blob/myaccount/test_copy/file.bin?resource=file', 201,
+                expected_headers = {'x-ms-client-request-id': 'REQUEST_ID'})
     handler.add('PATCH', '/azure/blob/myaccount/test_copy/file.bin?action=append&position=0', 202, expected_body = b'foo')
     handler.add('PATCH', '/azure/blob/myaccount/test_copy/file.bin?action=flush&close=true&position=3', 200)
     with webserver.install_http_handler(handler):
-        f = gdal.VSIFOpenL('/vsiadls/test_copy/file.bin', 'wb')
+        f = gdal.VSIFOpenExL('/vsiadls/test_copy/file.bin', 'wb', 0, ['x-ms-client-request-id=REQUEST_ID'])
         assert f is not None
         assert gdal.VSIFWriteL('foo', 1, 3, f) == 3
         assert gdal.VSIFCloseL(f) == 0

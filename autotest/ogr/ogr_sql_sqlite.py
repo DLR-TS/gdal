@@ -1877,7 +1877,11 @@ def test_ogr_sql_sqlite_st_makevalid():
 
     ds = ogr.GetDriverByName('Memory').CreateDataSource('')
     sql = "SELECT ST_MakeValid(ST_GeomFromText('POLYGON ((0 0,1 1,1 0,0 1,0 0))'))"
-    sql_lyr = ds.ExecuteSQL(sql, dialect='SQLite')
+    with gdaltest.error_handler():
+        sql_lyr = ds.ExecuteSQL(sql, dialect='SQLite')
+    if sql_lyr is None:
+        assert not make_valid_available
+        pytest.skip()
     f = sql_lyr.GetNextFeature()
     g = f.GetGeometryRef()
     wkt = g.ExportToWkt() if g is not None else None
@@ -1911,3 +1915,25 @@ def test_ogr_sql_sqlite_field_names_same_case():
     assert f['id'] == 'foo'
     assert f['ID3'] == 'bar'
     assert f['ID2'] == 'baz'
+
+
+###############################################################################
+# Test attribute and geometry field name with same name
+
+
+def test_ogr_sql_sqlite_attribute_and_geom_field_name_same():
+
+    ds = ogr.GetDriverByName('Memory').CreateDataSource('')
+    lyr = ds.CreateLayer('test', geom_type = ogr.wkbNone)
+    lyr.CreateField(ogr.FieldDefn('foo'))
+    lyr.CreateGeomField(ogr.GeomFieldDefn('foo'))
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f['foo'] = 'bar'
+    f.SetGeomFieldDirectly('foo', ogr.CreateGeometryFromWkt('POINT(0 0)'))
+    lyr.CreateFeature(f)
+
+    sql_lyr = ds.ExecuteSQL('SELECT * FROM test', dialect='SQLite')
+    f = sql_lyr.GetNextFeature()
+    ds.ReleaseResultSet(sql_lyr)
+    assert f['foo'] == 'bar'
+    assert f.GetGeomFieldRef(0).ExportToWkt() == 'POINT (0 0)'

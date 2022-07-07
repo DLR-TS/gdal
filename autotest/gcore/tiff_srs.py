@@ -88,7 +88,9 @@ def test_srs_write_compd_cs():
 
     gdal.SetConfigOption('GTIFF_REPORT_COMPD_CS', 'YES')
     ds = gdal.Open('/vsimem/tiff_srs_compd_cs.tif')
+    gdal.ErrorReset()
     wkt = ds.GetProjectionRef()
+    assert gdal.GetLastErrorMsg() == ''
     gdal.SetConfigOption('GTIFF_REPORT_COMPD_CS', None)
     sr2 = osr.SpatialReference()
     sr2.SetFromUserInput(wkt)
@@ -649,6 +651,9 @@ def test_tiff_srs_read_epsg32631_4979_geotiff1_1():
 
 def test_tiff_srs_write_vertical_perspective():
 
+    if osr.GetPROJVersionMajor() * 100 + osr.GetPROJVersionMinor() < 700:
+        pytest.skip('requires PROJ 7 or later')
+
     ds = gdal.GetDriverByName('GTiff').Create('/vsimem/src.tif', 1, 1)
     sr = osr.SpatialReference()
     sr.SetGeogCS("GEOG_NAME", "D_DATUM_NAME", "", 3000000, 0)
@@ -657,7 +662,6 @@ def test_tiff_srs_write_vertical_perspective():
     ds.SetSpatialRef(sr)
     assert gdal.GetLastErrorMsg() == ''
     ds = None
-    assert gdal.VSIStatL('/vsimem/src.tif.aux.xml')
 
     src_ds = gdal.Open('/vsimem/src.tif')
     # First is PROJ 7
@@ -665,7 +669,6 @@ def test_tiff_srs_write_vertical_perspective():
     gdal.ErrorReset()
     gdal.GetDriverByName('GTiff').CreateCopy('/vsimem/dst.tif', src_ds)
     assert gdal.GetLastErrorMsg() == ''
-    assert gdal.VSIStatL('/vsimem/dst.tif.aux.xml')
 
     ds = gdal.Open('/vsimem/dst.tif')
     assert ds.GetSpatialRef().ExportToProj4() == src_ds.GetSpatialRef().ExportToProj4()
@@ -808,3 +811,214 @@ def test_tiff_srs_read_compoundcrs_without_gtcitation():
     ds = gdal.Open('data/gtiff/compdcrs_without_gtcitation.tif')
     sr = ds.GetSpatialRef()
     assert sr.GetName() == 'WGS 84 / UTM zone 32N + EGM08_Geoid'
+
+
+def test_tiff_srs_read_getspatialref_getgcpspatialref():
+
+    ds = gdal.Open('data/byte.tif')
+    assert ds.GetSpatialRef() is not None
+    assert ds.GetGCPSpatialRef() is None
+
+    ds = gdal.Open('data/byte.tif')
+    assert ds.GetGCPSpatialRef() is None
+    assert ds.GetSpatialRef() is not None
+
+    ds = gdal.Open('data/byte.tif')
+    assert ds.GetSpatialRef() is not None
+    assert ds.GetSpatialRef() is not None
+    assert ds.GetGCPSpatialRef() is None
+    assert ds.GetGCPSpatialRef() is None
+
+    ds = gdal.Open('data/byte_gcp_pixelispoint.tif')
+    assert ds.GetSpatialRef() is None
+    assert ds.GetGCPSpatialRef() is not None
+
+    ds = gdal.Open('data/byte_gcp_pixelispoint.tif')
+    assert ds.GetGCPSpatialRef() is not None
+    assert ds.GetSpatialRef() is None
+
+    ds = gdal.Open('data/byte_gcp_pixelispoint.tif')
+    assert ds.GetGCPSpatialRef() is not None
+    assert ds.GetGCPSpatialRef() is not None
+    assert ds.GetSpatialRef() is None
+    assert ds.GetSpatialRef() is None
+
+
+def test_tiff_srs_read_VerticalUnitsGeoKey_private_range():
+    ds = gdal.Open('data/gtiff/VerticalUnitsGeoKey_private_range.tif')
+    with gdaltest.error_handler():
+        sr = ds.GetSpatialRef()
+    assert sr.GetName() == "NAD83 / UTM zone 16N"
+    assert gdal.GetLastErrorMsg() != ''
+
+
+def test_tiff_srs_read_invalid_semimajoraxis_compound():
+    ds = gdal.Open('data/gtiff/invalid_semimajoraxis_compound.tif')
+    # Check that it doesn't crash. PROJ >= 8.2.0 will return a NULL CRS
+    # whereas previous versions will return a non-NULL one
+    with gdaltest.error_handler():
+        ds.GetSpatialRef()
+
+
+def test_tiff_srs_try_write_derived_geographic():
+
+    if osr.GetPROJVersionMajor() < 7:
+        pytest.skip()
+
+    tmpfile = '/vsimem/tmp.tif'
+    ds = gdal.GetDriverByName('GTiff').Create(tmpfile, 1, 1)
+    wkt = 'GEOGCRS["Coordinate System imported from GRIB file",BASEGEOGCRS["Coordinate System imported from GRIB file",DATUM["unnamed",ELLIPSOID["Sphere",6367470,0,LENGTHUNIT["metre",1,ID["EPSG",9001]]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]]],DERIVINGCONVERSION["Pole rotation (GRIB convention)",METHOD["Pole rotation (GRIB convention)"],PARAMETER["Latitude of the southern pole (GRIB convention)",-30,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],PARAMETER["Longitude of the southern pole (GRIB convention)",-15,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],PARAMETER["Axis rotation (GRIB convention)",0,ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]]],CS[ellipsoidal,2],AXIS["latitude",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]],AXIS["longitude",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433,ID["EPSG",9122]]]]'
+    ds.SetProjection(wkt)
+    ds = None
+
+    assert gdal.VSIStatL(tmpfile + '.aux.xml')
+    ds = gdal.Open(tmpfile)
+    srs = ds.GetSpatialRef()
+    assert srs is not None
+    assert srs.IsDerivedGeographic()
+    ds = None
+
+    gdal.Unlink(tmpfile + '.aux.xml')
+    ds = gdal.Open(tmpfile)
+    assert ds.GetSpatialRef() is None
+    ds = None
+
+    gdal.Unlink(tmpfile)
+
+
+def test_tiff_srs_read_GeogGeodeticDatumGeoKey_reserved_range():
+    ds = gdal.Open('data/gtiff/GeogGeodeticDatumGeoKey_reserved.tif')
+    with gdaltest.error_handler():
+        sr = ds.GetSpatialRef()
+    assert sr.GetName() == "WGS 84 / Pseudo-Mercator"
+    assert gdal.GetLastErrorMsg() != ''
+    assert gdal.GetLastErrorType() == gdal.CE_Warning
+
+
+def test_tiff_srs_read_buggy_sentinel1_ellipsoid_code_4326():
+    # That file has GeogEllipsoidGeoKey=4326, instead of 7030
+    ds = gdal.Open('data/gtiff/buggy_sentinel1_ellipsoid_code_4326.tif')
+    sr = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == ''
+    assert sr.GetAuthorityCode('GEOGCS|DATUM|SPHEROID') == '7030'
+
+
+def test_tiff_srs_read_invalid_GeogAngularUnitSizeGeoKey():
+    # That file has GeogAngularUnitSizeGeoKey = 0
+    ds = gdal.Open('data/gtiff/invalid_GeogAngularUnitSizeGeoKey.tif')
+    gdal.ErrorReset()
+    with gdaltest.error_handler():
+        ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() != ''
+
+
+def test_tiff_srs_read_inconsistent_invflattening():
+    # That file has GeogSemiMinorAxisGeoKey / GeogInvFlatteningGeoKey values
+    # which are inconsistent with the ones from the ellipsoid of the datum
+    ds = gdal.Open('data/gtiff/inconsistent_invflattening.tif')
+    gdal.ErrorReset()
+    with gdaltest.error_handler():
+        srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() != ''
+    assert srs.GetAuthorityCode(None) == '28992'
+    assert srs.GetAuthorityCode('GEOGCS') == '4289'
+    assert srs.GetInvFlattening() == pytest.approx(299.1528131, abs=1e-7) #  wrong value w.r.t Bessel 1841 official definition
+
+    ds = gdal.Open('data/gtiff/inconsistent_invflattening.tif')
+    gdal.ErrorReset()
+    with gdaltest.config_option('GTIFF_SRS_SOURCE', 'GEOKEYS'):
+        srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == ''
+    assert srs.GetAuthorityCode(None) is None
+    assert srs.GetAuthorityCode('GEOGCS') is None
+    assert srs.GetInvFlattening() == pytest.approx(299.1528131, abs=1e-7) #  wrong value w.r.t Bessel 1841 official definition
+
+    ds = gdal.Open('data/gtiff/inconsistent_invflattening.tif')
+    gdal.ErrorReset()
+    with gdaltest.config_option('GTIFF_SRS_SOURCE', 'EPSG'):
+        srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == ''
+    assert srs.GetAuthorityCode(None) == '28992'
+    assert srs.GetAuthorityCode('GEOGCS') == '4289'
+    assert srs.GetInvFlattening() == pytest.approx(299.1528128, abs=1e-7) #  Bessel 1841 official definition
+
+
+def test_tiff_srs_dynamic_geodetic_crs():
+
+    if osr.GetPROJVersionMajor() < 8:
+        pytest.skip()
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(8999) # ITRF2008
+    ds = gdal.GetDriverByName('GTiff').Create(
+        '/vsimem/test_tiff_srs_dynamic_geodetic_crs.tif', 1, 1)
+    ds.SetSpatialRef(srs)
+    ds = None
+    ds = gdal.Open('/vsimem/test_tiff_srs_dynamic_geodetic_crs.tif')
+    gdal.ErrorReset()
+    srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == '', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetAuthorityCode(None) == '8999'
+    ds = None
+    gdal.Unlink('/vsimem/test_tiff_srs_dynamic_geodetic_crs.tif')
+
+
+@pytest.mark.parametrize('geotiff_version', ['1.0', '1.1'])
+def test_tiff_srs_geographic_crs_3D(geotiff_version):
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4959) # NZGD2000 3D
+    ds = gdal.GetDriverByName('GTiff').Create('/vsimem/test_tiff_srs_geographic_crs_3D.tif', 1, 1,
+        options = ['GEOTIFF_VERSION=' + geotiff_version])
+    ds.SetSpatialRef(srs)
+    ds = None
+    ds = gdal.Open('/vsimem/test_tiff_srs_geographic_crs_3D.tif')
+    gdal.ErrorReset()
+    srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == '', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    if geotiff_version == '1.1':
+        assert srs.GetAuthorityCode(None) == '4959'
+    ds = None
+    gdal.Unlink('/vsimem/test_tiff_srs_geographic_crs_3D.tif')
+
+
+def test_tiff_srs_datum_name_with_space():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4312) # MGI with datum name = 'Militar-Geographische Institut""
+    ds = gdal.GetDriverByName('GTiff').Create('/vsimem/test_tiff_srs_datum_name_with_space.tif', 1, 1)
+    ds.SetSpatialRef(srs)
+    ds = None
+    ds = gdal.Open('/vsimem/test_tiff_srs_datum_name_with_space.tif')
+    gdal.ErrorReset()
+    srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == '', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetAuthorityCode(None) == '4312'
+    ds = None
+    gdal.Unlink('/vsimem/test_tiff_srs_datum_name_with_space.tif')
+
+
+def test_tiff_srs_compound_crs_with_local_cs():
+
+    filename = '/vsimem/test_tiff_srs_compound_crs_with_local_cs.tif'
+    srs = osr.SpatialReference()
+    srs.SetFromUserInput('COMPD_CS["COMPD_CS_name",LOCAL_CS["None",LOCAL_DATUM["None",32767],UNIT["Foot_US",0.304800609601219],AXIS["None",OTHER]],VERT_CS["VERT_CS_Name",VERT_DATUM["Local",2005],UNIT["Meter",1,AUTHORITY["EPSG","9001"]],AXIS["Gravity-related height",UP]]]')
+    ds = gdal.GetDriverByName('GTiff').Create(filename, 1, 1)
+    ds.SetSpatialRef(srs)
+    assert srs.IsCompound()
+    assert srs.GetLinearUnits() == pytest.approx(0.304800609601219)
+    gdal.ErrorReset()
+    ds = None
+    assert gdal.GetLastErrorMsg() == ''
+
+    ds = gdal.Open(filename)
+    gdal.ErrorReset()
+    srs = ds.GetSpatialRef()
+    assert gdal.GetLastErrorMsg() == '', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetName() == 'COMPD_CS_name', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.IsCompound(), srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetLinearUnits() == pytest.approx(0.304800609601219), srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetAttrValue('COMPD_CS|VERT_CS') == 'VERT_CS_Name', srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    assert srs.GetAttrValue('COMPD_CS|VERT_CS|UNIT') in ('Meter', 'metre'), srs.ExportToWkt(['FORMAT=WKT2_2019'])
+    ds = None
+    gdal.Unlink(filename)

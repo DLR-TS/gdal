@@ -30,22 +30,21 @@ if test -f "$WORK_DIR/ccache.tar.gz"; then
 fi
 
 
-sudo apt-get install -y software-properties-common python-software-properties
-sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
-sudo add-apt-repository -y ppa:deadsnakes/ppa
 sudo apt-get update
-sudo apt-get install -y python3.6 python3.6-dev
-sudo apt-get install -y --allow-unauthenticated libpng12-dev libjpeg-dev libgif-dev liblzma-dev libgeos-dev libcurl4-gnutls-dev libproj-dev libxml2-dev libexpat-dev libxerces-c-dev libnetcdf-dev netcdf-bin libpoppler-dev libpoppler-private-dev libsqlite3-dev gpsbabel swig libhdf4-alt-dev libhdf5-serial-dev libpodofo-dev poppler-utils libfreexl-dev unixodbc-dev libwebp-dev libepsilon-dev liblcms2-2 libpcre3-dev libcrypto++-dev libdap-dev libfyba-dev libmysqlclient-dev libogdi3.2-dev libcfitsio-dev openjdk-8-jdk couchdb libzstd1-dev ccache curl autoconf automake sqlite3 libspatialite-dev make g++ libssl-dev libsfcgal-dev libgeotiff-dev libcharls-dev libopenjp2-7-dev libcairo2-dev
+sudo apt-get install -y --allow-unauthenticated libpng-dev libjpeg-dev libgif-dev liblzma-dev libgeos-dev libcurl4-gnutls-dev libproj-dev libxml2-dev libexpat1-dev libxerces-c-dev libnetcdf-dev netcdf-bin libpoppler-dev libpoppler-private-dev libsqlite3-dev gpsbabel swig libhdf4-alt-dev libhdf5-dev libpodofo-dev poppler-utils libfreexl-dev unixodbc-dev libwebp-dev libepsilon-dev liblcms2-2 libpcre3-dev libcrypto++-dev libfyba-dev libmysqlclient-dev libogdi-dev libcfitsio-dev openjdk-8-jdk libzstd-dev ccache curl autoconf automake sqlite3 libspatialite-dev make g++ libssl-dev libsfcgal-dev libgeotiff-dev libopenjp2-7-dev libcairo2-dev python3-dev python3-setuptools python3-numpy python3-pip clang git
+
+# Workaround bug in ogdi packaging
+sudo ln -s /usr/lib/ogdi/libvrf.so /usr/lib
+
+# Build odbc-cpp library for HANA
+(wget https://github.com/Kitware/CMake/releases/download/v3.12.4/cmake-3.12.4-Linux-x86_64.sh -O cmake.sh)
+(sudo sh cmake.sh --prefix=/usr/local/ --exclude-subdir)
+(git clone https://github.com/SAP/odbc-cpp-wrapper.git && mkdir odbc-cpp-wrapper/build && cd odbc-cpp-wrapper/build && cmake .. && make -j 2 && make install)
 
 wget https://github.com/Esri/file-geodatabase-api/raw/master/FileGDB_API_1.5/FileGDB_API_1_5_64gcc51.tar.gz
 tar xzf FileGDB_API_1_5_64gcc51.tar.gz
 sudo cp FileGDB_API-64gcc51/lib/* /usr/lib
 sudo ldconfig
-
-FILE=clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
-URL_ROOT=https://github.com/rouault/gdal_ci_tools/raw/master/${FILE}
-curl -Ls ${URL_ROOT}aa ${URL_ROOT}ab ${URL_ROOT}ac ${URL_ROOT}ad ${URL_ROOT}ae | tar xJf -
-
 
 SCRIPT_DIR=$(dirname "$0")
 case $SCRIPT_DIR in
@@ -58,67 +57,56 @@ case $SCRIPT_DIR in
         SCRIPT_DIR=$(pwd)/$(dirname "$0")
         ;;
 esac
-$SCRIPT_DIR/../common_install.sh
-
-export ASAN_OPTIONS=allocator_may_return_null=1
 
 export CCACHE_CPP2=yes
-export CC="ccache $PWD/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-16.04/bin/clang"
-export CXX="ccache $PWD/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-16.04/bin/clang++"
+export CC="ccache clang"
+export CXX="ccache clang++"
+
+if [ "$NPROC" = "" ]; then
+  NPROC=3
+fi
 
 ccache -M 1G
 ccache -s
 
-# Build proj
-(cd proj;  ./autogen.sh && CFLAGS='-DPROJ_RENAME_SYMBOLS' CXXFLAGS='-DPROJ_RENAME_SYMBOLS' ./configure --disable-static --prefix=/usr/local && make -j3)
-(cd proj; sudo make -j3 install && sudo mv /usr/local/lib/libproj.so.15.0.0 /usr/local/lib/libinternalproj.so.15.0.0 && sudo rm /usr/local/lib/libproj.so*  && sudo rm /usr/local/lib/libproj.la && sudo ln -f -s libinternalproj.so.15.0.0  /usr/local/lib/libinternalproj.so.15 && sudo ln -f -s libinternalproj.so.15.0.0  /usr/local/lib/libinternalproj.so)
-
-CURRENT_DIR=$PWD
-cd gdal
-
+./autogen.sh
 SANITIZE_FLAGS="-DMAKE_SANITIZE_HAPPY -fsanitize=undefined -fsanitize=address -fsanitize=unsigned-integer-overflow"
-CFLAGS=$SANITIZE_FLAGS CXXFLAGS=$SANITIZE_FLAGS LDFLAGS="-fsanitize=undefined -fsanitize=address -lstdc++" ./configure --prefix=/usr --without-libtool --enable-debug --with-jpeg12 --with-poppler --without-podofo --with-spatialite --with-mysql --with-liblzma --with-webp --with-epsilon --with-libtiff=internal --with-rename-internal-libtiff-symbols --with-hide-internal-symbols --with-gnm --with-proj=/usr/local --with-fgdb=$PWD/../FileGDB_API-64gcc51
+CFLAGS=$SANITIZE_FLAGS CXXFLAGS=$SANITIZE_FLAGS LDFLAGS="-fsanitize=undefined -fsanitize=address -lstdc++" ./configure --prefix=/usr --without-libtool --enable-debug --with-jpeg12 --with-poppler --without-podofo --with-spatialite --with-mysql --with-liblzma --with-webp --with-epsilon --with-libtiff=internal --with-rename-internal-libtiff-symbols --with-hide-internal-symbols --with-gnm --with-fgdb=$PWD/FileGDB_API-64gcc51 --with-hana
 sed -i "s/-fsanitize=address/-fsanitize=address -shared-libasan/g" GDALmake.opt
 sed -i "s/-fsanitize=unsigned-integer-overflow/-fsanitize=unsigned-integer-overflow -fno-sanitize-recover=unsigned-integer-overflow/g" GDALmake.opt
-make USER_DEFS="-Werror" -j3
+make USER_DEFS="-Werror" -j$NPROC
 (cd apps && make USER_DEFS="-Werror" test_ogrsf)
 (cd swig/python && \
     echo "#!/bin/sh" > mycc.sh && \
     echo "$CC -fsanitize=undefined -fsanitize=address -shared-libasan \$*" >> mycc.sh && \
     cat mycc.sh && \
     chmod +x mycc.sh && \
-    PATH=$PWD:$PATH CC=mycc.sh python3.6 setup.py build
+    PATH=$PWD:$PATH CC=mycc.sh python3 setup.py build
 )
 
 sudo rm -f /usr/lib/libgdal.so*
 sudo make install
-curl -sSL 'https://bootstrap.pypa.io/get-pip.py' | sudo python3.6
-sudo python3.6 -m pip install numpy
-(cd swig/python && sudo python3.6 setup.py install)
+(cd swig/python && sudo python3 setup.py install)
 
 sudo ldconfig
 
 ccache -s
-
-cd "$CURRENT_DIR"
 
 echo "Saving ccache..."
 rm -f "$WORK_DIR/ccache.tar.gz"
 (cd $HOME && tar czf "$WORK_DIR/ccache.tar.gz" .ccache)
 
 
-export PRELOAD=$PWD/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-16.04/lib/clang/9.0.0/lib/linux/libclang_rt.asan-x86_64.so
+export PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so)
 
 cd autotest
 
 # Don't run these
 rm -f ogr/ogr_fgdb.py ogr/ogr_pgeo.py
 
-# Too old spatialite version
-rm -f ogr/ogr_sqlite.py gdrivers/rasterlite.py
-
 # install test dependencies
-sudo python3.6 -m pip install -U -r ./requirements.txt
+sudo python3 -m pip install -U -r ./requirements.txt
+sudo python3 -m pip install -U hdbcli
 
 # Run each module in its own pytest process.
 # This makes sure the output from the address sanitizer is relevant
@@ -131,20 +119,26 @@ sudo python3.6 -m pip install -U -r ./requirements.txt
 # That turns out to be what we want here though, since we want
 # to not fail when the address sanitizer finds errors.
 # So we tee the output to a file and grep it to discover if the tests failed.
-export SKIP_MEM_INTENSIVE_TEST=YES SKIP_VIRTUALMEM=YES LD_PRELOAD=$PRELOAD \
-    LSAN_OPTIONS=detect_leaks=1,print_suppressions=0,suppressions=$PWD/asan_suppressions.txt
+export SKIP_MEM_INTENSIVE_TEST=YES
+export SKIP_VIRTUALMEM=YES
+export LD_PRELOAD=$PRELOAD
+export ASAN_OPTIONS=allocator_may_return_null=1:symbolize=1:suppressions=$PWD/asan_suppressions.txt
+export LSAN_OPTIONS=detect_leaks=1,print_suppressions=0,suppressions=$PWD/lsan_suppressions.txt
 
 gdalinfo gcore/data/byte.tif
-python3.6 -c "from osgeo import gdal; print('yes')"
+python3 -c "from osgeo import gdal; print('yes')"
 
 echo "#!/bin/sh" > pytest_wrapper.sh
 echo 'ARGS="$*"' >> pytest_wrapper.sh
-echo "python3.6 -m pytest --capture=no -ra -vv -p no:sugar --color=no -o console_output_style=classic \${ARGS} 2>&1" >> pytest_wrapper.sh
+echo "python3 -m pytest --capture=no -ra -vv -p no:sugar --color=no -o console_output_style=classic \${ARGS} 2>&1" >> pytest_wrapper.sh
 cat pytest_wrapper.sh
 chmod +x pytest_wrapper.sh
 
 # Error on ogdi_5 test
 rm ogr/ogr_ogdi.py
+
+# new-delete-type-mismatch error in gpsbabel binary that we can't suppress
+rm ogr/ogr_gpsbabel.py
 
 find \
     ogr gcore gdrivers osr alg gnm utilities pyscripts \

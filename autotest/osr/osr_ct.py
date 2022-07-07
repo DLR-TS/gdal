@@ -79,6 +79,7 @@ def test_osr_ct_2():
     utm_srs.SetWellKnownGeogCS('WGS84')
 
     ll_srs = osr.SpatialReference()
+    ll_srs.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
     ll_srs.SetWellKnownGeogCS('WGS84')
 
     ct = osr.CoordinateTransformation(ll_srs, utm_srs)
@@ -143,7 +144,7 @@ def test_osr_ct_4():
         assert result[i][0] == pytest.approx(452772.06, abs=0.01) and result[i][1] == pytest.approx(3540544.89, abs=0.01) and result[i][2] == pytest.approx(0.0, abs=0.01), \
             'Wrong LL to UTM result'
 
-    
+
 ###############################################################################
 # Same test, but with any sequence of tuples instead of a tuple of tuple
 # New in NG bindings (#3020)
@@ -167,7 +168,7 @@ def test_osr_ct_5():
         assert result[i][0] == pytest.approx(452772.06, abs=0.01) and result[i][1] == pytest.approx(3540544.89, abs=0.01) and result[i][2] == pytest.approx(0.0, abs=0.01), \
             'Wrong LL to UTM result'
 
-    
+
 ###############################################################################
 # Test osr.CreateCoordinateTransformation() method
 
@@ -195,7 +196,7 @@ def test_osr_ct_6():
         assert result[i][0] == pytest.approx(452772.06, abs=0.01) and result[i][1] == pytest.approx(3540544.89, abs=0.01) and result[i][2] == pytest.approx(0.0, abs=0.01), \
             'Wrong LL to UTM result'
 
-    
+
 ###############################################################################
 # Actually perform a simple Pseudo Mercator to LL conversion.
 
@@ -233,7 +234,7 @@ def test_osr_ct_7():
         print('Expected: %s' % expected_pnt.ExportToWkt())
         pytest.fail('Failed to transform from Pseudo Mercator to LL')
 
-    
+
 ###############################################################################
 # Test WebMercator -> WGS84 optimized transform
 
@@ -353,8 +354,10 @@ def test_osr_ct_options_area_of_interest():
 
     srs_nad27 = osr.SpatialReference()
     srs_nad27.SetFromUserInput("NAD27")
+    srs_nad27.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
     srs_wgs84 = osr.SpatialReference()
     srs_wgs84.SetFromUserInput("WGS84")
+    srs_wgs84.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
     options = osr.CoordinateTransformationOptions()
     assert not options.SetAreaOfInterest(-200,40,-99,41)
     assert not options.SetAreaOfInterest(-100,-100,-99,41)
@@ -379,11 +382,21 @@ def test_osr_ct_options_area_of_interest():
 # Test 4D transformations
 
 
-def test_osr_ct_4D():
+@pytest.mark.parametrize('source_crs',[None, 'EPSG:4326']) # random code (not used)
+@pytest.mark.parametrize('target_crs',[None, 'EPSG:4326']) # random code (not used)
+def test_osr_ct_4D(source_crs, target_crs):
 
     options = osr.CoordinateTransformationOptions()
     assert options.SetOperation('+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=cart +step +proj=helmert +convention=position_vector +x=0.0127 +dx=-0.0029 +rx=-0.00039 +drx=-0.00011 +y=0.0065 +dy=-0.0002 +ry=0.00080 +dry=-0.00019 +z=-0.0209 +dz=-0.0006 +rz=-0.00114 +drz=0.00007 +s=0.00195 +ds=0.00001 +t_epoch=1988.0 +step +proj=cart +inv +step +proj=unitconvert +xy_in=rad +xy_out=deg')
-    ct = osr.CoordinateTransformation(None, None, options)
+    if source_crs:
+        srs = osr.SpatialReference()
+        srs.SetFromUserInput(source_crs)
+        source_crs = srs
+    if target_crs:
+        srs = osr.SpatialReference()
+        srs.SetFromUserInput(target_crs)
+        target_crs = srs
+    ct = osr.CoordinateTransformation(source_crs, target_crs, options)
     assert ct
 
     x, y, z, t = ct.TransformPoint(2, 49, 0, 2000)
@@ -517,3 +530,152 @@ def test_osr_ct_options_ballpark_disallowed():
     except:
         pass
 
+
+###############################################################################
+# Test that we pass a neutral time when not explicitly specified
+
+
+def test_osr_ct_non_specified_time_with_time_dependent_transformation():
+
+    options = osr.CoordinateTransformationOptions()
+    options.SetOperation('+proj=pipeline +step +proj=axisswap +order=2,1 +step +proj=unitconvert +xy_in=deg +z_in=m +xy_out=rad +z_out=m +step +proj=cart +ellps=GRS80 +step +inv +proj=helmert +dx=0.0008 +dy=-0.0006 +dz=-0.0014 +drx=6.67e-05 +dry=-0.0007574 +drz=-5.13e-05 +ds=-7e-05 +t_epoch=2010 +convention=coordinate_frame +step +inv +proj=cart +ellps=GRS80 +step +proj=unitconvert +xy_in=rad +z_in=m +xy_out=deg +z_out=m +step +proj=axisswap +order=2,1')
+    ct = osr.CoordinateTransformation(None, None, options)
+    assert ct
+    x, y, _ = ct.TransformPoint(50, -40, 0)
+    assert x == pytest.approx(50, abs=1e-10)
+    assert y == pytest.approx(-40, abs=1e-10)
+
+
+###############################################################################
+# Test using OGRSpatialReference::CoordinateEpoch()
+
+def test_osr_ct_take_into_account_srs_coordinate_epoch():
+
+    if osr.GetPROJVersionMajor() * 100 + osr.GetPROJVersionMinor() < 702:
+        pytest.skip('requires PROJ 7.2 or later')
+
+    s = osr.SpatialReference()
+    s.SetFromUserInput("EPSG:7844") # GDA2020
+    s.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
+
+    t_2020 = osr.SpatialReference()
+    t_2020.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
+    t_2020.SetFromUserInput("EPSG:9000") # ITRF2014
+    t_2020.SetCoordinateEpoch(2020)
+
+    # 2020 is the central epoch of the transformation, so no coordinate
+    # change is expected
+    ct = osr.CoordinateTransformation(s, t_2020)
+    x, y, _ = ct.TransformPoint(-30, 150, 0)
+    assert x == pytest.approx(-30, abs=1e-10)
+    assert y == pytest.approx(150, abs=1e-10)
+
+    t_2030 = osr.SpatialReference()
+    t_2030.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
+    t_2030.SetFromUserInput("EPSG:9000") # ITRF2014
+    t_2030.SetCoordinateEpoch(2030)
+
+    ct = osr.CoordinateTransformation(s, t_2030)
+    x, y, _ = ct.TransformPoint(-30, 150, 0)
+    assert x == pytest.approx(-29.9999950478, abs=1e-10)
+    assert y == pytest.approx(150.0000022212, abs=1e-10)
+
+    ct = osr.CoordinateTransformation(t_2030, s)
+    x, y, _ = ct.TransformPoint(-29.9999950478, 150.0000022212, 0)
+    assert x == pytest.approx(-30, abs=1e-10)
+    assert y == pytest.approx(150, abs=1e-10)
+
+    # Not properly supported currently
+    gdal.ErrorReset()
+    with gdaltest.error_handler():
+        ct = osr.CoordinateTransformation(t_2020, t_2030)
+    assert gdal.GetLastErrorMsg() != ''
+
+###############################################################################
+# Test transformation between CRS that only differ by axis order
+
+def test_osr_ct_only_axis_order_different():
+
+    s_wrong_axis_order = osr.SpatialReference()
+    s_wrong_axis_order.SetFromUserInput("""GEOGCS["WGS 84",
+    DATUM["WGS_1984",
+        SPHEROID["WGS 84",6378137,298.257223563,
+            AUTHORITY["EPSG","7030"]],
+        AUTHORITY["EPSG","6326"]],
+    PRIMEM["Greenwich",0,
+        AUTHORITY["EPSG","8901"]],
+    UNIT["degree",0.0174532925199433,
+        AUTHORITY["EPSG","9122"]],
+    AXIS["Longitude",EAST],
+    AXIS["Latitude",NORTH]]""")
+
+    t = osr.SpatialReference()
+    t.ImportFromEPSG(4326)
+    t.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
+
+    ct = osr.CoordinateTransformation(s_wrong_axis_order, t)
+    x, y, _ = ct.TransformPoint(2, 49, 0)
+    assert x == 49
+    assert y == 2
+
+###############################################################################
+# Test transformation for a CRS whose definition contradicts the one of the
+# authority. NOTE: it is arguable that this is the correct behaviour. One
+# could consider that the AUTHORITY would have precedence.
+
+def test_osr_ct_wkt_non_consistent_with_epsg_definition():
+
+    s_wrong_axis_order = osr.SpatialReference()
+    s_wrong_axis_order.SetFromUserInput("""GEOGCS["WGS 84",
+    DATUM["WGS_1984",
+        SPHEROID["WGS 84",6378137,298.257223563,
+            AUTHORITY["EPSG","7030"]],
+        AUTHORITY["EPSG","6326"]],
+    PRIMEM["Greenwich",0,
+        AUTHORITY["EPSG","8901"]],
+    UNIT["degree",0.0174532925199433,
+        AUTHORITY["EPSG","9122"]],
+    AXIS["Longitude",EAST],
+    AXIS["Latitude",NORTH],
+    AUTHORITY["EPSG","4326"]]""")
+
+    t = osr.SpatialReference()
+    t.ImportFromEPSG(4326)
+    t.SetAxisMappingStrategy(osr.OAMS_AUTHORITY_COMPLIANT)
+
+    ct = osr.CoordinateTransformation(s_wrong_axis_order, t)
+    x, y, _ = ct.TransformPoint(2, 49, 0)
+    assert x == 49
+    assert y == 2
+
+
+###############################################################################
+# Test effect of OGR_CT_PREFER_OFFICIAL_SRS_DEF=NO
+# https://github.com/OSGeo/PROJ/issues/2955
+
+def test_osr_ct_OGR_CT_PREFER_OFFICIAL_SRS_DEF():
+
+    # Not sure about the minimal version, but works as expected with 7.2.1
+    if osr.GetPROJVersionMajor() * 100 + osr.GetPROJVersionMinor() < 702:
+        pytest.skip('requires PROJ 7.2 or later')
+
+    wkt = "PROJCS[\"OSGB 1936 / British National Grid\",GEOGCS[\"OSGB 1936\",DATUM[\"OSGB_1936\",SPHEROID[\"Airy 1830\",6377563.396,299.3249646,AUTHORITY[\"EPSG\",\"7001\"]],TOWGS84[446.448,-125.157,542.06,0.15,0.247,0.842,-20.489],AUTHORITY[\"EPSG\",\"6277\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4277\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",49],PARAMETER[\"central_meridian\",-2],PARAMETER[\"scale_factor\",0.9996012717],PARAMETER[\"false_easting\",400000],PARAMETER[\"false_northing\",-100000],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"27700\"]]"
+    s = osr.SpatialReference()
+    s.SetFromUserInput(wkt)
+
+    t = osr.SpatialReference()
+    t.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    t.ImportFromEPSG(4258) # ETRS 89
+
+    # No datum shift
+    ct = osr.CoordinateTransformation(s, t)
+    x, y, _ = ct.TransformPoint(826158.063, 2405844.125, 0)
+    assert abs(x -  9.873) < 0.001, x
+    assert abs(y - 71.127) < 0.001, y
+
+    # Datum shift implied by the TOWGS4 clause
+    with gdaltest.config_option('OGR_CT_PREFER_OFFICIAL_SRS_DEF', 'NO'):
+        ct = osr.CoordinateTransformation(s, t)
+        x, y, _ = ct.TransformPoint(826158.063, 2405844.125, 0)
+        assert abs(x -  9.867) < 0.001, x
+        assert abs(y - 71.125) < 0.001, y

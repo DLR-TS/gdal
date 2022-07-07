@@ -34,7 +34,6 @@
 
 import os
 import shutil
-import sys
 
 from osgeo import gdal, osr
 
@@ -1595,29 +1594,26 @@ def test_warp_52():
 # Test Grey+Alpha
 
 
-@pytest.mark.xfail(sys.platform == 'darwin',
-                   reason="Expected checksum should be updated for Mac")
 @pytest.mark.parametrize('typestr', ('Byte', 'UInt16', 'Int16'))
 @pytest.mark.parametrize('option', ('-wo USE_GENERAL_CASE=TRUE', ''),
                          ids=['generalCase', 'default'])
-# First checksum is proj 4.8, second proj 4.9.2
 @pytest.mark.parametrize('alg_name, expected_cs', (
-    pytest.param('near', [3781, 3843], id='near'),
-    pytest.param('cubic', [3942, 4133], id='cubic'),
-    pytest.param('cubicspline', [3874, 4076], id='cubicspline'),
-    pytest.param('bilinear', [4019, 3991], id='bilinear'),
+    pytest.param('near', [1192], id='near'),
+    pytest.param('cubic', [1061], id='cubic'),
+    pytest.param('cubicspline', [1252], id='cubicspline'),
+    pytest.param('bilinear', [1206, 1204], id='bilinear'),
 ))
 def test_warp_53(typestr, option, alg_name, expected_cs):
 
     src_ds = gdal.Translate('', '../gcore/data/byte.tif',
-                            options=f'-of MEM -b 1 -b 1 -ot {typestr}')
+                            options=f'-a_srs EPSG:32611 -of MEM -b 1 -b 1 -ot {typestr}')
     src_ds.GetRasterBand(2).SetColorInterpretation(gdal.GCI_AlphaBand)
     src_ds.GetRasterBand(2).Fill(255)
     zero = struct.pack('B' * 1, 0)
     src_ds.GetRasterBand(2).WriteRaster(10, 10, 1, 1, zero,
                                         buf_type=gdal.GDT_Byte)
     dst_ds = gdal.Translate('', src_ds,
-                            options='-of MEM -a_srs EPSG:32611')
+                            options='-outsize 10 10 -of MEM -a_srs EPSG:32611')
 
     dst_ds.GetRasterBand(1).Fill(0)
     dst_ds.GetRasterBand(2).Fill(0)
@@ -1625,19 +1621,21 @@ def test_warp_53(typestr, option, alg_name, expected_cs):
     cs1 = dst_ds.GetRasterBand(1).Checksum()
     cs2 = dst_ds.GetRasterBand(2).Checksum()
     assert cs1 in expected_cs
-    assert cs2 in [3903, 4138]
+    assert cs2 == 1218
 
 
 ###############################################################################
 # Test Alpha on UInt16/Int16
 
 
-def test_warp_54():
+@pytest.mark.parametrize('use_optim', ['YES', 'NO'])
+def test_warp_54(use_optim):
 
     # UInt16
     src_ds = gdal.Translate('', '../gcore/data/stefan_full_rgba.tif',
                                 options='-of MEM -scale 0 255 0 65535 -ot UInt16 -a_ullr -162 150 0 0')
-    dst_ds = gdal.Warp('', src_ds, format='MEM')
+    with gdaltest.config_option('GDAL_WARP_USE_TRANSLATION_OPTIM', use_optim):
+        dst_ds = gdal.Warp('', src_ds, format='MEM')
     for i in range(4):
         expected_cs = src_ds.GetRasterBand(i + 1).Checksum()
         got_cs = dst_ds.GetRasterBand(i + 1).Checksum()
@@ -1646,7 +1644,8 @@ def test_warp_54():
     # Int16
     src_ds = gdal.Translate('', '../gcore/data/stefan_full_rgba.tif',
                                 options='-of MEM -scale 0 255 0 32767 -ot Int16 -a_ullr -162 150 0 0')
-    dst_ds = gdal.Warp('', src_ds, format='MEM')
+    with gdaltest.config_option('GDAL_WARP_USE_TRANSLATION_OPTIM', use_optim):
+        dst_ds = gdal.Warp('', src_ds, format='MEM')
     for i in range(4):
         expected_cs = src_ds.GetRasterBand(i + 1).Checksum()
         got_cs = dst_ds.GetRasterBand(i + 1).Checksum()
@@ -1657,7 +1656,8 @@ def test_warp_54():
                                 options='-of MEM -scale 0 255 0 32767 -ot UInt16 -a_ullr -162 150 0 0')
     for i in range(4):
         src_ds.GetRasterBand(i + 1).SetMetadataItem('NBITS', '15', 'IMAGE_STRUCTURE')
-    dst_ds = gdal.Warp('/vsimem/warp_54.tif', src_ds, options='-co NBITS=15')
+    with gdaltest.config_option('GDAL_WARP_USE_TRANSLATION_OPTIM', use_optim):
+        dst_ds = gdal.Warp('/vsimem/warp_54.tif', src_ds, options='-co NBITS=15')
     for i in range(4):
         expected_cs = src_ds.GetRasterBand(i + 1).Checksum()
         got_cs = dst_ds.GetRasterBand(i + 1).Checksum()
@@ -1667,7 +1667,7 @@ def test_warp_54():
     gdal.Unlink('/vsimem/warp_54.tif')
 
 ###############################################################################
-# Test warped VRT with source overview, target GT != GenImgProjetion target GT
+# Test warped VRT with source overview, target GT != GenImgProjection target GT
 # and subsampling (#6972)
 
 
@@ -1683,7 +1683,8 @@ def test_warp_55():
 # same size). This test crops a single pixel out of a 3-by-3 image.
 
 
-def test_warp_56():
+@pytest.mark.parametrize('use_optim', ['YES', 'NO'])
+def test_warp_56(use_optim):
 
     numpy = pytest.importorskip('numpy')
 
@@ -1698,7 +1699,8 @@ def test_warp_56():
     for off in numpy.linspace(0, 2, 21):
         pix_ds.SetGeoTransform([off + 1, 1, 0,
                                 off + 1, 0, 1])
-        gdal.Warp(pix_ds, src_ds, resampleAlg='bilinear')
+        with gdaltest.config_option('GDAL_WARP_USE_TRANSLATION_OPTIM', use_optim):
+            gdal.Warp(pix_ds, src_ds, resampleAlg='bilinear')
 
         exp = 0 if off < 1 else 100 * (off - 1)**2
         warped = pix_ds.GetRasterBand(1).ReadAsArray()[0, 0]
@@ -1753,7 +1755,7 @@ def test_warp_ds_rms():
     if gdaltest.tiff_drv is None:
         pytest.skip()
 
-    tst = gdaltest.GDALTest('VRT', 'utmsmall_ds_rms.vrt', 1, 4770)
+    tst = gdaltest.GDALTest('VRT', 'utmsmall_ds_rms.vrt', 1, 4926)
 
     return tst.testOpen()
 
@@ -1763,7 +1765,7 @@ def test_warp_rms_1():
     if gdaltest.tiff_drv is None:
         pytest.skip()
 
-    tst = gdaltest.GDALTest('VRT', 'utmsmall_rms_float.vrt', 1, 30396)
+    tst = gdaltest.GDALTest('VRT', 'utmsmall_rms_float.vrt', 1, 29819)
 
     return tst.testOpen()
 
@@ -1773,6 +1775,31 @@ def test_warp_rms_2():
     if gdaltest.tiff_drv is None:
         pytest.skip()
 
-    tst = gdaltest.GDALTest('VRT', 'utmsmall_rms.vrt', 1, 30396)
+    ds = gdal.Open('data/utmsmall_rms.vrt')
+    # 29818 on non-Intel archs
+    assert ds.GetRasterBand(1).Checksum() in (29818,
+                                              29819,
+                                              29828, # Intel(R) oneAPI DPC++/C++ Compiler 2022.1.0
+                                              )
 
-    return tst.testOpen()
+
+def test_warp_mode_ties():
+    # when performing mode resampling the result in case of a tie will be
+    # the first value identified as the mode in scanline processing
+    numpy = pytest.importorskip('numpy')
+
+    src_ds = gdal.GetDriverByName('MEM').Create('', 3, 3, 1, gdal.GDT_Int16)
+    src_ds.SetGeoTransform([1, 1, 0,
+                            1, 0, 1])
+    src_ds.GetRasterBand(1).WriteArray(numpy.array([[1, 1, 1],
+                                                    [2, 3, 4],
+                                                    [5, 5, 5]]))
+    out_ds = gdal.Warp('', src_ds, format='MEM', resampleAlg='mode', xRes=3, yRes=3)
+
+    assert out_ds.GetRasterBand(1).ReadAsArray()[0, 0] == 1
+
+    src_ds.GetRasterBand(1).WriteArray(numpy.array([[1, 5, 1],
+                                                    [2, 5, 4],
+                                                    [5, 1, 0]]))
+    out_ds = gdal.Warp('', src_ds, format='MEM', resampleAlg='mode', xRes=3, yRes=3)
+    assert out_ds.GetRasterBand(1).ReadAsArray()[0, 0] == 5

@@ -625,13 +625,12 @@ def test_rmf_31c():
     assert ds is not None, ('Can\'t open ' + ds_name)
     expected_cs1 = [25789, 27405, 31974]
     expected_cs2 = [23764, 25265, 33585] # osx
+    expected_cs_jpeg9e = [21031, 26574, 34780] # libjpeg 9e
     cs = [ds.GetRasterBand(1).Checksum(),
           ds.GetRasterBand(2).Checksum(),
           ds.GetRasterBand(3).Checksum()]
 
-    assert cs == expected_cs1 or cs == expected_cs2, \
-        ('Invalid checksum %s expected %s or %s.' %
-                             (str(cs), str(expected_cs1), str(expected_cs2)))
+    assert cs in (expected_cs1, expected_cs2, expected_cs_jpeg9e)
 
 
 def test_rmf_31d():
@@ -642,6 +641,15 @@ def test_rmf_31d():
     return tst.testCreateCopy(check_minmax=0, check_srs=1, check_gt=1)
 
 
+def rmf_31e_data_gen(min_val, max_val, stripeSize, sx):
+    numpy = pytest.importorskip('numpy')
+    x = numpy.array([[min_val,max_val//2],[max_val,1]], dtype = numpy.int32)
+    x = numpy.block([[x, numpy.flip(x,0)],
+                    [numpy.flip(x, 1), x.transpose()]])
+    x = numpy.tile(x, (stripeSize // x.shape[0], sx // x.shape[1]))
+    return x
+
+
 def test_rmf_31e():
     numpy = pytest.importorskip('numpy')
 
@@ -649,7 +657,7 @@ def test_rmf_31e():
     if drv is None:
         pytest.skip()
     # Create test data
-    stripeSize = 32;
+    stripeSize = 32
     sx = 256
     sy = 8*stripeSize
     tst_name = 'tmp/rmf_31e.tif'
@@ -661,28 +669,32 @@ def test_rmf_31e():
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, 0)
 
     # 4-bit deltas
-    buff = numpy.random.randint(0, 16, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 16 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize)
 
     # 8-bit deltas
-    buff = numpy.random.randint(0, 256, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 256 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*2)
 
     # 12-bit deltas
-    buff = numpy.random.randint(0, 256*16, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 256*16 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*3)
 
     # 16-bit deltas
-    buff = numpy.random.randint(0, 256*256, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 256*256 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*4)
 
     # 24-bit deltas
-    buff = numpy.random.randint(0, 256*256*256, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 256*256*256 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*5)
 
     # 32-bit deltas
-    buff = numpy.random.randint(0, 256*256*256*128 - 1, [stripeSize, sx])
+    buff = rmf_31e_data_gen(0, 256*256*256*128 - 1, stripeSize, sx)
     tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*6)
+
+    # Negative values
+    buff = rmf_31e_data_gen(-(256*256*256 - 2), 256*256*256 - 2, stripeSize, sx)
+    tst_ds.GetRasterBand(1).WriteArray(buff, 0, stripeSize*7)
 
     tst_ds = None
     tst_ds = gdal.Open(tst_name)
@@ -769,6 +781,40 @@ def test_rmf_33c():
 
 
 ###############################################################################
+# Flush NoData blocks in MTW 
 
 
+def test_rmf_34():
+    numpy = pytest.importorskip('numpy')
 
+    drv = gdal.GetDriverByName('RMF')
+    tst_name = 'tmp/rmf_34.mtw'
+    tst_ds = drv.Create(tst_name, 32, 32, 1, gdal.GDT_Int32, 
+                        options=['MTW=YES', 'BLOCKXSIZE=16', 'BLOCKYSIZE=16'] )
+    assert tst_ds is not None, ('Can\'t create ' + tst_name)
+    nodata = 0
+    tst_ds.GetRasterBand(1).SetNoDataValue(nodata)
+    # Write NoData block
+    buff = numpy.full((16, 16), nodata, dtype = numpy.int32)
+    assert gdal.CE_None == tst_ds.GetRasterBand(1).WriteArray(buff, 0, 0)
+    gdal.ErrorReset()
+    tst_ds.FlushCache()
+    assert gdal.GetLastErrorType() == gdal.CE_None, 'Flush cache failed: ' + gdal.GetLastErrorMsg()
+    # Write valid block
+    min_valid_data, max_valid_data = 1, 2
+    buff = numpy.full((16, 16), min_valid_data, dtype = numpy.int32)
+    assert gdal.CE_None == tst_ds.GetRasterBand(1).WriteArray(buff, 16, 0)
+    buff = numpy.full((16, 16), max_valid_data, dtype = numpy.int32)
+    assert gdal.CE_None == tst_ds.GetRasterBand(1).WriteArray(buff, 16, 16)
+    tst_ds.FlushCache()
+    assert gdal.GetLastErrorType() == gdal.CE_None, 'Flush cache failed: ' + gdal.GetLastErrorMsg()
+    tst_ds = None
+
+    tst_ds = gdal.Open(tst_name)
+    assert tst_ds is not None, ('Can\'t open ' + tst_name)
+    assert min_valid_data == int(tst_ds.GetMetadataItem('ELEVATION_MINIMUM'))
+    assert max_valid_data == int(tst_ds.GetMetadataItem('ELEVATION_MAXIMUM'))
+    tst_ds = None
+    os.remove(tst_name)
+
+###############################################################################

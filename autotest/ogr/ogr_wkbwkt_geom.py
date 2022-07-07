@@ -226,7 +226,7 @@ def test_ogr_wkbwkt_test_broken_geom():
                    'MULTIPOINT Z(A)',
                    'MULTIPOINT Z(0 1',
                    'MULTIPOINT Z((0 1)',
-                   'MULTIPOINT Z(0 1,2 3)',
+                   # 'MULTIPOINT Z(0 1,2 3)',  # Not SF compliant (and rejected by PostGIS), but we accept it
 
                    'MULTILINESTRING',
                    'MULTILINESTRING UNKNOWN',
@@ -360,7 +360,7 @@ def test_ogr_wkbwkt_test_broken_geom():
         gdal.PopErrorHandler()
         assert geom is None, ('geom %s instantiated but not expected' % wkt)
 
-    
+
 ###############################################################################
 # Test importing WKT SF1.2
 
@@ -484,7 +484,7 @@ def test_ogr_wkbwkt_test_import_wkt_sf12():
             ('in=%s, out=%s, expected=%s.' % (wkt_tuple[0], out_wkt,
                                                  wkt_tuple[1]))
 
-    
+
 ###############################################################################
 # Test that importing the wkb that would be equivalent to MULTIPOINT(POLYGON((0 0))
 # doesn't work
@@ -525,7 +525,7 @@ def test_ogr_wkbwkt_test_geometrycollection_wktwkb():
         wkt2 = g.ExportToWkt()
         assert wkt == wkt2, ('fail for %s' % wkt)
 
-    
+
 ###############################################################################
 # Test that importing too nested WKT doesn't cause stack overflows
 
@@ -607,6 +607,27 @@ def test_ogr_wkt_multipolygon_corrupted():
     with gdaltest.error_handler():
         g = ogr.CreateGeometryFromWkt('MULTIPOLYGON(POLYGON((N')
     assert g is None
+
+###############################################################################
+# Test multiline WKT
+
+
+def test_ogr_wkt_multiline():
+    g = ogr.CreateGeometryFromWkt("""GEOMETRYCOLLECTION(
+    POINT (1 2),
+    LINESTRING (3 3, 4 4))
+    """)
+    assert g is not None
+
+###############################################################################
+# Test multipoint Z WKT non bracketed (like what PostGIS outputs)
+
+
+def test_ogr_wkt_multipoint_postgis():
+    g = ogr.CreateGeometryFromWkt('MULTIPOINT Z (1 2 3,4 5 6)')
+    assert g is not None
+    assert g.ExportToIsoWkt() == 'MULTIPOINT Z ((1 2 3),(4 5 6))'
+
 
 ###############################################################################
 # When imported build a list of units based on the files available.

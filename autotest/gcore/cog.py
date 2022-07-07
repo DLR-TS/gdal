@@ -106,7 +106,7 @@ def test_cog_basic():
     ds = gdal.Open(filename)
     assert ds.GetRasterBand(1).Checksum() == 4672
     assert ds.GetMetadataItem('LAYOUT', 'IMAGE_STRUCTURE') == 'COG'
-    assert ds.GetMetadataItem('COMPRESSION', 'IMAGE_STRUCTURE') is None
+    assert ds.GetMetadataItem('COMPRESSION', 'IMAGE_STRUCTURE') == 'LZW'
     assert ds.GetRasterBand(1).GetOverviewCount() == 0
     assert ds.GetRasterBand(1).GetBlockSize() == [512, 512]
     assert ds.GetMetadataItem('GDAL_STRUCTURAL_METADATA', 'TIFF') == """GDAL_STRUCTURAL_METADATA_SIZE=000140 bytes
@@ -138,6 +138,7 @@ def test_cog_creation_options():
     ds = gdal.Open(filename)
     assert ds.GetRasterBand(1).Checksum() == 4672
     assert ds.GetMetadataItem('COMPRESSION', 'IMAGE_STRUCTURE') == 'DEFLATE'
+    assert ds.GetMetadataItem('PREDICTOR', 'IMAGE_STRUCTURE') is None
     ds = None
     filesize = gdal.VSIStatL(filename).size
     _check_cog(filename)
@@ -153,6 +154,9 @@ def test_cog_creation_options():
                                                            'PREDICTOR=YES',
                                                            'LEVEL=1'])
     assert gdal.VSIStatL(filename).size != filesize
+    ds = gdal.Open(filename)
+    assert ds.GetMetadataItem('PREDICTOR', 'IMAGE_STRUCTURE') == '2'
+    ds = None
 
     gdal.GetDriverByName('COG').CreateCopy(filename, src_ds,
                                                 options = ['COMPRESS=DEFLATE',
@@ -166,6 +170,14 @@ def test_cog_creation_options():
                                                     options = ['COMPRESS=ZSTD'])
         ds = gdal.Open(filename)
         assert ds.GetMetadataItem('COMPRESSION', 'IMAGE_STRUCTURE') == 'ZSTD'
+        ds = None
+
+    if '<Value>LZMA' in colist:
+
+        gdal.GetDriverByName('COG').CreateCopy(filename, src_ds,
+                                                    options = ['COMPRESS=LZMA'])
+        ds = gdal.Open(filename)
+        assert ds.GetMetadataItem('COMPRESSION', 'IMAGE_STRUCTURE') == 'LZMA'
         ds = None
 
     if '<Value>WEBP' in colist:
@@ -208,7 +220,8 @@ def test_cog_creation_options():
             assert filesize_lerc_zstd_level_1 > filesize_lerc_zstd
 
     src_ds = None
-    gdal.GetDriverByName('GTiff').Delete(filename)
+    with gdaltest.error_handler():
+        gdal.GetDriverByName('GTiff').Delete(filename)
 
 
 ###############################################################################
@@ -376,16 +389,17 @@ def test_cog_small_world_to_web_mercator():
     assert ds.GetRasterBand(1).GetMaskFlags() == gdal.GMF_PER_DATASET
     assert ds.GetRasterBand(1).GetBlockSize() == [256, 256]
     gt = ds.GetGeoTransform()
+    assert gt[1] == -gt[5] # yes, checking for strict equality
     expected_gt = [-20037508.342789248, 156543.033928041, 0.0,
                    20037508.342789248, 0.0, -156543.033928041]
     for i in range(6):
         if gt[i] != pytest.approx(expected_gt[i], abs=1e-10 * abs(expected_gt[i])):
             assert False, gt
     got_cs = [ds.GetRasterBand(i+1).Checksum() for i in range(3)]
-    if sys.platform == 'darwin' and gdal.GetConfigOption('TRAVIS', None) is not None:
-        assert got_cs != [0, 0, 0]
-    else:
-        assert got_cs == [26293, 23439, 14955]
+    assert got_cs in ([26293, 23439, 14955],
+                      [26228, 22085, 12992],
+                      [25088, 23140, 13265], # libjpeg 9e
+                     )
     assert ds.GetRasterBand(1).GetMaskBand().Checksum() == 17849
     assert ds.GetRasterBand(1).GetOverviewCount() == 0
     ds = None
@@ -429,12 +443,17 @@ def test_cog_byte_to_web_mercator():
     assert ds.GetRasterBand(1).GetMaskFlags() == gdal.GMF_ALPHA + gdal.GMF_PER_DATASET
     assert ds.GetRasterBand(1).GetBlockSize() == [256,256]
     gt = ds.GetGeoTransform()
+    assert gt[1] == -gt[5] # yes, checking for strict equality
     expected_gt = [-13149614.849955443, 76.43702828517598, 0.0,
                    4070118.8821290657, 0.0, -76.43702828517598]
     for i in range(6):
         if gt[i] != pytest.approx(expected_gt[i], abs=1e-10 * abs(expected_gt[i])):
             assert False, gt
-    assert ds.GetRasterBand(1).Checksum() in (4363, 4264, 4362) # 4264 on Mac , 4362 on Mac / Conda
+    assert ds.GetRasterBand(1).Checksum() in (4363,
+                                              4264, # got on Mac at some point
+                                              4362, # libjpeg 9d
+                                              4569, # libjpeg 9e
+                                             )
     assert ds.GetRasterBand(1).GetMaskBand().Checksum() == 4356
     assert ds.GetRasterBand(1).GetOverviewCount() == 2
     ds = None
@@ -515,7 +534,11 @@ def test_cog_byte_to_web_mercator_manual():
     for i in range(6):
         if gt[i] != pytest.approx(expected_gt[i], abs=1e-10 * abs(expected_gt[i])):
             assert False, gt
-    assert ds.GetRasterBand(1).Checksum() in (4363, 4264, 4362) # 4264 on Mac , 4362 on Mac / Conda
+    assert ds.GetRasterBand(1).Checksum() in (4363,
+                                              4264, # got on Mac at some point
+                                              4362, # libjpeg 9d
+                                              4569, # libjpeg 9e
+                                             )
     assert ds.GetRasterBand(1).GetMaskBand().Checksum() == 4356
     assert ds.GetRasterBand(1).GetOverviewCount() == 2
     ds = None
@@ -714,6 +737,8 @@ def test_cog_northing_easting_and_non_power_of_two_ratios():
     assert [(b.GetOverview(i).XSize, b.GetOverview(i).YSize) for i in range(b.GetOverviewCount())] == [(512, 512), (256, 256)]
 
     gt = ds.GetGeoTransform()
+    assert gt[1] == -gt[5] # yes, checking for strict equality
+
     res_zoom_level_14 = scale_denom_zoom_level_14 * 0.28e-3 # According to OGC Tile Matrix Set formula
     assert gt == pytest.approx((999872, res_zoom_level_14, 0, 5000320, 0, -res_zoom_level_14), abs=1e-8)
 
@@ -804,6 +829,7 @@ def test_cog_sparse_mask():
         src_ds.GetRasterBand(i+1).WriteRaster(256, 256, 128, 128, '\x00' * 128 * 128)
     src_ds.BuildOverviews('NEAREST', [2])
     gdal.GetDriverByName('COG').CreateCopy(filename, src_ds, options = ['BLOCKSIZE=128', 'SPARSE_OK=YES', 'COMPRESS=JPEG', 'RESAMPLING=NEAREST'])
+    assert gdal.GetLastErrorMsg() == ''
     _check_cog(filename)
     with gdaltest.config_option('GTIFF_HAS_OPTIMIZED_READ_MULTI_RANGE', 'YES'):
         ds = gdal.Open(filename)
@@ -955,6 +981,32 @@ def test_cog_zoom_level_strategy(zoom_level_strategy,expected_gt):
 
 
 ###############################################################################
+# Test ZOOM_LEVEL option
+
+def test_cog_zoom_level():
+
+    filename = '/vsimem/test_cog_zoom_level.tif'
+    src_ds = gdal.Open('data/byte.tif')
+
+    with gdaltest.error_handler():
+        assert gdal.GetDriverByName('COG').CreateCopy(filename, src_ds,
+                        options = ['TILING_SCHEME=GoogleMapsCompatible',
+                                   'ZOOM_LEVEL=-1']) is None
+        assert gdal.GetDriverByName('COG').CreateCopy(filename, src_ds,
+                        options = ['TILING_SCHEME=GoogleMapsCompatible',
+                                   'ZOOM_LEVEL=25']) is None
+
+    ds = gdal.GetDriverByName('COG').CreateCopy(filename, src_ds,
+        options = ['TILING_SCHEME=GoogleMapsCompatible',
+                   'ZOOM_LEVEL=12'])
+    gt = ds.GetGeoTransform()
+    expected_gt = (-13100695.151852928, 38.21851414258813, 0.0, 4021199.1840265524, 0.0, -38.21851414258813)
+    assert gt == pytest.approx(expected_gt, rel=1e-10)
+    ds = None
+    gdal.Unlink(filename)
+
+
+###############################################################################
 
 def test_cog_resampling_options():
 
@@ -1063,5 +1115,24 @@ def test_cog_copy_xmp():
     ds = None
     assert 'W5M0MpCehiHzreSzNTczkc9d' in xmp[0], 'Wrong input file without XMP'
     _check_cog(filename)
+
+    gdal.Unlink(filename)
+
+###############################################################################
+# Test creating COG from a source dataset that has overview with 'odd' sizes
+# and a mask without overview
+
+
+def test_cog_odd_overview_size_and_msk():
+
+    filename = '/vsimem/test_cog_odd_overview_size_and_msk.tif'
+    src_ds = gdal.GetDriverByName('MEM').Create('', 511, 511)
+    src_ds.BuildOverviews('NEAR', [2])
+    src_ds.CreateMaskBand(gdal.GMF_PER_DATASET)
+    ds = gdal.GetDriverByName('COG').CreateCopy(filename, src_ds, options=['BLOCKSIZE=256'])
+    assert ds
+    assert ds.GetRasterBand(1).GetOverview(0).XSize == 256
+    assert ds.GetRasterBand(1).GetMaskBand().GetOverview(0).XSize == 256
+    ds = None
 
     gdal.Unlink(filename)

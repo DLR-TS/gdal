@@ -117,7 +117,7 @@ def test_osr_proj4_5():
         print(p4)
         return 'fail'
 
-    
+
 ###############################################################################
 # Confirm handling of non-zero latitude of origin mercator (#3026)
 #
@@ -217,11 +217,15 @@ def test_osr_proj4_9():
 def test_osr_proj4_10():
 
     srs = osr.SpatialReference()
-    srs.ImportFromProj4('+proj=geocent +ellps=WGS84 +towgs84=0,0,0 ')
+    srs.ImportFromProj4('+proj=geocent +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 ')
 
     wkt_expected = 'GEOCCS["unknown",DATUM["Unknown_based_on_WGS84_ellipsoid",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Geocentric X",OTHER],AXIS["Geocentric Y",OTHER],AXIS["Geocentric Z",NORTH]]'
 
-    assert gdaltest.equal_srs_from_wkt(wkt_expected, srs.ExportToWkt()), \
+    wkt = srs.ExportToWkt()
+    # PROJ >= 9.0.1 returns 'Unknown based on WGS84 ellipsoid using towgs84=0,0,0,0,0,0,0'
+    wkt = wkt.replace('Unknown based on WGS84 ellipsoid using towgs84=0,0,0,0,0,0,0', 'Unknown_based_on_WGS84_ellipsoid')
+
+    assert gdaltest.equal_srs_from_wkt(wkt_expected, wkt), \
         'did not get expected wkt.'
 
     p4 = srs.ExportToProj4()
@@ -233,7 +237,7 @@ def test_osr_proj4_10():
         print(srs2.ExportToPrettyWkt())
         pytest.fail('round trip via PROJ.4 damaged srs?')
 
-    
+
 ###############################################################################
 # Test round-tripping of all supported projection methods
 #
@@ -353,7 +357,7 @@ def test_osr_proj4_12():
         print('Expected:%s' % expect_wkt)
         pytest.fail('Did not get expected result.')
 
-    
+
 ###############################################################################
 # Test error cases
 #
@@ -519,7 +523,7 @@ def test_osr_proj4_17():
         unit_name = srs.GetLinearUnitsName()
         assert unit_name == u[1], \
             ('Did not get expected unit name: %s vs %s' % (str(u), str(unit_name)))
-    
+
 ###############################################################################
 # Test fix for #5511
 #
@@ -539,7 +543,7 @@ def test_osr_proj4_18():
             print(p)
             pytest.fail('round trip via PROJ.4 failed')
 
-    
+
 ###############################################################################
 # Test EXTENSION and AUTHORITY in DATUM
 
@@ -571,7 +575,7 @@ def test_osr_proj4_20():
         print(srs.ExportToPrettyWkt())
         pytest.fail('does not validate')
 
-    
+
 ###############################################################################
 # Test importing datum other than WGS84, WGS72, NAD27 or NAD83
 
@@ -756,3 +760,15 @@ def test_osr_proj4_error_cases_export_mercator():
     with gdaltest.error_handler():
         got = srs.ExportToProj4()
     assert got == ''
+
+
+def test_osr_unknown_member_id_in_datum_ensemble():
+
+    if not(osr.GetPROJVersionMajor() > 6 or osr.GetPROJVersionMinor() >= 2):
+        pytest.skip()
+
+    # Test workaround fix for https://github.com/OSGeo/PROJ/pull/3221
+
+    projjson = '{"$schema":"https://proj.org/schemas/v0.4/projjson.schema.json","type":"GeographicCRS","name":"WGS 84","datum_ensemble":{"name":"World Geodetic System 1984 ensemble","members":[{"name":"World Geodetic System 1984 (Transit)","id":{"authority":"EPSG","code":1166}},{"name":"World Geodetic System 1984 (G730)","id":{"authority":"EPSG","code":1152}},{"name":"World Geodetic System 1984 (G873)","id":{"authority":"EPSG","code":1153}},{"name":"World Geodetic System 1984 (G1150)","id":{"authority":"EPSG","code":1154}},{"name":"World Geodetic System 1984 (G1674)","id":{"authority":"EPSG","code":1155}},{"name":"World Geodetic System 1984 (G1762)","id":{"authority":"EPSG","code":1156}},{"name":"World Geodetic System 1984 (G2139)","id":{"authority":"EPSG","code":1309}},{"name":"unknown datum","id":{"authority":"UNKNOW?","code":1234}}],"ellipsoid":{"name":"WGS 84","semi_major_axis":6378137,"inverse_flattening":298.257223563},"accuracy":"2.0","id":{"authority":"EPSG","code":6326}},"coordinate_system":{"subtype":"ellipsoidal","axis":[{"name":"Geodetic latitude","abbreviation":"Lat","direction":"north","unit":"degree"},{"name":"Geodetic longitude","abbreviation":"Lon","direction":"east","unit":"degree"}]},"scope":"Horizontal component of 3D system.","area":"World.","bbox":{"south_latitude":-90,"west_longitude":-180,"north_latitude":90,"east_longitude":180},"id":{"authority":"EPSG","code":4326}}'
+    sr = osr.SpatialReference()
+    assert sr.SetFromUserInput(projjson) == 0

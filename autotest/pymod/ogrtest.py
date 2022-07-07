@@ -24,6 +24,7 @@
 # Boston, MA 02111-1307, USA.
 ###############################################################################
 
+import contextlib
 import sys
 import pytest
 
@@ -96,6 +97,10 @@ def check_feature_geometry(feat, geom, max_error=0.0001):
                               geom.GetGeometryName()))
         return 1
 
+    if f_geom.GetGeometryType() != geom.GetGeometryType():
+        gdaltest.post_reason('geometry type do not match')
+        return 1
+
     if f_geom.GetGeometryCount() != geom.GetGeometryCount():
         gdaltest.post_reason('sub-geometry counts do not match')
         return 1
@@ -107,7 +112,8 @@ def check_feature_geometry(feat, geom, max_error=0.0001):
     # ST_Equals(a,b) <==> ST_Within(a,b) && ST_Within(b,a)
     # We can't use OGRGeometry::Equals() because it doesn't not test spatial
     # equality, but structural one
-    if have_geos() and f_geom.Within(geom) and geom.Within(f_geom):
+    if have_geos() and f_geom.Within(geom) and geom.Within(f_geom) and \
+        ogr.GT_Flatten(f_geom.GetGeometryType()) == f_geom.GetGeometryType():
         return 0
 
     if f_geom.GetGeometryCount() > 0:
@@ -120,6 +126,8 @@ def check_feature_geometry(feat, geom, max_error=0.0001):
                 return result
     else:
         count = f_geom.GetPointCount()
+        if ogr.GT_Flatten(f_geom.GetGeometryType()) == ogr.wkbPoint:
+            count = 1
 
         for i in range(count):
             x_dist = abs(f_geom.GetX(i) - geom.GetX(i))
@@ -189,7 +197,25 @@ def compare_layers(lyr, lyr_ref, excluded_fields=None):
         pytest.fail()
 
 ###############################################################################
+# Temporarily enable exceptions
 
+
+@contextlib.contextmanager
+def enable_exceptions():
+    if ogr.GetUseExceptions():
+        try:
+            yield
+        finally:
+            pass
+        return
+
+    ogr.UseExceptions()
+    try:
+        yield
+    finally:
+        ogr.DontUseExceptions()
+
+###############################################################################
 
 def get_wkt_data_series(with_z, with_m, with_gc, with_circular, with_surface):
     basic_wkts = [

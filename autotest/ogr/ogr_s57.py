@@ -94,7 +94,7 @@ def test_ogr_s57_check_layers():
         assert lyr.GetLayerDefn().GetGeomType() == lyr_info[1], \
             ('Expected %d layer type in layer %s, but got %d.' % (lyr_info[1], lyr_info[0], lyr.GetLayerDefn().GetGeomType()))
 
-    
+
 ###############################################################################
 # Check the COALNE feature.
 
@@ -383,7 +383,7 @@ def test_ogr_s57_online_4():
         except OSError:
             pytest.skip()
 
-    gdal.SetConfigOption('OGR_S57_OPTIONS', 'RETURN_PRIMITIVES=ON,RETURN_LINKAGES=ON,LNAM_REFS=ON,RECODE_BY_DSSI=ON')
+    gdal.SetConfigOption('OGR_S57_OPTIONS', 'RETURN_PRIMITIVES=ON,RETURN_LINKAGES=ON,LNAM_REFS=ON')
     ds = ogr.Open('tmp/cache/ENC_ROOT/JP34NC94.000')
     gdal.SetConfigOption('OGR_S57_OPTIONS', None)
     lyr = ds.GetLayerByName('LNDMRK')
@@ -404,6 +404,32 @@ def test_ogr_s57_update_dsid():
     assert f['DSID_UADT'] == '20190211'
     assert f['DSID_ISDT'] == '20190212'
 
+
+###############################################################################
+# Test fix for https://github.com/OSGeo/gdal/issues/5461#issuecomment-1075393495
+
+
+def test_ogr_s57_more_than_255_updates_to_feature():
+
+    if not gdaltest.download_file('https://www.charts.noaa.gov/ENCs/US5ME51M.zip', 'US5ME51M.zip'):
+        pytest.skip()
+
+    try:
+        os.stat('tmp/cache/US5ME51M')
+    except OSError:
+        try:
+            gdaltest.unzip('tmp/cache/US5ME51M', 'tmp/cache/US5ME51M.zip')
+            try:
+                os.stat('tmp/cache/US5ME51M')
+            except OSError:
+                pytest.skip()
+        except:
+            pytest.skip()
+
+    gdal.ErrorReset()
+    ds = ogr.Open('tmp/cache/US5ME51M/ENC_ROOT/US5ME51M/US5ME51M.000')
+    assert ds is not None
+    assert gdal.GetLastErrorMsg() == ''
 
 ###############################################################################
 #  Cleanup

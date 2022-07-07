@@ -69,7 +69,7 @@ def test_ogr_dxf_1():
     fc = layer.GetFeatureCount()
     assert fc == 22, ('did not get expected feature count, got %d' % fc)
 
-    
+
 ###############################################################################
 # Read the first feature, an ellipse and see if it generally meets expectations.
 
@@ -1130,7 +1130,7 @@ def test_ogr_dxf_24():
     assert not ogrtest.check_feature_geometry(feat, 'POLYGON ((0.0 0.0 0,-0.353553390593274 0.146446609406726 0,-0.5 0.5 0,-0.353553390593274 0.853553390593274 0,-0.0 1.0 0,0.146446609406726 1.353553390593274 0,0.5 1.5 0,0.853553390593274 1.353553390593274 0,1.0 1.0 0,1.353553390593274 0.853553390593274 0,1.5 0.5 0,1.353553390593274 0.146446609406727 0,1.0 0.0 0,0.853553390593274 -0.353553390593274 0,0.5 -0.5 0,0.146446609406726 -0.353553390593274 0,0.0 0.0 0))')
 
     feat = lyr.GetNextFeature()
-    assert not ogrtest.check_feature_geometry(feat, 'POLYGON ((-1 -1,-1 0,0 0,-1 -1))')
+    assert not ogrtest.check_feature_geometry(feat, 'POLYGON Z ((-1 -1 0,-1 0 0,0 0 0,-1 -1 0))')
     ds = None
 
 ###############################################################################
@@ -1341,9 +1341,9 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):9
 #   EntityHandle (String) = 1FD
-#   POLYGON ((8 8,9 8,9 9,8 9,8 8))
+#   POLYGON Z ((8 8 0,9 8 0,9 9 0,8 9 0,8 8 0))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((8 8,9 8,9 9,8 9,8 8))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((8 8 0,9 8 0,9 9 0,8 9 0,8 8 0))'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1389,9 +1389,9 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):15
 #   EntityHandle (String) = 205
-#   LINESTRING (-1 1,-2 1,-1 2,-1 1)
+#   LINESTRING Z (-1 1 -1E-16,-2 1 -2E-16,-1 2 -1E-16,-1 1 -1E-16)
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'LINESTRING (-1 1,-2 1,-1 2,-1 1)'):
+    if ogrtest.check_feature_geometry(feat, 'LINESTRING Z (-1 1 -1E-16,-2 1 -2E-16,-1 2 -1E-16,-1 1 -1E-16)'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1442,17 +1442,17 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):21
 #   EntityHandle (String) = 20F
-#   POLYGON ((-3 4,-4 4,-4 3,-3 3,-3 4))
+#   POLYGON Z ((-3 4 -3E-16,-4 4 -4E-16,-4 3 -4E-16,-3 3 -3E-16,-3 4 -3E-16))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((-3 4,-4 4,-4 3,-3 3,-3 4))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((-3 4 -3E-16,-4 4 -4E-16,-4 3 -4E-16,-3 3 -3E-16,-3 4 -3E-16))'):
         feat.DumpReadable()
         pytest.fail()
 
 # OGRFeature(entities):22
 #   EntityHandle (String) = 211
-#   POLYGON ((-8 8,-9 8,-9 9,-8 9,-8 8))
+#   POLYGON Z ((-8 8 -8E-16,-9 8 -9E-16,-9 9 -9E-16,-8 9 -8E-16,-8 8 -8E-16))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((-8 8,-9 8,-9 9,-8 9,-8 8))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((-8 8 -8E-16,-9 8 -9E-16,-9 9 -9E-16,-8 9 -8E-16,-8 8 -8E-16))'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1556,9 +1556,9 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):35
 #   EntityHandle (String) = 223
-#   POLYGON ((-8 -8,-9 -8,-9 -9,-8 -9,-8 -8))
+#   POLYGON Z ((-8 -8 -1.6E-15,-9 -8 -1.7E-15,-9 -9 -1.8E-15,-8 -9 -1.7E-15,-8 -8 -1.6E-15))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((-8 -8,-9 -8,-9 -9,-8 -9,-8 -8))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((-8 -8 -1.6E-15,-9 -8 -1.7E-15,-9 -9 -1.8E-15,-8 -9 -1.7E-15,-8 -8 -1.6E-15))'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1604,9 +1604,9 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):41
 #   EntityHandle (String) = 229
-#   LINESTRING (1 -1,2 -1,1 -2,1 -1)
+#   LINESTRING Z (1 -1 -1E-16,2 -1 -1E-16,1 -2 -2E-16,1 -1 -1E-16)
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'LINESTRING (1 -1,2 -1,1 -2,1 -1)'):
+    if ogrtest.check_feature_geometry(feat, 'LINESTRING Z (1 -1 -1E-16,2 -1 -1E-16,1 -2 -2E-16,1 -1 -1E-16)'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1656,17 +1656,17 @@ def test_ogr_dxf_31():
 
 # OGRFeature(entities):47
 #   EntityHandle (String) = 233
-#   POLYGON ((3 -4,4 -4,4 -3,3 -3,3 -4))
+#   POLYGON Z ((3 -4 -4E-16,4 -4 -4E-16,4 -3 -3E-16,3 -3 -3E-16,3 -4 -4E-16))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((3 -4,4 -4,4 -3,3 -3,3 -4))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((3 -4 -4E-16,4 -4 -4E-16,4 -3 -3E-16,3 -3 -3E-16,3 -4 -4E-16))'):
         feat.DumpReadable()
         pytest.fail()
 
 # OGRFeature(entities):48
 #   EntityHandle (String) = 235
-#   POLYGON ((8 -8,9 -8,9 -9,8 -9,8 -8))
+#   POLYGON Z ((8 -8 -8E-16,9 -8 -8E-16,9 -9 -9E-16,8 -9 -9E-16,8 -8 -8E-16))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((8 -8,9 -8,9 -9,8 -9,8 -8))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((8 -8 -8E-16,9 -8 -8E-16,9 -9 -9E-16,8 -9 -9E-16,8 -8 -8E-16))'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -1694,7 +1694,7 @@ def test_ogr_dxf_31():
         feat.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # OCS2WCS transformations 2. Also test RawCodeValues
 
@@ -1816,9 +1816,9 @@ def test_ogr_dxf_32():
 
 # OGRFeature(entities):13
 #   EntityHandle (String) = 1C3
-#   POLYGON ((8 8,9 8,9 9,8 9,8 8))
+#   POLYGON Z ((8 8 0,9 8 0,9 9 0,8 9 0,8 8 0))
     feat = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(feat, 'POLYGON ((8 8,9 8,9 9,8 9,8 8))'):
+    if ogrtest.check_feature_geometry(feat, 'POLYGON Z ((8 8 0,9 8 0,9 9 0,8 9 0,8 8 0))'):
         feat.DumpReadable()
         pytest.fail()
 
@@ -2266,7 +2266,7 @@ def test_ogr_dxf_32():
         feat.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test 3D entities (polyface mesh, cylinder, 3D solid)
 
@@ -2354,7 +2354,7 @@ def test_ogr_dxf_33():
         feat.DumpReadable()
         pytest.fail('wrong ASMTransform on third 3DSOLID')
 
-    
+
 ###############################################################################
 # Writing Triangle geometry and checking if it is written properly
 
@@ -2652,7 +2652,7 @@ def test_ogr_dxf_38():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test correct reordering of vertices in SOLID (#7038, #7089)
 
@@ -2672,7 +2672,7 @@ def test_ogr_dxf_39():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test handing of OCS vs WCS for MTEXT (#7049)
 
@@ -2686,7 +2686,7 @@ def test_ogr_dxf_40():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test handing of OCS vs WCS for SOLID, HATCH and INSERT (#7077, #7098)
 
@@ -2779,7 +2779,7 @@ def test_ogr_dxf_41():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test insertion of blocks within blocks (#7106)
 
@@ -2876,7 +2876,7 @@ def test_ogr_dxf_44():
         pytest.fail()
 
     f = lyr.GetNextFeature()
-    if ogrtest.check_feature_geometry(f, 'POLYGON ((21.0 41.5,30 40,21.0 38.5,21.0 41.5))') != 0:
+    if ogrtest.check_feature_geometry(f, 'POLYGON Z ((21.0 41.5 0,30 40 0,21.0 38.5 0,21.0 41.5 0))') != 0:
         f.DumpReadable()
         pytest.fail()
 
@@ -2987,9 +2987,8 @@ def test_ogr_dxf_44():
         f.DumpReadable()
         pytest.fail()
 
-    # Note, the text actually is nine question marks, this is not an encoding error
     f = lyr.GetNextFeature()
-    if f.GetStyleString() != 'LABEL(f:"Calibri",it:1,t:"?????????",p:7,s:4g,w:40,c:#0000ff)' \
+    if f.GetStyleString() != 'LABEL(f:"Calibri",it:1,t:"wwmhyhuasmjekhosovikpigsvtippomllixhzkrpithawzztyqybthjqiobkrpcxngjfkepricimyjplksbzteotqgnkbprugrextpsnhhiorevsxjxzomzcnyrtphzgeibfljbsaikosjfrhrrhidjswmxeqjrvbllbjggjblzydcqpbuzjhgcaoflgskaabkuikiwqcmytgbaxbiukpqvqjtfinygjcakzfdyyejvvpdbwsftxzimjettbzkjmdqfigwyoghbsolhvlfunknprjmmrfxntjwmvonkxvmgsntczwcmbujxkwzykpaexmquoatsvjkbchlzptgedbjnbutvimbufrbhxpwotemzvrxtidzdtbbqywmurmdzsgqqyiyahgmnacmhrlpekufpgfruh",p:7,s:4g,w:40,c:#0000ff)' \
             or ogrtest.check_feature_geometry(f, 'POINT (40.0 -17.9846153846154)') != 0:
         f.DumpReadable()
         pytest.fail()
@@ -3068,7 +3067,7 @@ def test_ogr_dxf_44():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Test linetype scaling (#7129) and parsing of complex linetypes (#7134)
 
@@ -3150,7 +3149,7 @@ def test_ogr_dxf_46():
         f.DumpReadable()
         pytest.fail('Wrong style string on DIMENSION text from block')
 
-    
+
 ###############################################################################
 # Test handling of DIMENSION fallback when there is no anonymous block (#7120)
 
@@ -3241,7 +3240,7 @@ def test_ogr_dxf_47():
         f.DumpReadable()
         pytest.fail('Wrong style string on third DIMENSION text')
 
-    
+
 ###############################################################################
 # Test ByLayer and ByBlock color values (#7130)
 
@@ -3353,7 +3352,7 @@ def test_ogr_dxf_48():
         f.DumpReadable()
         pytest.fail('Wrong style string on feature 18')
 
-    
+
 ###############################################################################
 # Test block attributes (ATTRIB entities) (#7139)
 
@@ -3412,7 +3411,7 @@ def test_ogr_dxf_49():
         f.DumpReadable()
         pytest.fail('Wrong AttributeTag value on second ATTDEF')
 
-    
+
 ###############################################################################
 # Test extended text styling (#7151) and additional ByBlock/ByLayer tests (#7130)
 
@@ -3464,7 +3463,7 @@ def test_ogr_dxf_50():
         f.DumpReadable()
         pytest.fail('Wrong style string on feature 5')
 
-    
+
 ###############################################################################
 # Test transformation of text inside blocks (ACAdjustText function)
 
@@ -3489,7 +3488,7 @@ def test_ogr_dxf_51():
             f.DumpReadable()
             pytest.fail('Wrong style string on feature %d' % x)
 
-    
+
 ###############################################################################
 # Test HELIX, TRACE, HATCH with spline boundary, MLINE, and INSERT with rows/columns
 
@@ -3591,7 +3590,7 @@ def test_ogr_dxf_52():
         f.DumpReadable()
         pytest.fail('Wrong geometry on SPLINE')
 
-    
+
 ###############################################################################
 # Test block base points
 
@@ -3606,7 +3605,7 @@ def test_ogr_dxf_53():
         f.DumpReadable()
         pytest.fail('Wrong feature geometry')
 
-    
+
 ###############################################################################
 # Test frozen and off layers
 
@@ -3630,12 +3629,29 @@ def test_ogr_dxf_54():
 
 
 ###############################################################################
+# Test hidden objects in blocks
+
+
+def test_ogr_dxf_55():
+
+    with gdaltest.config_option('DXF_MERGE_BLOCK_GEOMETRIES', 'FALSE'):
+        ds = ogr.Open('data/dxf/block-hidden-entities.dxf')
+    lyr = ds.GetLayer(0)
+
+    # Red features should be hidden, black features should be visible
+    for number, f in enumerate(lyr):
+        if not ('#ff000000)' in f.GetStyleString() or '#000000)' in f.GetStyleString()):
+            f.DumpReadable()
+            pytest.fail('Wrong visibility on feature %d' % number)
+
+
+###############################################################################
 def test_ogr_dxf_insert_too_many_errors():
 
     with gdaltest.error_handler():
         ogr.Open('data/dxf/insert-too-many-errors.dxf')
 
-    
+
 
 ###############################################################################
 
@@ -3690,3 +3706,27 @@ def test_ogr_dxf_polygon_3D():
     got_g = f.GetGeometryRef()
     assert got_g.Equals(g)
     gdal.Unlink(tmpfile)
+
+###############################################################################
+
+
+def test_ogr_dxf_read_broken_file_1():
+    """ Test that we don't crash """
+
+    with gdaltest.error_handler():
+        ds = ogr.Open('data/dxf/clusterfuzz-testcase-minimized-dxf_fuzzer-5400376672124928.dxf')
+        lyr = ds.GetLayer(0)
+        for f in lyr:
+            pass
+
+###############################################################################
+
+
+def test_ogr_dxf_read_broken_file_2():
+    """ Test that we don't crash """
+
+    with gdaltest.error_handler():
+        ds = ogr.Open('data/dxf/clusterfuzz-testcase-minimized-shape_fuzzer-6126814756995072.dxf')
+        lyr = ds.GetLayer(0)
+        for f in lyr:
+            pass

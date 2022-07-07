@@ -6,8 +6,8 @@ Install all required development packages: GNU make, g++, ...
 Build:
 
 ```
-cd gdal
-./configure [options]
+./autogen.sh
+./configure --with-python [other options]
 make -j8 -s
 cd apps; make -s test_ogrsf; cd ..
 ```
@@ -20,9 +20,37 @@ gdalinfo --version
 
 Run autotest suite:
 ```
-cd ../autotest
+cd autotest
 pip install -r requirements.txt
 pytest
+```
+
+Setting development environment (CMake, EXPERIMENTAL)
+=====================================================
+
+Note: CMake builds are EXPERIMENTAL for now.
+
+Install all required development packages: GNU make, g++, ...
+
+Configure and build:
+
+```
+mkdir build
+cd build
+cmake .. [options]
+make -j8 -s
+```
+
+Run command line utilities (without installing):
+```
+. ../scripts/setdevenv.sh
+gdalinfo --version
+```
+
+Run autotest suite:
+```
+pip install -r ../autotest/requirements.txt
+pytest autotest
 ```
 
 Git workflows with GDAL
@@ -50,7 +78,7 @@ Fork OSGeo/gdal from github UI, and then
 ```
 git clone https://github.com/OSGeo/gdal
 cd gdal
-git remote add my_user_name https://github.com/my_user_name/gdal.git
+git remote add my_user_name git@github.com:my_user_name/gdal.git
 ```
 
 Updating your local master against upstream master
@@ -75,7 +103,7 @@ git checkout -b my_new_feature_branch
 git add my_new_file
 git add my_modifid_message
 git rm old_file
-git commit -a 
+git commit -a
 
 # you may need to resynchronize against master if you need some bugfix
 # or new capability that has been added since you created your branch
@@ -126,3 +154,6 @@ Things you should NOT do
 (For anyone with push rights to github.com/OSGeo/gdal) Never modify a commit or
 the history of anything that has been
 committed to https://github.com/OSGeo/gdal
+
+Committing symbolic links is allowed only under the .github directory in order to
+avoid potential problems on Windows.

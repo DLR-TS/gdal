@@ -245,7 +245,16 @@ schema_layer_creationoptionslist_xml = etree.XML(r"""
 
 schema_multidim_array_creationoptionslist_xml =etree.XML(r"""
 <xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:element name="Value" type="xs:string"/>
+    <xs:element name="Value">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute type="xs:string" name="alias" use="optional"/>
+          <xs:attribute type="xs:string" name="aliasOf" use="optional"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
   <xs:element name="Option">
     <xs:complexType mixed="true">
       <xs:sequence>
@@ -255,6 +264,8 @@ schema_multidim_array_creationoptionslist_xml =etree.XML(r"""
       <xs:attribute type="xs:string" name="type" use="optional"/>
       <xs:attribute type="xs:string" name="description" use="optional"/>
       <xs:attribute type="xs:string" name="default" use="optional"/>
+      <xs:attribute type="xs:string" name="min" use="optional"/>
+      <xs:attribute type="xs:string" name="max" use="optional"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="MultiDimArrayCreationOptionList">
@@ -511,10 +522,23 @@ def test_metadata_creation_field_datatypes(driver_name):
 def test_metadata_creation_sub_field_datatypes(driver_name):
     """ Test if DMD_CREATIONFIELDDATASUBTYPES metadataitem returns valid data subtypes """
 
-    valid_datatypes = {'Boolean', 'Float32', 'Int16'}
+    valid_datatypes = {'Boolean', 'Float32', 'Int16', 'JSON', 'UUID'}
 
     driver = gdal.GetDriverByName(driver_name)
     datatypes_str = driver.GetMetadataItem('DMD_CREATIONFIELDDATASUBTYPES')
     if datatypes_str is not None:
         for datatype in datatypes_str.split(' '):
             assert datatype in valid_datatypes
+
+
+@pytest.mark.parametrize('driver_name', ogr_driver_names)
+def test_metadata_alter_geom_field_defn_flags(driver_name):
+    """ Test if GDAL_DMD_ALTER_GEOM_FIELD_DEFN_FLAGS metadataitem returns valid flags """
+
+    supported_flags = {'Name', 'Type', 'Nullable', 'SRS', 'CoordinateEpoch'}
+
+    driver = gdal.GetDriverByName(driver_name)
+    flags_str = driver.GetMetadataItem(gdal.DMD_ALTER_GEOM_FIELD_DEFN_FLAGS)
+    if flags_str is not None:
+        for flag in flags_str.split(' '):
+            assert flag in supported_flags

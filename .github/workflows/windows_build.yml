@@ -3,23 +3,31 @@ name: Windows builds
 on:
     push:
         paths-ignore:
-            - 'gdal/doc/**'
+            - 'doc/**'
+        branches-ignore:
+            - 'backport**'
     pull_request:
         paths-ignore:
-            - 'gdal/doc/**'
+            - 'doc/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
 
   windows_build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
 
     strategy:
       matrix:
         include:
-          - VS_VERSION: Visual Studio 16
-            VS_VER: 2019
+          - VS_VERSION: Visual Studio 17
+            VS_VER: 2022
             SDK: release-1911 # gisinternals SDK version still to 2017
             MSVC_VER: 1920
             platform: x86
@@ -40,7 +48,6 @@ jobs:
         LIBDEFLATE_URL: "${{ matrix.LIBDEFLATE_URL }}"
         APPVEYOR: true # to skip some tests
         PYTHON_VERSION: "3.7.9"
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true # see https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/
 
     steps:
 
@@ -51,7 +58,7 @@ jobs:
           git config --global core.autocrlf false
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set environment
         shell: pwsh
@@ -69,19 +76,19 @@ jobs:
                 $env:WIN64_ARG="WIN64=YES"
                 $env:CMAKE_ARCHITECTURE="x64"
             }
-            echo "::set-env name=PATH::$env:PATH"
-            echo "::set-env name=ARCHITECTURE::$env:ARCHITECTURE"
-            echo "::set-env name=WIN64_ARG::$env:WIN64_ARG"
-            echo "::set-env name=CMAKE_ARCHITECTURE::$env:CMAKE_ARCHITECTURE"
+            echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+            echo "ARCHITECTURE=$env:ARCHITECTURE" >> $env:GITHUB_ENV
+            echo "WIN64_ARG=$env:WIN64_ARG" >> $env:GITHUB_ENV
+            echo "CMAKE_ARCHITECTURE=$env:CMAKE_ARCHITECTURE" >> $env:GITHUB_ENV
 
       - name: Set compiler environment
         shell: cmd
         run: |
-            if "%VS_VER%" == "2019" CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=%ARCHITECTURE%
-            echo ::set-env name=PATH::%PATH%
-            echo ::set-env name=INCLUDE::%INCLUDE%
-            echo ::set-env name=LIB::%LIB%
-            echo ::set-env name=LIBPATH::%LIBPATH%
+            if "%VS_VER%" == "2022" CALL "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=%ARCHITECTURE%
+            echo PATH=%PATH%>> %GITHUB_ENV%
+            echo INCLUDE=%INCLUDE%>> %GITHUB_ENV%
+            echo LIB=%LIB%>> %GITHUB_ENV%
+            echo LIBPATH=%LIBPATH%>> %GITHUB_ENV%
 
       - name: Detect AVX2
         shell: bash
@@ -199,7 +206,7 @@ jobs:
             $env:NMAKE_LOCAL+="WEBP_LIBS = /NODEFAULTLIB:libcmt.lib `$(SDK_PREFIX)\libwebp-1.0.3-windows-x86\lib\libwebp.lib`n"
             $env:NMAKE_LOCAL+="LIBDEFLATE_CFLAGS = -I`$(SDK_PREFIX)`n"
             $env:NMAKE_LOCAL+="LIBDEFLATE_LIB = `$(SDK_PREFIX)\libdeflate.lib`n"
-            $env:NMAKE_LOCAL | Set-Content "$env:GITHUB_WORKSPACE\gdal\nmake.local"
+            $env:NMAKE_LOCAL | Set-Content "$env:GITHUB_WORKSPACE\nmake.local"
             #
             cd $env:GITHUB_WORKSPACE
             cd proj
@@ -219,19 +226,22 @@ jobs:
             Invoke-WebRequest "http://download.osgeo.org/proj/proj-datumgrid-1.8.zip" -OutFile "proj-datumgrid-1.8.zip"
             7z x proj-datumgrid-1.8.zip -aoa
             #
-            cd $env:GITHUB_WORKSPACE\gdal
+            cd $env:GITHUB_WORKSPACE
             copy $env:GITHUB_WORKSPACE\install-proj\bin\*.dll .
             exec { nmake /f makefile.vc MSVC_VER=$env:MSVC_VER $env:WIN64_ARG USER_DEFS="/WX $env:ARCH_FLAGS" }
             cd apps
             exec { nmake /f makefile.vc test_ogrsf.exe MSVC_VER=$env:MSVC_VER $env:WIN64_ARG USER_DEFS=/WX }
             $env:DISTUTILS_USE_SDK=1
             $env:MSSdk=1
-            cd $env:GITHUB_WORKSPACE\gdal\swig\python
+            cd $env:GITHUB_WORKSPACE\swig\python
             exec { python setup.py build }
             exec { python setup.py install }
-            cd $env:GITHUB_WORKSPACE\gdal\swig\csharp
+            cd $env:GITHUB_WORKSPACE\swig\csharp
+            dotnet nuget locals all --clear
+            dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+            dotnet restore
             exec { nmake /f makefile.vc interface }
-            exec { nmake /f makefile.vc all $env:WIN64_ARG }
+            exec { nmake /f makefile.vc all $env:WIN64_ARG}
             cd $env:GITHUB_WORKSPACE\autotest\cpp
             exec { nmake /f makefile.vc MSVC_VER=$env:MSVC_VER $env:WIN64_ARG }
 
@@ -247,16 +257,21 @@ jobs:
             }
             $env:SDK_PREFIX="$env:GITHUB_WORKSPACE\sdk\$env:SDK"
             $env:SDK_BIN="$env:SDK_PREFIX\bin"
-            $env:PATH="$env:GITHUB_WORKSPACE\gdal;$env:GITHUB_WORKSPACE\gdal\apps;$env:SDK_PREFIX\dll;$env:SDK_PREFIX;$env:SDK_BIN;$env:PATH"
-            $env:GDAL_DATA="$env:GITHUB_WORKSPACE\gdal\data"
+            # Set USE_PATH_FOR_GDAL_PYTHON=YES and include a fake path in the PATH
+            # to test robustness to nonexistent paths (only relevant for python>=3.8)
+            # See https://github.com/OSGeo/issues/3898
+            $env:USE_PATH_FOR_GDAL_PYTHON="YES"
+            $env:PATH="$env:GITHUB_WORKSPACE;$env:GITHUB_WORKSPACE\apps;$env:SDK_PREFIX\dll;$env:SDK_PREFIX;$env:SDK_BIN;$env:GITHUB_WORKSPACE\not_a_real_path;$env:PATH"
+            $env:GDAL_DATA="$env:GITHUB_WORKSPACE\data"
             $env:DO_NOT_FAIL_ON_RECODE_ERRORS="YES"
+            $env:MDB_ODBC_DRIVER_INSTALLED="YES"
             # The ca-bundle.crt file which we could point to is invalid in the current SDK
             # See https://github.com/gisinternals/buildsystem/issues/104
             $env:GDAL_HTTP_UNSAFESSL="YES"
             cd $env:GITHUB_WORKSPACE\autotest\cpp
-            nmake /f makefile.vc check MSVC_VER=$env:MSVC_VER $env:WIN64_ARG
+            exec { nmake /f makefile.vc check MSVC_VER=$env:MSVC_VER $env:WIN64_ARG }
             cd $env:GITHUB_WORKSPACE\autotest
             pip install -Ur requirements.txt
             exec { pytest -vv }
-            cd $env:GITHUB_WORKSPACE\gdal\swig\csharp
+            cd $env:GITHUB_WORKSPACE\swig\csharp
             exec { nmake /f makefile.vc test }

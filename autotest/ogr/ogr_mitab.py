@@ -540,7 +540,7 @@ def test_ogr_mitab_19():
         feat.DumpReadable()
         pytest.fail()
 
-    
+
 
 ###############################################################################
 # Check that we take into account the user defined bound file
@@ -778,7 +778,7 @@ def test_ogr_mitab_23():
 
         ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
 
-    
+
 ###############################################################################
 # Test creating features then reading then creating again then reading
 
@@ -821,7 +821,7 @@ def test_ogr_mitab_24():
 
         ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
 
-    
+
 ###############################################################################
 # Test that opening in update mode without doing any change does not alter
 # file
@@ -885,7 +885,7 @@ def test_ogr_mitab_25():
 
         ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
 
-    
+
 ###############################################################################
 # Test DeleteFeature()
 
@@ -954,7 +954,7 @@ def test_ogr_mitab_26():
 
             ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
 
-    
+
 ###############################################################################
 # Test SetFeature()
 
@@ -1598,8 +1598,7 @@ def test_ogr_mitab_35():
     coordsys = get_coordsys_from_srs(srs)
     assert coordsys == 'CoordSys Earth Projection 3, 33, "m", 3, 46.5, 44, 49, 700000, 6600000'
     srs = get_srs_from_coordsys(coordsys)
-    wkt = srs.ExportToWkt()
-    assert wkt == 'PROJCS["RGF93 / Lambert-93",GEOGCS["RGF93",DATUM["Reseau_Geodesique_Francais_1993",SPHEROID["GRS 80",6378137,298.257222101],AUTHORITY["EPSG","6171"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Conformal_Conic_2SP"],PARAMETER["latitude_of_origin",46.5],PARAMETER["central_meridian",3],PARAMETER["standard_parallel_1",49],PARAMETER["standard_parallel_2",44],PARAMETER["false_easting",700000],PARAMETER["false_northing",6600000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","2154"]]'
+    assert srs.GetAuthorityCode(None) == '2154'
     coordsys = get_coordsys_from_srs(srs)
     assert coordsys == 'CoordSys Earth Projection 3, 33, "m", 3, 46.5, 44, 49, 700000, 6600000'
 
@@ -1738,7 +1737,7 @@ def test_ogr_mitab_38():
         f.DumpReadable()
         pytest.fail()
 
-    
+
 ###############################################################################
 # Read various geometry types from .mif
 
@@ -1762,7 +1761,7 @@ def test_ogr_mitab_39():
             f_ref.DumpReadable()
             pytest.fail()
 
-    
+
 ###############################################################################
 # Read various geometry types from .mif but potentially truncated
 
@@ -1805,7 +1804,7 @@ def test_ogr_mitab_41():
             f_ref.DumpReadable()
             pytest.fail()
 
-    
+
 ###############################################################################
 # Read various geometry types from .tab with block size = 32256
 
@@ -1829,7 +1828,7 @@ def test_ogr_mitab_42():
             f_ref.DumpReadable()
             pytest.fail()
 
-    
+
 ###############################################################################
 # Test creating tab with block size = 32256
 
@@ -1982,7 +1981,7 @@ def test_ogr_mitab_45():
 
         gdaltest.mapinfo_drv.DeleteDataSource(dsName)
 
-    
+
 ###############################################################################
 # Test read MapInfo layers with encoding specified
 
@@ -2031,7 +2030,7 @@ def test_ogr_mitab_46():
                                          ' expected value: "' + expectedValue + '"\n'
                                          ' from dataset :' + dsName)
 
-    
+
 ###############################################################################
 # Test opening a dataset with a .ind file
 
@@ -2054,7 +2053,7 @@ def test_ogr_mitab_47():
     for ext in ('tab', 'dat', 'map', 'id'):
         gdal.Unlink('/vsimem/poly_indexed.' + ext)
 
-    
+
 ###############################################################################
 # Test writing and reading LCC_1SP
 
@@ -2378,7 +2377,7 @@ def test_ogr_mitab_description():
     assert lyr is not None, ('Can\'t create layer "test_description"')
     if lyr.TestCapability(ogr.OLCStringsAsUTF8) != 1:
         pytest.skip('skipping test: recode is not possible')
-    
+
     lyr.CreateField(ogr.FieldDefn('feature_id', ogr.OFTInteger))
     lyr.CreateField(ogr.FieldDefn('other_field', ogr.OFTInteger))
 
@@ -2451,3 +2450,147 @@ def test_ogr_mitab_nulldatetime():
     ds = None
 
     ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
+
+###############################################################################
+# Test reading .mid files where a field has a newline character
+
+
+def test_ogr_mitab_read_multi_line_mid():
+
+    ds = ogr.Open('data/mitab/multilinemid.mif')
+    lyr = ds.GetLayer(0)
+    f = lyr.GetNextFeature()
+    assert f['Name'] == 'NAME1'
+    assert f['Notes'] == 'MULTI\n\nLINE'
+    assert f['Awesome'] == 'F'
+    f = lyr.GetNextFeature()
+    assert f['Name'] == 'NAME2'
+    assert f['Notes'] == 'MULTI\nLINE2'
+    assert f['Awesome'] == 'F'
+
+###############################################################################
+# Test reading a .mid file with a single field, and an empty line for a record
+
+
+def test_ogr_mitab_read_single_field_mid():
+
+    ds = ogr.Open('data/mitab/single_field.mif')
+    lyr = ds.GetLayer(0)
+    f = lyr.GetNextFeature()
+    assert f['foo'] == '1'
+    f = lyr.GetNextFeature()
+    assert f['foo'] == ''
+    f = lyr.GetNextFeature()
+    assert f['foo'] == '3'
+
+
+###############################################################################
+
+
+def _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs):
+
+    filename = '/vsimem/test_ogr_mitab_write_etrs89.tab'
+    ds = ogr.GetDriverByName('MapInfo File').CreateDataSource(filename)
+    lyr = ds.CreateLayer('test', srs = srs, geom_type = ogr.wkbPoint)
+    lyr.CreateField(ogr.FieldDefn('foo'))
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f.SetGeometry(ogr.CreateGeometryFromWkt('POINT(0 0)'))
+    lyr.CreateFeature(f)
+    f = None
+    ds = None
+
+    ds = ogr.Open(filename)
+    lyr = ds.GetLayer(0)
+    ref_srs = osr.SpatialReference()
+    ref_srs.ImportFromEPSG(25832)
+    got_srs = lyr.GetSpatialRef()
+    assert got_srs.IsSame(ref_srs), got_srs.ExportToWkt()
+    ds = None
+
+    ogr.GetDriverByName('MapInfo File').DeleteDataSource(filename)
+
+###############################################################################
+
+
+def test_ogr_mitab_write_etrs89_from_crs_epsg_code():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(25832)
+    _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs)
+
+###############################################################################
+
+
+def test_ogr_mitab_write_etrs89_from_crs_wkt1():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(25832)
+    srs.ImportFromWkt(srs.ExportToWkt(['FORMAT=WKT1']))
+    _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs)
+
+###############################################################################
+
+
+def test_ogr_mitab_write_etrs89_from_crs_wkt2():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(25832)
+    srs.ImportFromWkt(srs.ExportToWkt(['FORMAT=WKT2']))
+    _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs)
+
+###############################################################################
+
+
+def test_ogr_mitab_write_etrs89_from_custom_wkt_geogcs_code():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt("""PROJCS["ETRS89 / UTM zone 32N",
+        GEOGCS["ETRS89",
+            DATUM["European_Terrestrial_Reference_System_1989",
+                SPHEROID["GRS 1980",6378137,298.257222101,
+                    AUTHORITY["EPSG","7019"]]],
+            PRIMEM["Greenwich",0,
+                AUTHORITY["EPSG","8901"]],
+            UNIT["degree",0.0174532925199433,
+                AUTHORITY["EPSG","9122"]],
+            AUTHORITY["EPSG","4258"]],
+        PROJECTION["Transverse_Mercator"],
+        PARAMETER["latitude_of_origin",0],
+        PARAMETER["central_meridian",9],
+        PARAMETER["scale_factor",0.9996],
+        PARAMETER["false_easting",500000],
+        PARAMETER["false_northing",0],
+        UNIT["metre",1,
+            AUTHORITY["EPSG","9001"]],
+        AXIS["Easting",EAST],
+        AXIS["Northing",NORTH]]""")
+    _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs)
+
+
+###############################################################################
+
+
+def test_ogr_mitab_write_etrs89_from_custom_wkt_no_geogcs_code():
+
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt("""PROJCS["ETRS89 / UTM zone 32N",
+        GEOGCS["ETRS89",
+            DATUM["European_Terrestrial_Reference_System_1989",
+                SPHEROID["GRS 1980",6378137,298.257222101,
+                    AUTHORITY["EPSG","7019"]],
+                AUTHORITY["EPSG","6258"]],
+            PRIMEM["Greenwich",0,
+                AUTHORITY["EPSG","8901"]],
+            UNIT["degree",0.0174532925199433,
+                AUTHORITY["EPSG","9122"]]],
+        PROJECTION["Transverse_Mercator"],
+        PARAMETER["latitude_of_origin",0],
+        PARAMETER["central_meridian",9],
+        PARAMETER["scale_factor",0.9996],
+        PARAMETER["false_easting",500000],
+        PARAMETER["false_northing",0],
+        UNIT["metre",1,
+            AUTHORITY["EPSG","9001"]],
+        AXIS["Easting",EAST],
+        AXIS["Northing",NORTH]]""")
+    _test_ogr_mitab_write_etrs89_from_crs_epsg_code(srs)

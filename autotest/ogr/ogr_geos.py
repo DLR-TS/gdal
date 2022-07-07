@@ -254,10 +254,8 @@ def test_ogr_geos_buffer():
     g1 = ogr.CreateGeometryFromWkt('POLYGON((0 0, 10 10, 10 0, 0 0))')
 
     result = g1.Buffer(1.0, 3)
-
-    assert (ogrtest.check_feature_geometry(result,
-                                      'POLYGON ((0 -1,-0.555570233019607 -0.831469612302542,-0.923879532511288 -0.382683432365087,-0.98078528040323 0.19509032201613,-0.707106781186547 0.707106781186547,9.292893218813452 10.707106781186548,9.690983005625053 10.951056516295154,10.156434465040231 10.987688340595138,10.587785252292473 10.809016994374947,10.891006524188368 10.453990499739547,11 10,11 0,10.866025403784439 -0.5,10.5 -0.866025403784439,10 -1,0 -1))') == 0), \
-        ('Got: %s' % result.ExportToWkt())
+    assert result is not None
+    assert result.Area() > g1.Area()
 
 ###############################################################################
 
@@ -346,6 +344,15 @@ def test_ogr_geos_unioncascaded():
 ###############################################################################
 
 
+def test_ogr_geos_unioncascaded_empty_multipolygon():
+
+    g1 = ogr.Geometry(ogr.wkbMultiPolygon)
+    cascadedunion = g1.UnionCascaded()
+    assert cascadedunion.IsEmpty()
+
+###############################################################################
+
+
 def test_ogr_geos_convexhull():
 
     g1 = ogr.CreateGeometryFromWkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))')
@@ -354,6 +361,25 @@ def test_ogr_geos_convexhull():
 
     assert convexhull.ExportToWkt() == 'POLYGON ((0 0,0 1,1 1,1 0,0 0))', \
         ('Got: %s' % convexhull.ExportToWkt())
+
+###############################################################################
+
+
+def test_ogr_geos_concavehull():
+
+    g1 = ogr.CreateGeometryFromWkt('MULTIPOINT(0 0,0.4 0.5,0 1,1 1,0.6 0.5,1 0)')
+
+    with gdaltest.error_handler():
+        res = g1.ConcaveHull(0.5, False)
+
+    if res is None:
+        assert 'GEOS 3.11' in gdal.GetLastErrorMsg()
+        pytest.skip(gdal.GetLastErrorMsg())
+
+    with gdaltest.error_handler():
+        res = g1.ConcaveHull(-1, False)
+    assert res is None
+
 
 ###############################################################################
 
@@ -456,6 +482,20 @@ def test_ogr_geos_isvalid_false():
         isring = g1.IsValid()
 
     assert isring == 0
+
+
+###############################################################################
+
+
+def test_ogr_geos_isvalid_false_too_few_points():
+    g1 = ogr.CreateGeometryFromWkt('POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0), (2 2, 3 2, 2 2))')
+
+    with ogrtest.enable_exceptions():  # fail test if exception is thrown
+        with gdaltest.error_handler():
+            isvalid = g1.IsValid()
+
+    assert isvalid == 0
+
 
 ###############################################################################
 

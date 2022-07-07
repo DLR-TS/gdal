@@ -627,6 +627,35 @@ def test_ogr_geom_transform():
         geom.ExportToWkt()
 
 ###############################################################################
+# Test Transform() from a geographic CRS to WGS 84 (https://github.com/OSGeo/gdal/issues/5660)
+
+
+def test_ogr_geom_transform_geogcrs_to_wgs84():
+
+    srs_4326 = osr.SpatialReference()
+    srs_4326.ImportFromEPSG(4326)
+    srs_4326.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    srs_7683 = osr.SpatialReference()
+    srs_7683.ImportFromEPSG(7683)
+    srs_7683.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    wkt = 'POLYGON ((44.0 43.1666666666667,44.0 43.3333333333333,44.25 43.3333333333333,44.25 43.1666666666667,44.0 43.1666666666667))'
+
+    options = osr.CoordinateTransformationOptions()
+    # Setting the pipeline is not compulsory, but this enables us to be independent
+    # of PROJ transformation database
+    assert options.SetOperation('+proj=pipeline +step +proj=axisswap +order=2,1 +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=push +v_3 +step +proj=cart +ellps=GSK2011 +step +inv +proj=cart +ellps=WGS84 +step +proj=pop +v_3 +step +proj=unitconvert +xy_in=rad +xy_out=deg +step +proj=axisswap +order=2,1')
+    ct = osr.CoordinateTransformation(srs_7683, srs_4326)
+    tr = ogr.GeomTransformer(ct)
+    polygon = ogr.CreateGeometryFromWkt(wkt)
+    polygon.AssignSpatialReference(srs_7683)
+    gdal.ErrorReset()
+    polygon = tr.Transform(polygon)
+    assert gdal.GetLastErrorMsg() == ''
+    assert ogrtest.check_feature_geometry(polygon, 'POLYGON ((44.0 43.1666661611411,44.0 43.3333328276326,44.25 43.3333328276326,44.25 43.1666661611411,44.0 43.1666661611411))') == 0
+
+###############################################################################
 # Test ogr.GeomTransformer()
 
 
@@ -711,13 +740,13 @@ def test_ogr_geom_segmentize():
     geom = ogr.CreateGeometryFromWkt('LINESTRING(0 0,0 10)')
     geom.Segmentize(1.00001)
 
-    assert geom.ExportToWkt() == 'LINESTRING (0 0,0 1,0 2,0 3,0 4,0 5,0 6,0 7,0 8,0 9,0 10)'
+    assert ogrtest.check_feature_geometry(geom, 'LINESTRING (0 0,0 1,0 2,0 3,0 4,0 5,0 6,0 7,0 8,0 9,0 10)') == 0
 
     # 2D + Z
     geom = ogr.CreateGeometryFromWkt('LINESTRING(0 0 1,0 10 1)')
     geom.Segmentize(1.00001)
 
-    assert geom.ExportToWkt() == 'LINESTRING (0 0 1,0 1 1,0 2 1,0 3 1,0 4 1,0 5 1,0 6 1,0 7 1,0 8 1,0 9 1,0 10 1)'
+    assert ogrtest.check_feature_geometry(geom, 'LINESTRING (0 0 1,0 1 1,0 2 1,0 3 1,0 4 1,0 5 1,0 6 1,0 7 1,0 8 1,0 9 1,0 10 1)') == 0
 
     # 2D + M
     geom = ogr.CreateGeometryFromWkt('LINESTRING M(0 0 1,0 10 2)')
@@ -746,6 +775,12 @@ def test_ogr_geom_segmentize():
         if g1.GetPoint(i) != g2.GetPoint(g1.GetPointCount() - 1 - i):
             print('%.18g' % (g1.GetPoint(i)[0] - g2.GetPoint(g1.GetPointCount() - 1 - i)[0]))
             pytest.fail('%.18g' % (g1.GetPoint(i)[1] - g2.GetPoint(g1.GetPointCount() - 1 - i)[1]))
+
+    # Test extremely small threshold
+    geom = ogr.CreateGeometryFromWkt('LINESTRING(0 0,0 1)')
+    with gdaltest.error_handler():
+        geom.Segmentize(1e-30)
+    assert gdal.GetLastErrorMsg() != ''
 
 
 def test_ogr_geom_segmentize_issue_1341():
@@ -2021,9 +2056,9 @@ def test_ogr_geom_curvepolygon():
 
     # Error case: non closed ring
     in_wkt = 'CURVEPOLYGON ((0 0,0 1,1 1,1 0))'
-    gdal.PushErrorHandler('CPLQuietErrorHandler')
-    g = ogr.CreateGeometryFromWkt(in_wkt)
-    gdal.PopErrorHandler()
+    with gdaltest.error_handler():
+        with gdaltest.config_option('OGR_GEOMETRY_ACCEPT_UNCLOSED_RING', 'NO'):
+            g = ogr.CreateGeometryFromWkt(in_wkt)
     assert g is None
 
     # Area
@@ -3339,6 +3374,9 @@ def test_ogr_geom_makevalid():
     if not ogrtest.have_geos():
         pytest.skip()
 
+    if ogr.GetGEOSVersionMajor() * 10000 + ogr.GetGEOSVersionMinor() * 100 + ogr.GetGEOSVersionMicro() < 30800:
+        pytest.skip()
+
     g = ogr.CreateGeometryFromWkt('POINT (0 0)')
     g = g.MakeValid()
     assert g is None or g.ExportToWkt() == 'POINT (0 0)'
@@ -3365,6 +3403,12 @@ def test_ogr_geom_makevalid():
     g = ogr.CreateGeometryFromWkt('CURVEPOLYGON ((0 0,10 10,0 10,10 0,0 0))')
     g = g.MakeValid()
     assert g is None or ogrtest.check_feature_geometry(g, 'MULTIPOLYGON (((0 0,5 5,10 0,0 0)),((5 5,0 10,10 10,5 5)))') == 0, g.ExportToWkt()
+
+    if ogr.GetGEOSVersionMajor() * 10000 + ogr.GetGEOSVersionMinor() * 100 + ogr.GetGEOSVersionMicro() >= 31000:
+        g = ogr.CreateGeometryFromWkt('POLYGON ((0 0,0 10,10 10,10 0,0 0),(5 5,15 10,15 0,5 5))')
+        # Only since GEOS 3.10
+        g = g.MakeValid(['METHOD=STRUCTURE'])
+        assert g is None or ogrtest.check_feature_geometry(g, 'POLYGON ((0 10,10 10,10.0 7.5,5 5,10.0 2.5,10 0,0 0,0 10))') == 0, g.ExportToWkt()
 
     return 'success'
 

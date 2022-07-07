@@ -110,8 +110,8 @@ def test_hdf5_multidim_var_alldatatypes():
                       ('short_var', gdal.GDT_Int16, (-32768, -32767)),
                       ('uint_var', gdal.GDT_UInt32, (4294967294, 4294967293)),
                       ('int_var', gdal.GDT_Int32, (-2147483648, -2147483647)),
-                      ('uint64_var', gdal.GDT_Float64, (1.8446744073709552e+19, 1.8446744073709552e+19)),
-                      ('int64_var', gdal.GDT_Float64, (-9.223372036854776e+18, -9.223372036854776e+18)),
+                      ('uint64_var', gdal.GDT_UInt64, (18446744073709551613, 18446744073709551612)),
+                      ('int64_var', gdal.GDT_Int64, (-9223372036854775808, -9223372036854775807)),
                       ('float_var', gdal.GDT_Float32, (1.25, 2.25)),
                       ('double_var', gdal.GDT_Float64, (1.25125, 2.25125)),
                       ('complex_int16_var', gdal.GDT_CInt16, (-32768, -32767, -32766, -32765)),
@@ -134,6 +134,10 @@ def test_hdf5_multidim_var_alldatatypes():
             assert struct.unpack('I' * len(val), var.Read()) == val
         if dt == gdal.GDT_Int32:
             assert struct.unpack('i' * len(val), var.Read()) == val
+        if dt == gdal.GDT_UInt64:
+            assert struct.unpack('Q' * len(val), var.Read()) == val
+        if dt == gdal.GDT_Int64:
+            assert struct.unpack('q' * len(val), var.Read()) == val
         if dt == gdal.GDT_Float32:
             assert struct.unpack('f' * len(val), var.Read()) == val
         if dt == gdal.GDT_Float64:
@@ -163,6 +167,9 @@ def test_hdf5_multidim_var_alldatatypes():
     data = var.Read()
     assert len(data) == 2 * 8
     assert struct.unpack('ihihh', data) == (1, 2, 3, 4, 0)
+
+    assert struct.unpack('i' * 2, var['x'].Read()) == (1, 3)
+    assert struct.unpack('h' * 2, var['y'].Read()) == (2, 4)
 
     var = rg.OpenMDArray('custom_type_3_elts_var')
     dt = var.GetDataType()
@@ -396,7 +403,7 @@ def test_hdf5_netcdf_dimensions():
     rg = ds.GetRootGroup()
 
     assert rg.GetAttribute('CDI')
- 
+
     dims = rg.GetDimensions()
     assert len(dims) == 3
 
@@ -525,3 +532,21 @@ def test_hdf5_multidim_dimension_labels_with_null():
 def test_hdf5_multidim_family_driver():
 
     assert gdal.OpenEx('data/hdf5/test_family_0.h5', gdal.OF_MULTIDIM_RASTER)
+
+
+def test_hdf5_multidim_read_transposed():
+
+    ds = gdal.OpenEx('HDF5:data/netcdf/trmm-nc4.nc', gdal.OF_MULTIDIM_RASTER)
+    rg = ds.GetRootGroup()
+    ar = rg.OpenMDArray('pcp')
+    dims = ar.GetDimensions()
+    y_size = dims[-2].GetSize()
+    x_size = dims[-1].GetSize()
+    transposed_ar = ar.Transpose([0, 2, 1])
+    data = list(struct.unpack('f' * (y_size * x_size), ar.Read()))
+    transposed_data = list(struct.unpack('f' * (y_size * x_size), transposed_ar.Read()))
+    manually_transposed_data = []
+    for x in range(x_size):
+        for y in range(y_size):
+            manually_transposed_data.append(data[y * x_size + x])
+    assert transposed_data == manually_transposed_data

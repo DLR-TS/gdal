@@ -524,12 +524,15 @@ def test_ogr2ogr_18():
 
     expected_wkt = 'MULTIPOLYGON (((179.222391385437 36.124095832137,180.0 36.1071354434926,180.0 36.107135443432,180.0 27.0904291237556,179.017505655194 27.1079795236266,179.222391385437 36.124095832137)),((-180 36.1071354434425,-179.667822828784 36.0983491954849,-179.974688335432 27.0898861430914,-180 27.0904291237129,-180 27.090429123727,-180 36.107135443432,-180 36.1071354434425)))'
     expected_wkt2 = 'MULTIPOLYGON (((179.017505655194 27.1079795236266,179.222391385437 36.124095832137,180.0 36.1071354434926,180.0 36.107135443432,180.0 27.0904291237556,179.017505655194 27.1079795236266)),((-180 27.090429123727,-180 36.107135443432,-180 36.1071354434425,-179.667822828784 36.0983491954849,-179.974688335432 27.0898861430914,-180 27.0904291237129,-180 27.090429123727)))' # with geos OverlayNG
+    expected_wkt3 = 'MULTIPOLYGON (((180.0 36.1071354434926,180.0 36.107135443432,180.0 27.0904291237556,179.017505655194 27.1079795236266,179.222391385437 36.124095832137,180.0 36.1071354434926)),((-179.667822828784 36.0983491954849,-179.974688335432 27.0898861430914,-180 27.0904291237129,-180 27.090429123727,-180 36.107135443432,-180 36.1071354434425,-179.667822828784 36.0983491954849)))'
 
     ds = ogr.Open('tmp/wrapdateline_dst.shp')
     lyr = ds.GetLayer(0)
     feat = lyr.GetNextFeature()
     got_wkt = feat.GetGeometryRef().ExportToWkt()
-    ok = ogrtest.check_feature_geometry(feat, expected_wkt) == 0 or ogrtest.check_feature_geometry(feat, expected_wkt2) == 0
+    ok = ogrtest.check_feature_geometry(feat, expected_wkt) == 0 or \
+         ogrtest.check_feature_geometry(feat, expected_wkt2) == 0 or \
+         ogrtest.check_feature_geometry(feat, expected_wkt3) == 0
     feat.Destroy()
     ds.Destroy()
 
@@ -537,6 +540,56 @@ def test_ogr2ogr_18():
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/wrapdateline_dst.shp')
 
     assert ok, got_wkt
+
+###############################################################################
+# Test automatic polygon splitting, and also antimeridian being intersected
+# at line of constant easting.
+
+
+def test_ogr2ogr_polygon_splitting():
+
+    if test_cli_utilities.get_ogr2ogr_path() is None:
+        pytest.skip()
+
+    if not ogrtest.have_geos():
+        pytest.skip()
+
+    try:
+        os.stat('tmp/wrapdateline_src.shp')
+        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/wrapdateline_src.shp')
+    except (OSError, AttributeError):
+        pass
+
+    try:
+        os.stat('tmp/wrapdateline_dst.shp')
+        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/wrapdateline_dst.shp')
+    except (OSError, AttributeError):
+        pass
+
+    ds = ogr.GetDriverByName('ESRI Shapefile').CreateDataSource('tmp/wrapdateline_src.shp')
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(32601)
+    lyr = ds.CreateLayer('wrapdateline_src', srs=srs)
+    feat = ogr.Feature(lyr.GetLayerDefn())
+    geom = ogr.CreateGeometryFromWkt('POLYGON((377120 7577600,418080 7577600,418080 7618560,377120 7618560,377120 7577600))')
+    feat.SetGeometryDirectly(geom)
+    lyr.CreateFeature(feat)
+    feat.Destroy()
+    ds.Destroy()
+
+    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -t_srs EPSG:4326 tmp/wrapdateline_dst.shp tmp/wrapdateline_src.shp')
+
+    ds = ogr.Open('tmp/wrapdateline_dst.shp')
+    lyr = ds.GetLayer(0)
+    feat = lyr.GetNextFeature()
+    geom = feat.GetGeometryRef()
+    assert geom.GetGeometryType() == ogr.wkbMultiPolygon
+    assert geom.GetGeometryCount() == 2
+    ds = None
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/wrapdateline_src.shp')
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/wrapdateline_dst.shp')
+
 
 ###############################################################################
 # Test -clipsrc
@@ -644,28 +697,15 @@ def test_ogr2ogr_21():
         pytest.skip()
 
     try:
-        os.remove('tmp/testogr2ogr21.gtm')
+        os.remove('tmp/testogr2ogr21.gpx')
     except OSError:
         pass
 
     gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() +
-                         ' -f GPSTrackMaker tmp/testogr2ogr21.gtm data/dataforogr2ogr21.csv ' +
-                         '-sql "SELECT comment, name FROM dataforogr2ogr21" -nlt POINT')
-    ds = ogr.Open('tmp/testogr2ogr21.gtm')
-
-    assert ds is not None
-    ds.GetLayer(0).GetLayerDefn()
-    lyr = ds.GetLayer(0)
-    feat = lyr.GetNextFeature()
-    if feat.GetFieldAsString('name') != 'NAME' or \
-       feat.GetFieldAsString('comment') != 'COMMENT':
-        print(feat.GetFieldAsString('comment'))
-        ds.Destroy()
-        os.remove('tmp/testogr2ogr21.gtm')
-        pytest.fail(feat.GetFieldAsString('name'))
-
-    ds.Destroy()
-    os.remove('tmp/testogr2ogr21.gtm')
+                         ' -f GPX tmp/testogr2ogr21.gpx data/dataforogr2ogr21.csv ' +
+                         '-sql "SELECT name AS route_name, 0 as route_fid FROM dataforogr2ogr21" -nlt POINT -nln route_points')
+    assert '<name>NAME</name>' in open('tmp/testogr2ogr21.gpx', 'rt').read()
+    os.remove('tmp/testogr2ogr21.gpx')
 
 
 ###############################################################################
@@ -959,7 +999,7 @@ def test_ogr2ogr_29():
 
         assert ret == 0
 
-    
+
 ###############################################################################
 # Test -splitlistfields option
 
@@ -1468,13 +1508,13 @@ def test_ogr2ogr_44():
     data = f.read()
     f.close()
 
-    assert data.find('type="gml:MultiPolygonPropertyType"') != -1
+    assert 'type="gml:MultiSurfacePropertyType"' in data
 
     f = open('tmp/test_ogr2ogr_44.gml')
     data = f.read()
     f.close()
 
-    assert data.find('<ogr:geometryProperty><gml:MultiPolygon><gml:polygonMember><gml:Polygon><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates>0,0 0,1 1,1 0,0</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs></gml:Polygon></gml:polygonMember></gml:MultiPolygon></ogr:geometryProperty>') != -1
+    assert '<gml:MultiSurface gml:id="test_ogr2ogr_44_src.geom.0"><gml:surfaceMember><gml:Polygon gml:id="test_ogr2ogr_44_src.geom.0.0"><gml:exterior><gml:LinearRing><gml:posList>0 0 0 1 1 1 0 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface>' in data
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/test_ogr2ogr_44_src.shp')
     os.unlink('tmp/test_ogr2ogr_44.gml')
@@ -1514,13 +1554,13 @@ def test_ogr2ogr_45():
     data = f.read()
     f.close()
 
-    assert data.find('type="gml:MultiLineStringPropertyType"') != -1
+    assert 'type="gml:MultiCurvePropertyType"' in data
 
     f = open('tmp/test_ogr2ogr_45.gml')
     data = f.read()
     f.close()
 
-    assert data.find('<ogr:geometryProperty><gml:MultiLineString><gml:lineStringMember><gml:LineString><gml:coordinates>0,0 0,1 1,1 0,0</gml:coordinates></gml:LineString></gml:lineStringMember></gml:MultiLineString></ogr:geometryProperty>') != -1
+    assert '<gml:MultiCurve gml:id="test_ogr2ogr_45_src.geom.0"><gml:curveMember><gml:LineString gml:id="test_ogr2ogr_45_src.geom.0.0"><gml:posList>0 0 0 1 1 1 0 0</gml:posList></gml:LineString></gml:curveMember></gml:MultiCurve>' in data
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/test_ogr2ogr_45_src.shp')
     os.unlink('tmp/test_ogr2ogr_45.gml')
@@ -1555,16 +1595,16 @@ def test_ogr2ogr_46():
     ds = None
 
     for option in ['', ' -tps', ' -order 1', ' -a_srs EPSG:4326', ' -s_srs EPSG:4326 -t_srs EPSG:3857']:
-        gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -f GML tmp/test_ogr2ogr_46.gml tmp/test_ogr2ogr_46_src.shp -gcp 0 0 2 49 -gcp 0 1 2 50 -gcp 1 0 3 49%s' % option)
+        gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -f GML -dsco FORMAT=GML2 tmp/test_ogr2ogr_46.gml tmp/test_ogr2ogr_46_src.shp -gcp 0 0 2 49 -gcp 0 1 2 50 -gcp 1 0 3 49%s' % option)
 
         f = open('tmp/test_ogr2ogr_46.gml')
         data = f.read()
         f.close()
 
-        assert not (data.find('2,49') == -1 and data.find('2.0,49.0') == -1 and data.find('222638.') == -1), \
+        assert not ('2,49' not in data and '2.0,49.0' not in data and '222638.' not in data), \
             option
 
-        assert not (data.find('3,50') == -1 and data.find('3.0,50.0') == -1 and data.find('333958.') == -1), \
+        assert not ('3,50' not in data and '3.0,50.0' not in data and '333958.' not in data), \
             option
 
         os.unlink('tmp/test_ogr2ogr_46.gml')
@@ -1613,7 +1653,7 @@ def test_ogr2ogr_47():
         pytest.skip()
     ds = None
 
-    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -f GML -t_srs EPSG:4326 tmp/test_ogr2ogr_47_dst.gml tmp/test_ogr2ogr_47_src.gml')
+    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -f GML -dsco FORMAT=GML2 -t_srs EPSG:4326 tmp/test_ogr2ogr_47_dst.gml tmp/test_ogr2ogr_47_src.gml')
 
     f = open('tmp/test_ogr2ogr_47_dst.gml')
     data = f.read()
@@ -1718,7 +1758,7 @@ def test_ogr2ogr_49_bis():
     for i, line in enumerate(lines):
         assert line.strip() == expected_lines[i].strip(), lines
 
-    
+
 ###############################################################################
 # Test -addfields
 
@@ -2108,8 +2148,8 @@ def test_ogr2ogr_57():
     content = f.read()
     f.close()
 
-    assert ("""CREATE TABLE "public"."test_ogr2ogr_57" (    "id" SERIAL,    CONSTRAINT "test_ogr2ogr_57_pk" PRIMARY KEY ("id") )""" in content and \
-       """INSERT INTO "public"."test_ogr2ogr_57" ("wkt" , "id" , "str") VALUES ('010100000000000000000000000000000000000000', 10, 'a')""" in content)
+    assert ("""CREATE TABLE "public"."test_ogr2ogr_57" ( "id" SERIAL, CONSTRAINT "test_ogr2ogr_57_pk" PRIMARY KEY ("id") )""" in content and \
+       """INSERT INTO "public"."test_ogr2ogr_57" ("WKT" , "id" , "str") VALUES ('010100000000000000000000000000000000000000', 10, 'a')""" in content)
 
     os.unlink('tmp/test_ogr2ogr_57.sql')
 
@@ -2120,8 +2160,8 @@ def test_ogr2ogr_57():
     content = f.read()
     f.close()
 
-    assert ("""CREATE TABLE "public"."test_ogr2ogr_57" (    "ogc_fid" SERIAL,    CONSTRAINT "test_ogr2ogr_57_pk" PRIMARY KEY ("ogc_fid") )""" in content and \
-       """INSERT INTO "public"."test_ogr2ogr_57" ("wkt" , "str") VALUES ('010100000000000000000000000000000000000000', 'a')""" in content)
+    assert ("""CREATE TABLE "public"."test_ogr2ogr_57" ( "ogc_fid" SERIAL, CONSTRAINT "test_ogr2ogr_57_pk" PRIMARY KEY ("ogc_fid") )""" in content and \
+       """INSERT INTO "public"."test_ogr2ogr_57" ("WKT" , "str") VALUES ('010100000000000000000000000000000000000000', 'a')""" in content)
 
     os.unlink('tmp/test_ogr2ogr_57.sql')
 
@@ -2345,7 +2385,7 @@ def test_ogr2ogr_65():
         print(ret)
         pytest.fail('expected a warning about probably wrong extension')
 
-    
+
 ###############################################################################
 # Test accidental overriding of dataset when dst and src filenames are the same (#1465)
 
