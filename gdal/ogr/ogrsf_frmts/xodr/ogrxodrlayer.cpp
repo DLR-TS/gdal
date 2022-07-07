@@ -103,8 +103,7 @@ OGRFeature* OGRXODRLayer::GetNextFeature()
 		case markLayer:
 			return getLaneLineFeatures();
 			break;
-		default:
-			return getReferenceLineFeatures();
+		default: // do nothing;
 			break;
 	}
 }
@@ -475,15 +474,7 @@ void OGRXODRLayer::createRequestedLayer()
 			poFeatureDefn->AddFieldDefn(&oFieldLaneChange);
 			break;
 		}
-	default:
-		{
-			OGRFieldDefn oFieldName("Name", OFTString);
-			OGRFieldDefn oFieldID("ID", OFTString);
-			OGRFieldDefn oFieldJunction("Junction", OFTString);
-			poFeatureDefn->AddFieldDefn(&oFieldName);
-			poFeatureDefn->AddFieldDefn(&oFieldID);
-			poFeatureDefn->AddFieldDefn(&oFieldJunction);
-			break;
-		}
+	default: // do nothing;
+		break;
 	}
 }
