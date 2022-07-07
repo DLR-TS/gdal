@@ -24,7 +24,6 @@
  * limitations under the License.
  ****************************************************************************/
 
-#pragma once
 #ifndef _OGR_XODR_H_INCLUDED
 #define _OGR_XODR_H_INCLUDED
 
@@ -50,11 +49,9 @@ protected:
 	int nNextFID;
 
 public:
-	// OGRXODRLayer(XODR *xodr, const char* pszName, uint8_t lId);
 	OGRXODRLayer(XODR *xodr, const std::vector<RoadSF> &roads, const char* pszName, uint8_t lId);
 
 	int roadElement;
-	//std::string layerName;
 	uint8_t layerId;
 
 	~OGRXODRLayer();
@@ -71,9 +68,6 @@ public:
 	int TestCapability(const char *) {
 		return false;
 	}
-
-	//OGRFeature* objectFeaturePolygon();
-	//OGRFeature* objectFeatureLine();
 
 private:
 	enum layerValue {
