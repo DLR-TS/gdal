@@ -1,0 +1,453 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "apps/ogrinfo"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"install",
+			"target_link_libraries",
+			"add_dependencies",
+			"target_compile_options",
+			"add_definitions",
+			"include",
+			"target_include_directories",
+			"gdal_standard_includes"
+		],
+		"files" : 
+		[
+			"apps/CMakeLists.txt",
+			"gdal.cmake",
+			"CMakeLists.txt",
+			"cmake/helpers/configure.cmake",
+			"cmake/helpers/GdalStandardIncludes.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 65,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 135,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 133,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 120,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 119,
+				"parent" : 0
+			},
+			{
+				"file" : 2
+			},
+			{
+				"command" : 6,
+				"file" : 2,
+				"line" : 218,
+				"parent" : 6
+			},
+			{
+				"file" : 1,
+				"parent" : 7
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 183,
+				"parent" : 8
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 248,
+				"parent" : 8
+			},
+			{
+				"file" : 3,
+				"parent" : 10
+			},
+			{
+				"command" : 5,
+				"file" : 3,
+				"line" : 333,
+				"parent" : 11
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 322,
+				"parent" : 8
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 99,
+				"parent" : 6
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 65,
+				"parent" : 6
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 82,
+				"parent" : 6
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 117,
+				"parent" : 0
+			},
+			{
+				"command" : 8,
+				"file" : 0,
+				"line" : 118,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 4,
+				"line" : 11,
+				"parent" : 18
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 121,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -fvisibility=hidden -g"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wextra"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Winit-self"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wunused-parameter"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wmissing-declarations"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wlogical-op"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wshadow"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wmissing-include-dirs"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wformat"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Werror=format-security"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wno-format-nonliteral"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Werror=vla"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wno-clobbered"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wdate-time"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wextra-semi"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wfloat-conversion"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wnon-virtual-dtor"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Woverloaded-virtual"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wsuggest-override"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-fno-operator-names"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wzero-as-null-pointer-constant"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-ftrapv"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "-Wold-style-cast"
+				},
+				{
+					"fragment" : "-std=gnu++11"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 9,
+					"define" : "DEBUG"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "DONT_DEPRECATE_SPRINTF"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "GDAL_CMAKE_BUILD"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "GDAL_COMPILATION"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "HAVE_AVX_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 15,
+					"define" : "HAVE_SSE_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 16,
+					"define" : "HAVE_SSSE3_AT_COMPILE_TIME"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 17,
+					"path" : "/home/gdal/build/gcore/gdal_version_full"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/apps"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/alg"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/gcore"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/build/gcore"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/port"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/build/port"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/ogr"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/ogr/ogrsf_frmts"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/frmts"
+				},
+				{
+					"backtrace" : 20,
+					"path" : "/home/gdal/frmts/vrt"
+				},
+				{
+					"backtrace" : 20,
+					"path" : "/home/gdal/ogr/ogrsf_frmts/generic"
+				},
+				{
+					"backtrace" : 20,
+					"path" : "/home/gdal/ogr/ogrsf_frmts/geojson"
+				},
+				{
+					"backtrace" : 20,
+					"path" : "/home/gdal/ogr/ogrsf_frmts/mem"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "11"
+			},
+			"sourceIndexes" : 
+			[
+				1
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "generate_gdal_version_h::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "GDAL::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "ogrinfo::@9e189ee61a034fc9b705",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 2,
+				"path" : "bin"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/usr/local"
+		}
+	},
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-fvisibility=hidden -g",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/gdal/build:",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "../libgdal.so.31.0.0",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "ogrinfo",
+	"nameOnDisk" : "ogrinfo",
+	"paths" : 
+	{
+		"build" : "apps",
+		"source" : "apps"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				1
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"path" : "apps/commonutils.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "apps/ogrinfo.cpp",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "EXECUTABLE"
+}

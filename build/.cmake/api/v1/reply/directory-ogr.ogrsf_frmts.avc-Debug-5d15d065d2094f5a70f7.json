@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "ogr/ogrsf_frmts/avc",
+		"source" : "ogr/ogrsf_frmts/avc"
+	}
+}

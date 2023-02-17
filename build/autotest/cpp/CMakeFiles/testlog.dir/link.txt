@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/testlog.dir/testlog.cpp.o -o testlog  -Wl,-rpath,/home/gdal/build ../../libgdal.so.31.0.0 

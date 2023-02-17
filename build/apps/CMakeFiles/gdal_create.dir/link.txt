@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/gdal_create.dir/gdal_create.cpp.o -o gdal_create  -Wl,-rpath,/home/gdal/build: ../libgdal.so.31.0.0 

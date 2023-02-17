@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/test_wkb_import_fuzzer.dir/test_wkb_import_fuzzer.cpp.o -o test_wkb_import_fuzzer  -Wl,-rpath,/home/gdal/build ../../libgdal.so.31.0.0 

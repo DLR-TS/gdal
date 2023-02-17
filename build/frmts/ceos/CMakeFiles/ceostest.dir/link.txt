@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/ceostest.dir/ceostest.c.o CMakeFiles/gdal_CEOS.dir/ceosdataset.cpp.o CMakeFiles/gdal_CEOS.dir/ceosopen.c.o -o ceostest  -Wl,-rpath,/home/gdal/build ../../libgdal.so.31.0.0 

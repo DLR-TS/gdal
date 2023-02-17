@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "frmts/jpeg/libjpeg12",
+		"source" : "frmts/jpeg/libjpeg12"
+	}
+}
