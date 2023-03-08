@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/gdal_viewshed.dir/gdal_viewshed.cpp.o -o gdal_viewshed  -Wl,-rpath,/home/gdal/build: ../libgdal.so.31.0.0 

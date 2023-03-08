@@ -1,0 +1,1087 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/_getcell.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/cellsize.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/delattr.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gdattype.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gnrrows.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/legend.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/pminval.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rcomp.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/setangle.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/vsdef.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/_getrow.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/create2.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/dumconv.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/getattr.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gproj.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/mclose.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/putallmv.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rcoords.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/setmv.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/vsis.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/_gsomece.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/endian.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/getx0.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gputproj.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/mopen.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/putattr.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rdup2.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/setvtmv.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/vsvers.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/_putcell.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/file.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gety0.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gvalscal.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/moreattr.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/putsomec.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/reseterr.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/strconst.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/wattrblk.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/_rputrow.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/csfglob.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/filename.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/ggisfid.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gvartype.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/mperror.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/putx0.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rextend.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/strpad.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/angle.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gattrblk.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gmaxval.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gversion.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/puty0.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rmalloc.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/swapio.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/attravai.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/csfsup.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gattridx.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gminval.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/ismv.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/pgisfid.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/pvalscal.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rrowcol.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/trackmm.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/attrsize.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gcellrep.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/gnrcols.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/kernlcsf.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/pmaxval.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/rattrblk.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/ruseas.c.o"
+		},
+		{
+			"path" : "frmts/pcraster/libcsf/CMakeFiles/csf.dir/vs2.c.o"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"target_compile_options",
+			"add_definitions",
+			"include",
+			"target_compile_definitions",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"frmts/pcraster/libcsf/CMakeLists.txt",
+			"gdal.cmake",
+			"CMakeLists.txt",
+			"cmake/helpers/configure.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 1,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 79,
+				"parent" : 0
+			},
+			{
+				"file" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 219,
+				"parent" : 3
+			},
+			{
+				"file" : 1,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 183,
+				"parent" : 5
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 248,
+				"parent" : 5
+			},
+			{
+				"file" : 3,
+				"parent" : 7
+			},
+			{
+				"command" : 2,
+				"file" : 3,
+				"line" : 333,
+				"parent" : 8
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 322,
+				"parent" : 5
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 100,
+				"parent" : 3
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 66,
+				"parent" : 3
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 83,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 81,
+				"parent" : 0
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 80,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -fvisibility=hidden -g -fPIC"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wunused-parameter"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wmissing-prototypes"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wmissing-declarations"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wlogical-op"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wshadow"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wmissing-include-dirs"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wformat"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Werror=format-security"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wno-format-nonliteral"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Werror=vla"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wno-clobbered"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wdate-time"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-Wfloat-conversion"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-ftrapv"
+				},
+				{
+					"fragment" : "-std=gnu99"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 6,
+					"define" : "DEBUG"
+				},
+				{
+					"backtrace" : 9,
+					"define" : "DONT_DEPRECATE_SPRINTF"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "GDAL_CMAKE_BUILD"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "GDAL_COMPILATION"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "HAVE_AVX_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "HAVE_SSE_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "HAVE_SSSE3_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "USE_IN_GDAL"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 15,
+					"path" : "/home/gdal/port"
+				},
+				{
+					"backtrace" : 15,
+					"path" : "/home/gdal/build/port"
+				}
+			],
+			"language" : "C",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "99"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				51,
+				52,
+				53,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75
+			]
+		}
+	],
+	"id" : "csf::@2ae7ea53919ed12bb6d2",
+	"name" : "csf",
+	"paths" : 
+	{
+		"build" : "frmts/pcraster/libcsf",
+		"source" : "frmts/pcraster/libcsf"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				51,
+				52,
+				53,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				21,
+				31,
+				50,
+				54,
+				68
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/_getcell.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/cellsize.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/delattr.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gdattype.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gnrrows.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/legend.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/pminval.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rcomp.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/setangle.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/vsdef.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/_getrow.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/create2.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/dumconv.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/getattr.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gproj.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/mclose.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/putallmv.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rcoords.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/setmv.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/vsis.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/_gsomece.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "frmts/pcraster/libcsf/csf.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/endian.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/getx0.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gputproj.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/mopen.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/putattr.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rdup2.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/setvtmv.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/vsvers.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/_putcell.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "frmts/pcraster/libcsf/csfattr.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/file.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gety0.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gvalscal.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/moreattr.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/putsomec.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/reseterr.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/strconst.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/wattrblk.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/_rputrow.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/csfglob.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/filename.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/ggisfid.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gvartype.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/mperror.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/putx0.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rextend.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/strpad.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/angle.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "frmts/pcraster/libcsf/csfimpl.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gattrblk.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gmaxval.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gversion.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "frmts/pcraster/libcsf/pcrtypes.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/puty0.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rmalloc.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/swapio.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/attravai.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/csfsup.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gattridx.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gminval.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/ismv.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/pgisfid.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/pvalscal.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rrowcol.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/trackmm.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/attrsize.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "frmts/pcraster/libcsf/csftypes.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gcellrep.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/gnrcols.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/kernlcsf.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/pmaxval.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/rattrblk.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/ruseas.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/pcraster/libcsf/vs2.c",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "OBJECT_LIBRARY"
+}

@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/nearblack.dir/nearblack_bin.cpp.o -o nearblack  -Wl,-rpath,/home/gdal/build: ../libgdal.so.31.0.0 

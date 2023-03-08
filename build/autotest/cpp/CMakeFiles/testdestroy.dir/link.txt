@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/testdestroy.dir/testdestroy.cpp.o -o testdestroy  -Wl,-rpath,/home/gdal/build ../../libgdal.so.31.0.0 

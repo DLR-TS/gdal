@@ -1,0 +1,345 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"apps/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 135,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalinfo"
+			],
+			"targetId" : "gdalinfo::@9e189ee61a034fc9b705",
+			"targetIndex" : 177,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalbuildvrt"
+			],
+			"targetId" : "gdalbuildvrt::@9e189ee61a034fc9b705",
+			"targetIndex" : 173,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdaladdo"
+			],
+			"targetId" : "gdaladdo::@9e189ee61a034fc9b705",
+			"targetIndex" : 170,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_grid"
+			],
+			"targetId" : "gdal_grid::@9e189ee61a034fc9b705",
+			"targetIndex" : 156,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_translate"
+			],
+			"targetId" : "gdal_translate::@9e189ee61a034fc9b705",
+			"targetIndex" : 163,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_rasterize"
+			],
+			"targetId" : "gdal_rasterize::@9e189ee61a034fc9b705",
+			"targetIndex" : 160,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalsrsinfo"
+			],
+			"targetId" : "gdalsrsinfo::@9e189ee61a034fc9b705",
+			"targetIndex" : 182,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalenhance"
+			],
+			"targetId" : "gdalenhance::@9e189ee61a034fc9b705",
+			"targetIndex" : 175,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalmanage"
+			],
+			"targetId" : "gdalmanage::@9e189ee61a034fc9b705",
+			"targetIndex" : 179,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdaltransform"
+			],
+			"targetId" : "gdaltransform::@9e189ee61a034fc9b705",
+			"targetIndex" : 185,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdaltindex"
+			],
+			"targetId" : "gdaltindex::@9e189ee61a034fc9b705",
+			"targetIndex" : 183,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdaldem"
+			],
+			"targetId" : "gdaldem::@9e189ee61a034fc9b705",
+			"targetIndex" : 174,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_create"
+			],
+			"targetId" : "gdal_create::@9e189ee61a034fc9b705",
+			"targetIndex" : 152,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_viewshed"
+			],
+			"targetId" : "gdal_viewshed::@9e189ee61a034fc9b705",
+			"targetIndex" : 167,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/nearblack"
+			],
+			"targetId" : "nearblack::@9e189ee61a034fc9b705",
+			"targetIndex" : 219,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/ogrlineref"
+			],
+			"targetId" : "ogrlineref::@9e189ee61a034fc9b705",
+			"targetIndex" : 275,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/ogrtindex"
+			],
+			"targetId" : "ogrtindex::@9e189ee61a034fc9b705",
+			"targetIndex" : 278,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalwarp"
+			],
+			"targetId" : "gdalwarp::@9e189ee61a034fc9b705",
+			"targetIndex" : 186,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdal_contour"
+			],
+			"targetId" : "gdal_contour::@9e189ee61a034fc9b705",
+			"targetIndex" : 151,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdallocationinfo"
+			],
+			"targetId" : "gdallocationinfo::@9e189ee61a034fc9b705",
+			"targetIndex" : 178,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/ogrinfo"
+			],
+			"targetId" : "ogrinfo::@9e189ee61a034fc9b705",
+			"targetIndex" : 274,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/ogr2ogr"
+			],
+			"targetId" : "ogr2ogr::@9e189ee61a034fc9b705",
+			"targetIndex" : 222,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalmdiminfo"
+			],
+			"targetId" : "gdalmdiminfo::@9e189ee61a034fc9b705",
+			"targetIndex" : 180,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gdalmdimtranslate"
+			],
+			"targetId" : "gdalmdimtranslate::@9e189ee61a034fc9b705",
+			"targetIndex" : 181,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gnmanalyse"
+			],
+			"targetId" : "gnmanalyse::@9e189ee61a034fc9b705",
+			"targetIndex" : 200,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"apps/gnmmanage"
+			],
+			"targetId" : "gnmmanage::@9e189ee61a034fc9b705",
+			"targetIndex" : 201,
+			"type" : "target"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "apps",
+		"source" : "apps"
+	}
+}

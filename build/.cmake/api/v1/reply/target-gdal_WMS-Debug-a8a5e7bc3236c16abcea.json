@@ -1,0 +1,657 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/gdalhttp.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/gdalwmsrasterband.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_iip.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_tiled_wms.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_tms.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_wms.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/wmsdriver.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/wmsutils.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/gdalwmscache.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_arcgis_server.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_mrf.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_ogcapicoverage.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_ogcapimaps.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_tileservice.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_virtualearth.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/minidriver_worldwind.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/wmsmetadataset.cpp.o"
+		},
+		{
+			"path" : "frmts/wms/CMakeFiles/gdal_WMS.dir/gdalwmsdataset.cpp.o"
+		}
+	],
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"add_gdal_driver",
+			"add_dependencies",
+			"target_compile_options",
+			"add_definitions",
+			"include",
+			"target_compile_definitions",
+			"target_include_directories",
+			"gdal_standard_includes"
+		],
+		"files" : 
+		[
+			"cmake/helpers/GdalDriverHelper.cmake",
+			"frmts/wms/CMakeLists.txt",
+			"gdal.cmake",
+			"CMakeLists.txt",
+			"cmake/helpers/configure.cmake",
+			"cmake/helpers/GdalStandardIncludes.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 1,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 194,
+				"parent" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 222,
+				"parent" : 1
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 219,
+				"parent" : 1
+			},
+			{
+				"file" : 3
+			},
+			{
+				"command" : 5,
+				"file" : 3,
+				"line" : 219,
+				"parent" : 5
+			},
+			{
+				"file" : 2,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 183,
+				"parent" : 7
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 248,
+				"parent" : 7
+			},
+			{
+				"file" : 4,
+				"parent" : 9
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 333,
+				"parent" : 10
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 322,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 100,
+				"parent" : 5
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 40,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 66,
+				"parent" : 5
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 83,
+				"parent" : 5
+			},
+			{
+				"command" : 8,
+				"file" : 1,
+				"line" : 37,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 5,
+				"line" : 11,
+				"parent" : 17
+			},
+			{
+				"command" : 7,
+				"file" : 1,
+				"line" : 38,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -fvisibility=hidden -g -fPIC"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wunused-parameter"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wmissing-declarations"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wlogical-op"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wshadow"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wmissing-include-dirs"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wformat"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Werror=format-security"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wno-format-nonliteral"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Werror=vla"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wno-clobbered"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wdate-time"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wextra-semi"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wfloat-conversion"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wnon-virtual-dtor"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Woverloaded-virtual"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wsuggest-override"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-fno-operator-names"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wzero-as-null-pointer-constant"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-ftrapv"
+				},
+				{
+					"fragment" : "-std=gnu++14"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 8,
+					"define" : "DEBUG"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "DONT_DEPRECATE_SPRINTF"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "GDAL_CMAKE_BUILD"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "GDAL_COMPILATION"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "HAVE_AVX_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "HAVE_CURL"
+				},
+				{
+					"backtrace" : 15,
+					"define" : "HAVE_SSE_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 16,
+					"define" : "HAVE_SSSE3_AT_COMPILE_TIME"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/apps"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/alg"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/gcore"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/build/gcore"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/port"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/build/port"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/ogr"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/ogr/ogrsf_frmts"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/gdal/frmts"
+				},
+				{
+					"backtrace" : 19,
+					"path" : "/home/gdal/frmts/raw"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					2
+				],
+				"standard" : "14"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				9,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "generate_gdal_version_h::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "gdal_WMS::@c2de021fdff969eb8927",
+	"name" : "gdal_WMS",
+	"paths" : 
+	{
+		"build" : "frmts/wms",
+		"source" : "frmts/wms"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				9,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				8,
+				10,
+				11,
+				12,
+				13,
+				14,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/gdalhttp.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/gdalwmsrasterband.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_iip.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_tiled_wms.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_tms.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_wms.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/wmsdriver.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/wmsutils.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/gdalhttp.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_iip.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_tiled_wms.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_tms.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_wms.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/wmsdriver.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/gdalwmscache.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_arcgis_server.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_mrf.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_ogcapicoverage.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_ogcapimaps.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_tileservice.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_virtualearth.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/minidriver_worldwind.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/wmsmetadataset.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/wms/gdalwmsdataset.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_arcgis_server.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_mrf.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_ogcapicoverage.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_ogcapimaps.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_tileservice.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_virtualearth.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/minidriver_worldwind.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "frmts/wms/wmsmetadataset.h",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "OBJECT_LIBRARY"
+}

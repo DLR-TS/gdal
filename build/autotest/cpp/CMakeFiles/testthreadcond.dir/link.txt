@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/testthreadcond.dir/testthreadcond.cpp.o -o testthreadcond  -Wl,-rpath,/home/gdal/build ../../libgdal.so.31.0.0 
