@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/testblockcache.dir/testblockcache.cpp.o -o testblockcache  -Wl,-rpath,/home/gdal/build:/usr/local/lib ../../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 

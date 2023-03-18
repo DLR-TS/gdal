@@ -1,4 +1,0 @@
-0000000000000000000000000000000000000000 d634feb23094751a599e8c4cfb69f428136a61af root <root@8f35ba9e12a9.(none)> 1676375392 +0100	clone: from https://gitlab.dlr.de/ts-spatial-data-processing/spatial-feature-manipulation/gdal.git
-d634feb23094751a599e8c4cfb69f428136a61af 1170bc8ac49b5c4c507b7ee74de2b98545ca56df Gülşen Bardak <gulsenbardak1@gmail.com> 1676648146 +0100	commit: cmake changes for libopendrive
-1170bc8ac49b5c4c507b7ee74de2b98545ca56df c39d919515fbc6edd169ae0d2417f6873712e618 Gülşen Bardak <gulsenbardak1@gmail.com> 1676648324 +0100	commit: deleted files restored
-c39d919515fbc6edd169ae0d2417f6873712e618 2f6c12b7db1935de22b301f8431c293ac89bc140 Gülşen Bardak <gulsenbardak1@gmail.com> 1678303989 +0100	commit: compilation error fixed for libopendrive-cross compilation

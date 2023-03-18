@@ -1,1 +1,0 @@
-/usr/bin/gcc  -fvisibility=hidden -g CMakeFiles/envisat_dump.dir/envisat_dump.c.o CMakeFiles/envisat_dump.dir/EnvisatFile.c.o -o envisat_dump  -Wl,-rpath,/home/gdal/build:/usr/local/lib ../../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 

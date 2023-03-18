@@ -1,1 +1,0 @@
-/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/wkb_import_fuzzer.dir/wkb_import_fuzzer.cpp.o CMakeFiles/fuzzingengine.dir/fuzzingengine.cpp.o -o wkb_import_fuzzer  -Wl,-rpath,/home/gdal/build:/usr/local/lib ../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 
