@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/ogr_DXF.dir/intronurbs.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/intronurbs.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogr_autocad_services.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogr_autocad_services.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_blockmap.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_blockmap.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_dimension.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_dimension.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_feature.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_feature.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_hatch.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_hatch.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_leader.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_leader.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_ocstransformer.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_ocstransformer.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_polyline_smooth.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxf_polyline_smooth.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfblockslayer.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfblockslayer.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfblockswriterlayer.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfblockswriterlayer.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfdatasource.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfdatasource.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfdriver.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfdriver.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxflayer.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxflayer.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfreader.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfreader.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfwriterds.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfwriterds.cpp.o.d"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfwriterlayer.cpp.o"
+  "CMakeFiles/ogr_DXF.dir/ogrdxfwriterlayer.cpp.o.d"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/ogr_DXF.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

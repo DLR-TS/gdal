@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/proj_with_fork.dir/proj_with_fork.cpp.o -o proj_with_fork  -Wl,-rpath,/home/gdal/build:/usr/local/lib ../../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 

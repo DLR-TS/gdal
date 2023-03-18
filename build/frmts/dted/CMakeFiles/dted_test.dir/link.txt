@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/dted_test.dir/dted_test.c.o CMakeFiles/gdal_DTED.dir/dted_api.c.o CMakeFiles/gdal_DTED.dir/dted_create.c.o CMakeFiles/gdal_DTED.dir/dted_ptstream.c.o CMakeFiles/gdal_DTED.dir/dteddataset.cpp.o -o dted_test  -Wl,-rpath,/home/gdal/build:/usr/local/lib ../../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 

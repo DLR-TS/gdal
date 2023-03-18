@@ -1,0 +1,1 @@
+message(FATAL_ERROR "Python is needed for completion target")

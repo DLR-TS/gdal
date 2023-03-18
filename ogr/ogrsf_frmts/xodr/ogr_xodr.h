@@ -29,96 +29,73 @@
 
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
-#include "geos/geom/Point.h"
-#include "geos/geom/Geometry.h"
-#include "geos/geom/LineString.h"
-#include "Road.h"
-
+#include <iostream>
+#include <OpenDrive/include/libopendrive.h>
 #include <vector>
-/*
-class OGRXODRLayer : public OGRLayer {
-protected:
-	XODR* xodr;
-	// TODO Define simpleRoad
-    //std::vector<odr::Road> simpleRoads;
-	// TODO Define iterate road
-    //std::vector<odr::Vec3D>::iterator roadIter;
-	OGRFeatureDefn* poFeatureDefn;
-	OGRSpatialReference *poSRS;
-	int nNextFID;
+
+/*--------------------------------------------------------------------*/
+/*---------------------  Layer declerations  -------------------------*/
+/*--------------------------------------------------------------------*/
+class OGRXODRLayer : public OGRLayer
+{
+    OGRFeatureDefn     *poFeatureDefn;
+    VSILFILE               *fp;
+    int                 nNextFID;
+    
 
 public:
-	// TODO Define Layer
-    //OGRXODRLayer(XODR *xodr, const std::vector<odr::Vec3D> &roads, const char* pszName, uint8_t lId);
+    OGRXODRLayer( const char *pszFilename, uint8_t layer_id);
+~OGRXODRLayer();
 
-	int roadElement;
-	uint8_t layerId;
+    uint8_t             layer_id;
 
-	~OGRXODRLayer();
-	bool print = false;
-	void ResetReading();
+    void                ResetReading();
+    OGRFeature *        GetNextFeature();
 
-	OGRFeature *GetNextFeature();
+    OGRFeatureDefn *    GetLayerDefn() { return poFeatureDefn; }
 
-	OGRFeatureDefn *GetLayerDefn()
-	{
-		return poFeatureDefn;
-	}
-
-	int TestCapability(const char *) {
-		return false;
-	}
+    int                 TestCapability( const char * ) { return FALSE; }
 
 private:
-	enum layerValue {
-		refLayer=0,
-		laneLayer=1,
-		centerLanelayer=2,
-		objectLayer=3,
-		objectPolyLayer=4,
-		signalLayer=5,
-		markLayer=6
-	};
+    enum layer_value {
+        header = 0
+    };
 
-	OGRFeature* getReferenceLineFeatures();
-    //TODO Define features
-	//OGRFeature* getLaneLineFeatures();
-	//OGRFeature* getCenterLaneLineFeatures();
-	//OGRFeature* getRoadMarkLineFeatures();
-	//OGRFeature* getSignalFeatures();
-	//OGRFeature* getObjectFeatures();
-	//void createRequestedLayer();
+    OGRFeature*         getHeader();
+    OGRFeature*         getRoad();
+    void                setLayer();
 
-	int featureIndex = 0;
-    // Define layer indexes
-	// std::vector<LaneSF> currentLanes;
-	// std::vector<CenterLaneSF*> currentCenterLanes;
-	// std::vector<ObjectSF> currentObjects;
-	// std::vector<SignalSF> currentSignals;
-
-
-class OGRXODRDataSource : public GDALDataset {
-	OGRXODRLayer **papoLayers;
-	int nLayers;
-	XODR* xodr;
-
-public:
-
-	OGRXODRDataSource();
-
-	~OGRXODRDataSource();
-
-	int Open(GDALOpenInfo* openInfo);
-
-	int GetLayerCount()
-	{
-		return nLayers;
-	}
-
-	OGRLayer* GetLayer(int);
-
-	int TestCapability(const char*);
 };
 
-}
-*/
+
+
+/*--------------------------------------------------------------------*/
+/*--------------------  Datasource declerations ----------------------*/
+/*--------------------------------------------------------------------*/
+
+class OGRXODRDataSource : public GDALDataset
+{
+    OGRXODRLayer       **papoLayers;
+    int                 nLayers;
+
+
+public:
+                        OGRXODRDataSource();
+                        ~OGRXODRDataSource();
+
+    int                 Open(const char *pszFilename, int bUpdate);
+
+    int                 GetLayerCount() { return nLayers; }
+    OGRLayer            *GetLayer( int );
+
+    int                 TestCapability( const char * ) { return FALSE; }
+};
+
+/*--------------------------------------------------------------------*/
+/*--------------------    Driver declerations   ----------------------*/
+/*--------------------------------------------------------------------*/
+
+static GDALDataset* OGRXODRDriverOpen(GDALOpenInfo* poOpenInfo);
+static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
+
+/*--------------------------------------------------------------------*/

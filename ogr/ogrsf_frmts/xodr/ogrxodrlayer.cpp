@@ -24,3 +24,107 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ****************************************************************************/
+
+
+#include "ogr_xodr.h"
+#include "ogr_api.h"
+#include "ogr_geometry.h"
+
+
+#include <cmath>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <typeinfo>
+#include "cpl_error.h"
+
+/*--------------------------------------------------------------------*/
+OGRXODRLayer::OGRXODRLayer( const char *pszFilename, uint8_t layer_id)
+{
+    nNextFID = 0;
+
+    poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszFilename));
+    SetDescription(poFeatureDefn->GetName());
+    poFeatureDefn->Reference();
+    poFeatureDefn->SetGeomType(wkbPoint);
+
+    OGRFieldDefn oFieldTemplate("Name", OFTString);
+
+    poFeatureDefn->AddFieldDefn(&oFieldTemplate);
+
+    fp = VSIFOpenL(pszFilename, "r");
+    if( fp == NULL )
+        return;
+    
+    setLayer();
+    
+}
+
+/*The layer constructor is responsible for initialization. 
+The most important initialization is setting up the OGRFeatureDefn for the layer. 
+This defines the list of fields and their types, the geometry type and the coordinate system for the layer.
+In the SPF format the set of fields is fixed - a single string field and we have no coordinate system info to set.*/
+
+
+
+OGRXODRLayer::~OGRXODRLayer()
+{
+    poFeatureDefn->Release();
+    if( fp != NULL )
+      VSIFCloseL(fp);
+  
+}
+/*--------------------------------------------------------------------*/
+/*--------------------      Layer iteration     ----------------------*/
+/*--------------------------------------------------------------------*/
+OGRFeature *OGRXODRLayer::GetNextFeature()
+{
+  switch(layer_id){
+    case 0:
+      return getHeader();
+      break;
+    default:
+      break;
+  }
+}
+
+void OGRXODRLayer::setLayer() {
+  switch(layer_id){
+    case 0:{
+      OGRFieldDefn oFieldName("Name", OFTString);
+      OGRFieldDefn oFieldID("ID", OFTString);
+      break;
+    }
+    default:
+      break;
+    
+  }
+}
+
+
+void OGRXODRLayer::ResetReading()
+{
+    
+}
+
+/*--------------------------------------------------------------------*/
+/*--------------------          Header          ----------------------*/
+/*--------------------------------------------------------------------*/
+//TODO save as meta data 
+
+OGRFeature *OGRXODRLayer::getHeader(){
+
+  return NULL;
+}
+
+/*--------------------------------------------------------------------*/
+/*---------------------------     Road    ----------------------------*/
+/*--------------------------------------------------------------------*/
+
+
+OGRFeature *OGRXODRLayer::getRoad(){
+
+  return NULL;
+}
+
+

@@ -1,0 +1,1 @@
+/usr/bin/g++  -fvisibility=hidden -g CMakeFiles/gdaldem.dir/gdaldem_bin.cpp.o -o gdaldem  -Wl,-rpath,/home/gdal/build:/usr/local/lib: ../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 

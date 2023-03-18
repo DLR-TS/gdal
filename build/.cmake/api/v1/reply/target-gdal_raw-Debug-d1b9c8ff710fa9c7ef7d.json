@@ -1,0 +1,691 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/ace2dataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/atlsci_spheroid.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/btdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/cpgdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/ctable2dataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/dipxdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/doq1dataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/doq2dataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/ehdrdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/eirdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/envidataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/fastdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/genbindataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/gscdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/gtxdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/hkvdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/krodataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/iscedataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/landataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/lcpdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/loslasdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/mffdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/ndfdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/ntv2dataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/pauxdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/pnmdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/roipacdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/rrasterdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/snodasdataset.cpp.o"
+		},
+		{
+			"path" : "frmts/raw/CMakeFiles/gdal_raw.dir/byndataset.cpp.o"
+		}
+	],
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"add_gdal_driver",
+			"add_dependencies",
+			"target_compile_options",
+			"add_definitions",
+			"include",
+			"target_include_directories",
+			"gdal_standard_includes"
+		],
+		"files" : 
+		[
+			"cmake/helpers/GdalDriverHelper.cmake",
+			"frmts/raw/CMakeLists.txt",
+			"gdal.cmake",
+			"CMakeLists.txt",
+			"cmake/helpers/configure.cmake",
+			"cmake/helpers/GdalStandardIncludes.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 1,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 194,
+				"parent" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 222,
+				"parent" : 1
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 215,
+				"parent" : 1
+			},
+			{
+				"file" : 3
+			},
+			{
+				"command" : 5,
+				"file" : 3,
+				"line" : 219,
+				"parent" : 5
+			},
+			{
+				"file" : 2,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 183,
+				"parent" : 7
+			},
+			{
+				"command" : 5,
+				"file" : 2,
+				"line" : 248,
+				"parent" : 7
+			},
+			{
+				"file" : 4,
+				"parent" : 9
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 333,
+				"parent" : 10
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 322,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 66,
+				"parent" : 5
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 83,
+				"parent" : 5
+			},
+			{
+				"command" : 7,
+				"file" : 1,
+				"line" : 37,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 5,
+				"line" : 11,
+				"parent" : 15
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 38,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -fvisibility=hidden -g -fPIC"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wextra"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Winit-self"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wunused-parameter"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wmissing-declarations"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wlogical-op"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wshadow"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wmissing-include-dirs"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wformat"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Werror=format-security"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wno-format-nonliteral"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Werror=vla"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wno-clobbered"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wdate-time"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wextra-semi"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wfloat-conversion"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wnon-virtual-dtor"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Woverloaded-virtual"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wsuggest-override"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-fno-operator-names"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Wzero-as-null-pointer-constant"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-ftrapv"
+				},
+				{
+					"backtrace" : 4,
+					"fragment" : "-Weffc++"
+				},
+				{
+					"fragment" : "-std=gnu++14"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 8,
+					"define" : "DEBUG"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "DONT_DEPRECATE_SPRINTF"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "GDAL_CMAKE_BUILD"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "GDAL_COMPILATION"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "HAVE_SSE_AT_COMPILE_TIME"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "HAVE_SSSE3_AT_COMPILE_TIME"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/apps"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/alg"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/gcore"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/build/gcore"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/port"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/build/port"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/ogr"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/ogr/ogrsf_frmts"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/gdal/frmts"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/gdal/frmts/raw"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					2
+				],
+				"standard" : "14"
+			},
+			"sourceIndexes" : 
+			[
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "generate_gdal_version_h::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "gdal_raw::@a2aae5d3be7ebcb7645a",
+	"name" : "gdal_raw",
+	"paths" : 
+	{
+		"build" : "frmts/raw",
+		"source" : "frmts/raw"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 2,
+			"path" : "frmts/raw/atlsci_spheroid.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/ace2dataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/atlsci_spheroid.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/btdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/cpgdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/ctable2dataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/dipxdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/doq1dataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/doq2dataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/ehdrdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/eirdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/envidataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/fastdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/genbindataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/gscdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/gtxdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/hkvdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/krodataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/iscedataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/landataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/lcpdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/loslasdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/mffdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/ndfdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/ntv2dataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/pauxdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/pnmdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/roipacdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/rrasterdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/snodasdataset.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "frmts/raw/byndataset.cpp",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "OBJECT_LIBRARY"
+}

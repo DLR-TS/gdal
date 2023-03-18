@@ -23,3 +23,29 @@
  * limitations under the License.
  ****************************************************************************/
  
+#include "ogr_xodr.h"
+#include "geos/geom.h"
+#include "geos/util.h"
+//#include <OpenDrive/include/libopendrive.h>
+//using namespace geos::geom;
+//using namespace std;
+
+//set Geometry Factory as global variable
+//GeometryFactory *global_factory;
+// TODO Create Geos/point for every single point inside geometries.  
+
+//Coordinate Factory on different dimensions 
+
+// Point Factory 
+/*
+unique_ptr<Point> PoiFactory(const CoordinateXY& coordinate){
+    unique_ptr<Point> p = global_factory->createPoint(coordinate);
+    return p;
+    }
+
+// LineString Factory 
+unique_ptr<LineString> LSFactory(const CoordinateSequence& coordinates){
+    unique_ptr<LineString> ls = global_factory->createLineString(coordinates);
+    return ls;
+    }
+*/
