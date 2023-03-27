@@ -31,6 +31,7 @@
 #include "ogr_api.h"
 #include <iostream>
 #include <OpenDrive/include/libopendrive.h>
+#include <OpenDrive/thirdparty/pugixml/pugixml.hpp>
 #include <vector>
 
 /*--------------------------------------------------------------------*/
@@ -41,30 +42,34 @@ class OGRXODRLayer : public OGRLayer
     OGRFeatureDefn     *poFeatureDefn;
     VSILFILE               *fp;
     int                 nNextFID;
+    OGRSpatialReference *poSRS;
     
 
 public:
-    OGRXODRLayer( const char *pszFilename, uint8_t layer_id);
+    OGRXODRLayer( const char *pszFilename, uint8_t layer);
 ~OGRXODRLayer();
 
-    uint8_t             layer_id;
-
+    uint8_t             layerID;
+    std::string         fileName;
+    
+   
     void                ResetReading();
     OGRFeature *        GetNextFeature();
 
     OGRFeatureDefn *    GetLayerDefn() { return poFeatureDefn; }
 
     int                 TestCapability( const char * ) { return FALSE; }
-
+    
 private:
     enum layer_value {
         header = 0
     };
-
-    OGRFeature*         getHeader();
-    OGRFeature*         getRoad();
-    void                setLayer();
-
+    
+    OGRFeature*         getLayer();
+    OGRFeature*         getRefLine();
+    OGRFeature*         getLanes();
+   
+       
 };
 
 
@@ -75,6 +80,7 @@ private:
 
 class OGRXODRDataSource : public GDALDataset
 {
+    CPLString          pszName;
     OGRXODRLayer       **papoLayers;
     int                 nLayers;
 
@@ -89,6 +95,7 @@ public:
     OGRLayer            *GetLayer( int );
 
     int                 TestCapability( const char * ) { return FALSE; }
+   
 };
 
 /*--------------------------------------------------------------------*/
@@ -97,5 +104,8 @@ public:
 
 static GDALDataset* OGRXODRDriverOpen(GDALOpenInfo* poOpenInfo);
 static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
-
+static GDALDataset* OGRXODRDriverCreate(const char* pszName, int nXSize, int nYSize,
+                                    int nBands, GDALDataType eDT, char** papszOptions);
 /*--------------------------------------------------------------------*/
+
+

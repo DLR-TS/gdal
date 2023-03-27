@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <set>
+#include <iostream>
 
 #include "commonutils.h"
 #include "cpl_conv.h"
@@ -1041,6 +1042,7 @@ MAIN_START(nArgc, papszArgv)
 /* -------------------------------------------------------------------- */
     if( poDS == nullptr )
     {
+        std::cout << poDS << std::endl;
         printf("FAILURE:\n"
                "Unable to open datasource `%s' with the following drivers.\n",
                pszDataSource);

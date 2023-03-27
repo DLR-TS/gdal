@@ -86,6 +86,12 @@ if (GDAL_USE_JSONC_INTERNAL)
   gdal_add_vendored_lib(ogr libjson)
 endif ()
 
+###
+if (GDAL_USE_OPENDRIVE_INTERNALL)
+  gdal_add_vendored_lib(ogr libOpenDrive)
+endif ()
+###
+
 target_compile_definitions(ogr PRIVATE HAVE_MITAB)
 
 gdal_target_link_libraries(ogr PRIVATE PROJ::proj)

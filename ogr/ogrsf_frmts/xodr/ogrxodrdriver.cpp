@@ -3,7 +3,7 @@
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
  * Created:  2017
- * Modified: February 2023
+ * Modified: March 2023
  * Purpose:  Implementation of OGRXODRDriver.
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
@@ -29,44 +29,58 @@
 #include "ogr_xodr.h"
 #include "cpl_conv.h"
 #include "cpl_error.h"
+extern "C" void CPL_DLL RegisterOGRXODR();
 
-void RegisterOGRXODR()
-{
-    if( GDALGetDriverByName("XODR") != NULL )
-        return;
-
-    GDALDriver *poDriver = new GDALDriver();
-
-    poDriver->SetDescription("XODR");
-    poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-    poDriver->SetMetadataItem(GDAL_DMD_LONGNAME, "Long name for XODR driver");
-    poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
-
-    poDriver->pfnOpen = OGRXODRDriverOpen;
-    poDriver->pfnIdentify = OGRXODRDriverIdentify; //TODO read-only
-    //poDriver->pfnCreate = OGRXODRDriverCreate;
-
-    poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES");
-
-    GetGDALDriverManager()->RegisterDriver(poDriver);
-}
+/*--------------------------------------------------------------------*/
+/*---------------------------     open    ----------------------------*/
+/*--------------------------------------------------------------------*/
 
 static GDALDataset *OGRXODRDriverOpen( GDALOpenInfo* poOpenInfo )
 {
-    if( !OGRXODRDriverIdentify(poOpenInfo) )
-        return NULL;
+    if( poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr )
+        return nullptr;
+    
+    OGRXODRDataSource   *poDS = new OGRXODRDataSource();
 
-    OGRXODRDataSource *poDS = new OGRXODRDataSource();
-    if( !poDS->Open(poOpenInfo->pszFilename, poOpenInfo->eAccess == GA_Update) )
+    if( !poDS->Open( poOpenInfo->pszFilename, FALSE ) )
     {
         delete poDS;
-        return NULL;
+        poDS = nullptr;
     }
 
     return poDS;
 }
-
-static int OGRXODRDriverIdentify( GDALOpenInfo* poOpenInfo )
-{
-    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
+/*--------------------------------------------------------------------*/
+/*---------------------------     identity   -------------------------*/
+/*--------------------------------------------------------------------*/
+static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
+  return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
 }
+
+/*--------------------------------------------------------------------*/
+/*---------------------------     register   -------------------------*/
+/*--------------------------------------------------------------------*/
+
+
+void RegisterOGRXODR()
+{
+    if( !GDAL_CHECK_VERSION("OGR/XODR driver") )
+        return;
+    
+    if( GDALGetDriverByName( "XODR" ) != nullptr )
+        return;
+
+    GDALDriver *poDriver = new GDALDriver();
+
+    poDriver->SetDescription( "XODR" );
+    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
+    poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "XODR" );
+    poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
+    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES");
+
+    poDriver->pfnOpen = OGRXODRDriverOpen;
+    poDriver->pfnIdentify = OGRXODRDriverIdentity;
+
+    GetGDALDriverManager()->RegisterDriver( poDriver );
+}
+

@@ -28,6 +28,8 @@
 
 #include "ogr_xodr.h"
 
+
+CPL_CVSID("$Id$")
 /*--------------------------------------------------------------------*/
 
 OGRXODRDataSource::OGRXODRDataSource()
@@ -55,12 +57,19 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
         return FALSE;
     }
 
+    VSILFILE* fp = VSIFOpenL(pszFilename, "r");
+    if (fp == nullptr)
+        return FALSE;
+    
     // Create a corresponding layer.
-    nLayers = 1;
-    papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
+    nLayers = 3;
+    papoLayers = (OGRXODRLayer **) CPLRealloc(papoLayers, nLayers * sizeof(OGRXODRLayer*));
 
-    papoLayers[0] = new OGRXODRLayer(pszFilename, 0);
-  
+
+    papoLayers[0] = new OGRXODRLayer(pszFilename,0);
+    papoLayers[1] = new OGRXODRLayer(pszFilename,1);
+    papoLayers[2] = new OGRXODRLayer(pszFilename,2);
+    //pszName = CPLStrdup(pszFilename);
 
     return TRUE;
 }
@@ -72,9 +81,9 @@ OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
 {
     if( iLayer < 0 || iLayer >= nLayers )
         return NULL;
-
-    else
-		return papoLayers[iLayer];
+    
+    return papoLayers[iLayer];
 }
 
 /*--------------------------------------------------------------------*/
+

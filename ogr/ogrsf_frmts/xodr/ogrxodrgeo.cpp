@@ -3,7 +3,7 @@
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
  * Created:  February 2023
- * Modified: February 2023
+ * Modified: March 2023
  * Purpose:  Implementation of ogrxodrgeo.cpp
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)		
  *           Gulsen Bardak, guelsen.bardak@dlr.de, German Aerospace Center (DLR)	
@@ -49,3 +49,35 @@ unique_ptr<LineString> LSFactory(const CoordinateSequence& coordinates){
     return ls;
     }
 */
+
+class HeaderItems{
+    public:
+        int                 revMajor;
+        int                 revMinor;
+        std::string         name;
+        double              version;
+        long double         north;
+        long double         south;
+        long double         east;
+        long double         west;      
+        std::string         vendor;
+    
+    //private:
+    //    void                getHeader();
+    class GeoReference{
+        std::string         proj;
+        double              lat;
+        double              lon;
+        double              x0;
+        double              y0;
+        std::string         datum;
+
+        int                 zone;
+        std::string         ellps;
+
+        //private:
+        //void                getGeoReference();
+        
+    };    
+
+};
