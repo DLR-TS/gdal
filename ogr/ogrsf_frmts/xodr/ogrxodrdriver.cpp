@@ -29,6 +29,9 @@
 #include "ogr_xodr.h"
 #include "cpl_conv.h"
 #include "cpl_error.h"
+
+CPL_CVSID("$Id$")
+
 extern "C" void CPL_DLL RegisterOGRXODR();
 
 /*--------------------------------------------------------------------*/
@@ -66,21 +69,21 @@ void RegisterOGRXODR()
 {
     if( !GDAL_CHECK_VERSION("OGR/XODR driver") )
         return;
-    
-    if( GDALGetDriverByName( "XODR" ) != nullptr )
-        return;
+    GDALDriver *poDriver;
+    if( GDALGetDriverByName( "XODR" ) == nullptr )
+        
 
-    GDALDriver *poDriver = new GDALDriver();
+        poDriver = new GDALDriver();
 
-    poDriver->SetDescription( "XODR" );
-    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
-    poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "XODR" );
-    poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
-    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES");
+        poDriver->SetDescription( "XODR" );
+        poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
+        poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
+        poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
+        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES");
+        
+        poDriver->pfnOpen = OGRXODRDriverOpen;
+        poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
-    poDriver->pfnOpen = OGRXODRDriverOpen;
-    poDriver->pfnIdentify = OGRXODRDriverIdentity;
-
-    GetGDALDriverManager()->RegisterDriver( poDriver );
+        GetGDALDriverManager()->RegisterDriver( poDriver );
 }
 

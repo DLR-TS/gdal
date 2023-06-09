@@ -37,21 +37,24 @@
 /*--------------------------------------------------------------------*/
 /*---------------------  Layer declerations  -------------------------*/
 /*--------------------------------------------------------------------*/
+
 class OGRXODRLayer : public OGRLayer
 {
-    OGRFeatureDefn     *poFeatureDefn;
-    VSILFILE               *fp;
-    int                 nNextFID;
-    OGRSpatialReference *poSRS;
+    OGRFeatureDefn          *poFeatureDefn;
+    VSILFILE                *fpXODR;
+    CPLString                pszName;
+    char                    *pszFilename;
+    int                      nNextFID;
+    OGRSpatialReference     *poSRS;
     
 
 public:
-    OGRXODRLayer( const char *pszFilename, uint8_t layer);
+    OGRXODRLayer( const char *pszFilename, VSILFILE *fp, std::string layer);
 ~OGRXODRLayer();
 
-    uint8_t             layerID;
+    //int                 layerID;
     std::string         fileName;
-    
+    std::string         layerName;
    
     void                ResetReading();
     OGRFeature *        GetNextFeature();
@@ -65,14 +68,14 @@ private:
         header = 0
     };
     
+    std::string         getReferenceSystem();
     OGRFeature*         getLayer();
     OGRFeature*         getRefLine();
     OGRFeature*         getLanes();
+    OGRFeature*         getRoadMark();
    
        
 };
-
-
 
 /*--------------------------------------------------------------------*/
 /*--------------------  Datasource declerations ----------------------*/
@@ -84,7 +87,6 @@ class OGRXODRDataSource : public GDALDataset
     OGRXODRLayer       **papoLayers;
     int                 nLayers;
 
-
 public:
                         OGRXODRDataSource();
                         ~OGRXODRDataSource();
@@ -94,8 +96,8 @@ public:
     int                 GetLayerCount() { return nLayers; }
     OGRLayer            *GetLayer( int );
 
-    int                 TestCapability( const char * ) { return FALSE; }
-   
+    virtual int         TestCapability( const char * ) override;
+    
 };
 
 /*--------------------------------------------------------------------*/

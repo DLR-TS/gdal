@@ -30,7 +30,6 @@
 #include "ogr_api.h"
 #include "ogr_geometry.h"
 
-
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -42,76 +41,60 @@ using namespace pugi;
 using namespace std;
 /*--------------------------------------------------------------------*/
 
-OGRXODRLayer::OGRXODRLayer( const char *pszFilename, uint8_t layer )
+OGRXODRLayer::OGRXODRLayer( const char *pszFilename, VSILFILE  *fp, std::string layer ):
+poFeatureDefn(new OGRFeatureDefn(CPLGetBasename(pszFilename))),
+fpXODR(fp),
+pszFilename(CPLStrdup(pszFilename)),
+nNextFID(0)
 {
-
-    fileName = pszFilename;
-    nNextFID = 0;
-    poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszFilename));
-    //SetDescription(poFeatureDefn->GetName());
-    //poFeatureDefn->Reference();
-    //poFeatureDefn->SetGeomType(wkbPoint);
-
-    //OGRFieldDefn oFieldTemplate("Name", OFTString);
-
-    //poFeatureDefn->AddFieldDefn(&oFieldTemplate);
-
-    /*-------------------------------*/
-    //add xodr 
-    //odr::OpenDriveMap xodrMap(pszFilename);
+  pszName = CPLStrdup(pszFilename);
+  fileName = pszFilename;
+  layerName = layer;
+  //layerID = layer;
+  //std::cout << pszName << " " << typeid(pszName).name() << std::endl;
+  //std::cout << fileName << " " << typeid(fileName).name() << std::endl;
+  //std::cout << layer << " " << typeid(layer).name() << std::endl;
+  //std::cout << layerID << " " << typeid(layerID).name() << std::endl;
+  
+  if(layerName == "refLine" || layerName == "Lanes" ||  layerName == "RoadMark" )  {
+    SetDescription(poFeatureDefn->GetName());
+    poFeatureDefn->SetGeomType(wkbMultiLineString);  
+  }
+  poFeatureDefn->Reference();
+  ResetReading();
+  poSRS = NULL; //if this line is in if statement -segmentation fault error return on testing 
  
-    /*-------------------------------*/
-    //georeferencing
-    xml_document doc;
-    xml_parse_result result = doc.load_file(pszFilename);
-    xml_node opendrive = doc.child("OpenDRIVE");
-    xml_node header = opendrive.child("header");
-    /*-------*/
-    xml_attribute revMajor = header.attribute("revMajor");
-    xml_attribute revMinor = header.attribute("revMinor");
-    xml_attribute name = header.attribute("name");
-    xml_attribute date = header.attribute("date");
-    xml_attribute north = header.attribute("north");
-    xml_attribute south = header.attribute("south");
-    xml_attribute east = header.attribute("east");
-    xml_attribute west = header.attribute("west");
-    xml_attribute vendor = header.attribute("vendor");
-    /*-------*/
-    
-    /*-------------------------------*/
-    layerID = layer;
-    if(layerID == 1){
-      poFeatureDefn->SetGeomType(wkbPoint);
-    }
-    poFeatureDefn->Reference();
-    ResetReading();
-    poSRS = NULL;
+  /* Georeferencing */
+  /*-------------------------------*/
+  xml_document doc;
+  xml_parse_result result = doc.load_file(pszFilename);
+  xml_node opendrive = doc.child("OpenDRIVE");
+  xml_node header = opendrive.child("header");
+  string georeference = header.child("geoReference").child_value();
+  if(!georeference.empty()){
+    poSRS = new OGRSpatialReference();
+    poSRS -> importFromProj4(georeference.c_str());
+    poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
+  /*-------------------------------*/
+  }
+  
+  
 
+  getLayer();
     
-    string georeference = header.child("geoReference").child_value();
-    if(!georeference.empty()){
-      poSRS = new OGRSpatialReference();
-      poSRS -> importFromProj4(georeference.c_str());
-      poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
-    }
-    getLayer();
-    /*-------------------------------*/
-    fp = VSIFOpenL(pszFilename, "r");
-    if( fp == NULL )
-        return;
+    
 }
 /*The layer constructor is responsible for initialization. 
 The most important initialization is setting up the OGRFeatureDefn for the layer. 
 This defines the list of fields and their types, the geometry type and the coordinate system for the layer.
 In the SPF format the set of fields is fixed - a single string field and we have no coordinate system info to set.*/
 
-
-
 OGRXODRLayer::~OGRXODRLayer()
 {
     poFeatureDefn->Release();
-    if( fp != NULL )
-      VSIFCloseL(fp);
+
+    if (poSRS)
+        poSRS->Release();
   
 }
 /*--------------------------------------------------------------------*/
@@ -119,48 +102,55 @@ OGRXODRLayer::~OGRXODRLayer()
 /*--------------------------------------------------------------------*/
 OGRFeature *OGRXODRLayer::GetNextFeature()
 {
-  if(layerID == 1){ //reference line
-    return getRefLine();
-
-  }else if(layerID == 2){ //lane
+  if(layerName == "refLine"){ //reference line
+    return getRefLine();  
+  }else if( layerName == "Lanes"){
     return getLanes();
+  }else if( layerName == "RoadMark"){
+    return getRoadMark();
   }
-   
   
 }
 
-
 void OGRXODRLayer::ResetReading()
 {
-    VSIFSeekL(fp, 0, SEEK_SET);
+    VSIFSeekL(fpXODR, 0, SEEK_SET);
     nNextFID = 0;
 }
 /*--------------------------------------------------------------------*/
 /*---------------------------     Layer    ----------------------------*/
 /*--------------------------------------------------------------------*/
 
+//string OGRXODRLayer::getReferenceSystem(){
+//    /* Georeferencing */
+//    /*-------------------------------*/
+//    //xml_document doc;
+//    //xml_parse_result result = doc.load_file(fileName);
+//    //xml_node opendrive = doc.child("OpenDRIVE");
+//    //xml_node header = opendrive.child("header");
+//    //string georeference = header.child("geoReference").child_value();
+//  return ;
+//}
 
 
 OGRFeature *OGRXODRLayer::getLayer(){
 
-  if(layerID == 1){ //reference line
+  if(layerName == "refLine"){ //reference line
     OGRFieldDefn oFieldName("Name", OFTString);
     OGRFieldDefn oFieldID("ID", OFTString);
-    OGRFieldDefn oFieldJunction("Junction", OFTString);
     poFeatureDefn->AddFieldDefn(&oFieldName);
     poFeatureDefn->AddFieldDefn(&oFieldID);
-    poFeatureDefn->AddFieldDefn(&oFieldJunction);
-  }else if(layerID == 2){ //lane
+  }else if(layerName == "Lanes"){ 
+    OGRFieldDefn oFieldName("Name", OFTString);
     OGRFieldDefn oFieldID("ID", OFTString);
-    OGRFieldDefn oFieldType("Type", OFTString);
-    OGRFieldDefn oFieldLevel("Level", OFTString);
-    OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+    poFeatureDefn->AddFieldDefn(&oFieldName);
     poFeatureDefn->AddFieldDefn(&oFieldID);
-    poFeatureDefn->AddFieldDefn(&oFieldType);
-    poFeatureDefn->AddFieldDefn(&oFieldLevel);
-    poFeatureDefn->AddFieldDefn(&oFieldRoadID);
-  }
-   
+  } else if(layerName == "RoadMark"){ 
+    OGRFieldDefn oFieldName("Name", OFTString);
+    OGRFieldDefn oFieldID("ID", OFTString);
+    poFeatureDefn->AddFieldDefn(&oFieldName);
+    poFeatureDefn->AddFieldDefn(&oFieldID);
+  } 
  
   return NULL;
 }
@@ -171,13 +161,36 @@ OGRFeature *OGRXODRLayer::getLayer(){
 /*--------------------------------------------------------------------*/
 
 OGRFeature *OGRXODRLayer::getRefLine(){
-  odr::OpenDriveMap xodr(fileName);
-  for(odr::Road road : xodr.get_roads()){
-    odr::Vec3D test_point = road.ref_line.get_xyz(0.0);
-    OGRFeature *feature = new OGRFeature(poFeatureDefn);
-    OGRPoint *pFeature = new OGRPoint(test_point[0], test_point[1]);
-    feature->SetGeometryDirectly(pFeature);
+  odr::OpenDriveMap xodr(pszName);
+  std::vector<odr::Road> Roads = xodr.get_roads();
+  const double      eps = 0.9;
+
+  OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
+  OGRMultiLineString *poLS = new OGRMultiLineString();
+  for(int i = 0; i < Roads.size();i++ ){
+    odr::Road Road = Roads[i];
+    odr::RefLine RefLine = Road.ref_line;
+    std::set<double> s_vals = RefLine.approximate_linear(eps, 0.0, Road.length);
+    OGRLineString *ls = new OGRLineString();
+    for (const double& s : s_vals)
+    {
+      odr::Vec3D RoadGeometry = RefLine.get_xyz(s);
+      ls-> addPoint( new OGRPoint(RoadGeometry[0], RoadGeometry[1]));
+    }
+    poLS->addGeometry(ls);
+    OGRGeometry *poGeometry = poLS->MakeValid();
+    poFeature->SetGeometry(poGeometry);
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), Road.id.c_str());
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Road.id.c_str());
+    poFeature->SetFID(nNextFID++);
+    delete poGeometry;
   }
+  if(FilterGeometry(poFeature->GetGeometryRef())){
+    return poFeature;
+  }else{
+    delete poFeature;
+  }
+  return NULL;
 }
 
 
@@ -186,13 +199,126 @@ OGRFeature *OGRXODRLayer::getRefLine(){
 /*--------------------------------------------------------------------*/
 
 OGRFeature *OGRXODRLayer::getLanes(){
-  odr::OpenDriveMap xodr(fileName);
+  OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
+  OGRMultiLineString *poLS = new OGRMultiLineString();
+  
+  odr::OpenDriveMap xodr(pszName);
+  std::vector<odr::Road> Roads = xodr.get_roads();
+  
+  // epsilon for approximation 
+  const double      eps = 0.9;
+  for(int road = 0; road < Roads.size(); road++ ){
+    odr::Road Road = Roads[road];
+    std::vector<odr::LaneSection> LaneSections = Road.get_lanesections();
+    for(int lanesection = 0; lanesection < LaneSections.size() ; lanesection ++){
+      odr::LaneSection LaneSection = LaneSections[lanesection];
+      std::vector<odr::Lane> Lanes = LaneSection.get_lanes();
+      
+      for(int lane = 0; lane < Lanes.size(); lane ++){
+        OGRLineString lineString_even;
+        OGRLineString lineString_odd;
+        odr::Lane Lane = Lanes[lane];
+        odr::Mesh3D LaneMeshRight = Road.get_lane_mesh(Lane, eps);
+        std::vector<odr::Vec3D> LaneGeometriesRight = LaneMeshRight.vertices;
 
-  for(odr::Road road : xodr.get_roads()){
-    for(odr::LaneSection lanesection : road.get_lanesections()){
-      const double s_start = lanesection.s0;
-      const double s_end = road.get_lanesection_end(lanesection);
+        for(int lanegeometry = 0; lanegeometry < LaneGeometriesRight.size() ; lanegeometry ++){
+          odr::Vec3D LaneGeometryRight = LaneGeometriesRight[lanegeometry];
+          
+          if(lanegeometry % 2 != 0){
+            lineString_even.addPoint(LaneGeometryRight[0], LaneGeometryRight[1]);
+          } else {
+            lineString_odd.addPoint(LaneGeometryRight[0], LaneGeometryRight[1]);
+          }
+
+        }
+        poLS->addGeometry(&lineString_even);
+        poLS->addGeometry(&lineString_odd);
+
+        OGRGeometry *poGeometry = poLS->MakeValid();
+
+        poFeature->SetGeometry(poGeometry);
+        poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), Road.id.c_str());
+        poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Road.id.c_str());
+        poFeature->SetFID(nNextFID++);
+        delete poGeometry;
+      }
     }
   }
+  
+  if(FilterGeometry(poFeature->GetGeometryRef())){
+    return poFeature;
+  }else{
+    delete poFeature;
+  }
+  return NULL;
 }
 
+OGRFeature *OGRXODRLayer::getRoadMark(){
+  OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
+  OGRMultiLineString *poLS = new OGRMultiLineString();
+  
+  odr::OpenDriveMap xodr(pszName);
+  std::vector<odr::Road> Roads = xodr.get_roads();
+
+  const double      eps = 0.9;
+  for(int road = 0; road < Roads.size(); road++ ){
+    odr::Road Road = Roads[road];
+    std::vector<odr::LaneSection> LaneSections = Road.get_lanesections();
+    for(int lanesection = 0; lanesection < LaneSections.size() ; lanesection ++){
+      odr::LaneSection LaneSection = LaneSections[lanesection];
+      std::vector<odr::Lane> Lanes = LaneSection.get_lanes();
+      
+      for(int lane = 0; lane < Lanes.size(); lane ++){
+        OGRLineString lineString_even;
+        OGRLineString lineString_odd;
+        odr::Lane Lane = Lanes[lane];
+        const std::vector<RoadMark> RoadMarks = Lane.get_roadmarks(LaneSection.s0, Road.get_lanesection_end(LaneSection));
+        for(int roadmark = 0; roadmark < RoadMarks.size(); roadmark ++){
+          odr::RoadMark RoadMark = RoadMarks[roadmark];
+          odr::Mesh3D RoadMarkMesh = Road.get_roadmark_mesh(Lane, RoadMark, eps);
+          std::vector<odr::Vec3D> RoadMarkGeometries = RoadMarkMesh.vertices;
+          for(int roadmarkgeometry = 0; roadmarkgeometry < RoadMarkGeometries.size(); roadmarkgeometry++){
+            odr::Vec3D RoadMarkGeometry = RoadMarkGeometries[roadmarkgeometry];
+            if(roadmarkgeometry %2 ==0){
+              lineString_even.addPoint(RoadMarkGeometry[0], RoadMarkGeometry[1]);
+            }else{
+              lineString_odd.addPoint(RoadMarkGeometry[0], RoadMarkGeometry[1]);
+            }
+          }
+        }
+        poLS->addGeometry(&lineString_even);
+        poLS->addGeometry(&lineString_odd);
+        OGRGeometry *poGeometry = poLS->MakeValid();
+
+        poFeature->SetGeometry(poGeometry);
+        poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), Road.id.c_str());
+        poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Road.id.c_str());
+        poFeature->SetFID(nNextFID++);
+        delete poGeometry;
+      }
+    }
+  }
+  
+  if(FilterGeometry(poFeature->GetGeometryRef())){
+    return poFeature;
+  }else{
+    delete poFeature;
+  }
+  return NULL;
+}
+
+
+/*void OGRXODRLayer::GetXODR(){
+  odr::OpenDriveMap xodr(pszFilename);
+  const double      eps = 0.1;
+  std::vector<odr::Road> roads = xodr.get_roads();
+  for(int i = 0; i < roads.size(); i ++){
+    odr::Road road = roads[i];
+    odr::RefLine refLine = road.ref_line;
+    std::set<double> s_values = refLine.approximate_linear(eps, 0.0, road.length);
+    for (const double& s : s_vals)
+    {
+      odr::Vec3D geometry = ref_line.get_xyz(s);
+    }
+  }
+}*/

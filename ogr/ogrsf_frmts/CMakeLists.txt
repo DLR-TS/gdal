@@ -47,11 +47,13 @@ ogr_optional_driver(jml JML)
 ogr_optional_driver(vdv "VDV-451/VDV-452/INTREST Data Format")
 ogr_optional_driver(flatgeobuf FlatGeobuf)
 ogr_optional_driver(mapml MapML)
-#ogr_optional_driver(xodr XODR)
+
+ogr_default_driver(xodr XODR)
 
 # ######################################################################################################################
 #
 # XML drivers
+#ogr_dependent_driver(xodr "XODR- GPS Road Information" "GDAL_USE_OPENDRIVE")
 ogr_dependent_driver(gpx "GPX - GPS Exchange Format" "GDAL_USE_EXPAT")
 ogr_dependent_driver(gmlas GMLAS "GDAL_USE_XERCESC;OGR_ENABLE_DRIVER_PGDUMP")
 ogr_dependent_driver(svg "Scalable Vector Graphics" "GDAL_USE_EXPAT")
@@ -69,7 +71,9 @@ ogr_dependent_driver(elastic "ElasticSearch" "GDAL_USE_CURL")
 ogr_optional_driver(idrisi IDRISI)
 
 ogr_dependent_driver(pds "Planetary Data Systems TABLE" "GDAL_ENABLE_DRIVER_PDS")
-ogr_dependent_driver(xodr "Open Dynamic Road Information" "GDAL_USE_OPENDRIVE")
+###
+#ogr_dependent_driver(xodr "Open Dynamic Road Information" "GDAL_USE_OPENDRIVE")
+###
 # Caution: if modifying SQLite declaration here, also modify it in gdal.cmake
 ogr_dependent_driver(sqlite "SQLite3 / Spatialite RDBMS" "GDAL_USE_SQLITE3")
 # Caution: if modifying GPKG declaration here, also modify it in gdal.cmake

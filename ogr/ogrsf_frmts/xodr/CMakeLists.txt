@@ -1,4 +1,3 @@
-
 add_gdal_driver(
   TARGET ogr_XODR
   BUILTIN
@@ -6,18 +5,29 @@ add_gdal_driver(
   ogrxodrdatasource.cpp 
   ogrxodrlayer.cpp 
   ogrxodrdriver.cpp 
-  ogrxodrgeo.cpp
-  #PLUGIN_CAPABLE
-  BUILTIN)
+  ogrxodrgeo.cpp)
 
 gdal_standard_includes(ogr_XODR)
+
 
 find_package(OpenDrive REQUIRED)
 include_directories(${OpenDrive_INCLUDE_DIRS})
 
 target_include_directories(ogr_XODR PUBLIC $<TARGET_PROPERTY:ogrsf_generic,SOURCE_DIR> ${OpenDrive_INCLUDE_DIRS})
 if(GDAL_USE_OPENDRIVE_INTERNAL)
-  gdal_add_vendored_lib(ogr_XODR libOpenDrive)
+  gdal_add_vendored_lib(ogr_XODR PRIVATE libOpenDrive)
 else()
   gdal_target_link_libraries(ogr_XODR PRIVATE ${OpenDrive_LIBRARIES})
 endif()
+
+
+#include(FetchContent)
+#set(FETCHCONTENT_BASE_DIR libopendrive)
+#FetchContent_Declare(
+#    openDRIVE
+#    GIT_REPOSITORY "https://github.com/gulsenbardk/libOpenDRIVE.git" #after merge request&acception, link should be change*
+#    GIT_TAG master
+#)
+#
+#FetchContent_MakeAvailable(openDrive)
+#target_link_libraries(ogr_XODR PUBLIC OpenDrive)

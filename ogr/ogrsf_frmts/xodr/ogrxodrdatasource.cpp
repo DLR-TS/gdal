@@ -27,53 +27,76 @@
  ****************************************************************************/
 
 #include "ogr_xodr.h"
-
+#include <OpenDrive/include/libopendrive.h>
+#include <OpenDrive/thirdparty/pugixml/pugixml.hpp>
+using namespace odr;
+using namespace pugi;
 
 CPL_CVSID("$Id$")
+
 /*--------------------------------------------------------------------*/
 
 OGRXODRDataSource::OGRXODRDataSource()
 {
     papoLayers = NULL;
     nLayers = 0;
+   
 }
 
 OGRXODRDataSource::~OGRXODRDataSource()
 {
+    int i;
     for( int i = 0; i < nLayers; i++ )
         delete papoLayers[i];
-    CPLFree(papoLayers);
+        papoLayers[i] = nullptr;
+    CPLFree(papoLayers); 
 
-    
 }
 
 /*--------------------------------------------------------------------*/
 int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
 {
+    pszName = CPLStrdup(pszFilename);
+    bUpdate = CPL_TO_BOOL(bUpdate);
+    CPLString osFilename(pszFilename);
+    const CPLString osBaseFilename = CPLGetFilename(pszFilename);
+    //const CPLString osExt = GetRealExtension(osFilename);
+
+    VSILFILE *fp = nullptr;
+
+    if( bUpdate )
+        fp = VSIFOpenExL(pszFilename, "rb+", true);
+    else
+        fp = VSIFOpenExL(pszFilename, "rb", true);
+    if( fp == nullptr )
+    {
+        CPLError(CE_Warning, CPLE_OpenFailed, "Failed to open %s.");
+                // VSIGetLastErrorMsg());
+        return false;
+    }
+
+
     if( bUpdate )
     {
         CPLError(CE_Failure, CPLE_OpenFailed,
                 "Update access not supported by the xodr driver.");
         return FALSE;
     }
-
-    VSILFILE* fp = VSIFOpenL(pszFilename, "r");
-    if (fp == nullptr)
-        return FALSE;
-    
+   
     // Create a corresponding layer.
-    nLayers = 3;
-    papoLayers = (OGRXODRLayer **) CPLRealloc(papoLayers, nLayers * sizeof(OGRXODRLayer*));
-
-
-    papoLayers[0] = new OGRXODRLayer(pszFilename,0);
-    papoLayers[1] = new OGRXODRLayer(pszFilename,1);
-    papoLayers[2] = new OGRXODRLayer(pszFilename,2);
-    //pszName = CPLStrdup(pszFilename);
-
+    nLayers = 1;
+    
+    //papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
+    papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
+   
+    papoLayers[0] = new OGRXODRLayer(pszFilename, fp,  "refLine");
+    papoLayers[1] = new OGRXODRLayer(pszFilename, fp,  "Lanes");
+    papoLayers[2] = new OGRXODRLayer(pszFilename, fp,  "RoadMark");
+    
+    
     return TRUE;
+    
 }
-
 
 /*--------------------------------------------------------------------*/
 
@@ -86,4 +109,9 @@ OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
 }
 
 /*--------------------------------------------------------------------*/
+int OGRXODRDataSource::TestCapability( CPL_UNUSED const char * pszCap )
+
+{
+    return FALSE;
+}
 

@@ -271,5 +271,13 @@ void OGRRegisterAllInternal()
     RegisterOGRAVCE00();
 #endif
 
+#ifdef XODR_ENABLED
+    RegisterOGRXODR();
+#endif
+
+
+#ifdef GULUS_ENABLED
+    RegisterOGRGULUS();
+#endif
 
 } /* OGRRegisterAll */
