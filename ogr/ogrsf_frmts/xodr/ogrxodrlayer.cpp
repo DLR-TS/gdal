@@ -41,23 +41,19 @@ using namespace pugi;
 using namespace std;
 /*--------------------------------------------------------------------*/
 
-OGRXODRLayer::OGRXODRLayer( const char *pszFilename, VSILFILE  *fp, std::string layer ):
-poFeatureDefn(new OGRFeatureDefn(CPLGetBasename(pszFilename))),
+OGRXODRLayer::OGRXODRLayer( const char *pszFilename, VSILFILE  *fp, const char* pszLayerName, std::string layer ):
+//poFeatureDefn(new OGRFeatureDefn(CPLGetBasename(pszLayerName))),
 fpXODR(fp),
 pszFilename(CPLStrdup(pszFilename)),
 nNextFID(0)
 {
-  pszName = CPLStrdup(pszFilename);
-  fileName = pszFilename;
+
   layerName = layer;
-  //layerID = layer;
-  //std::cout << pszName << " " << typeid(pszName).name() << std::endl;
-  //std::cout << fileName << " " << typeid(fileName).name() << std::endl;
-  //std::cout << layer << " " << typeid(layer).name() << std::endl;
-  //std::cout << layerID << " " << typeid(layerID).name() << std::endl;
-  
+ 
+  poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
+  SetDescription(poFeatureDefn->GetName());
   if(layerName == "refLine" || layerName == "Lanes" ||  layerName == "RoadMark" )  {
-    SetDescription(poFeatureDefn->GetName());
+   
     poFeatureDefn->SetGeomType(wkbMultiLineString);  
   }
   poFeatureDefn->Reference();
@@ -91,7 +87,10 @@ In the SPF format the set of fields is fixed - a single string field and we have
 
 OGRXODRLayer::~OGRXODRLayer()
 {
-    poFeatureDefn->Release();
+    if (poFeatureDefn != NULL)
+	{
+		poFeatureDefn->Release();
+	}
 
     if (poSRS)
         poSRS->Release();
@@ -141,9 +140,7 @@ OGRFeature *OGRXODRLayer::getLayer(){
     poFeatureDefn->AddFieldDefn(&oFieldName);
     poFeatureDefn->AddFieldDefn(&oFieldID);
   }else if(layerName == "Lanes"){ 
-    OGRFieldDefn oFieldName("Name", OFTString);
-    OGRFieldDefn oFieldID("ID", OFTString);
-    poFeatureDefn->AddFieldDefn(&oFieldName);
+    OGRFieldDefn oFieldID("ID", OFTInteger);
     poFeatureDefn->AddFieldDefn(&oFieldID);
   } else if(layerName == "RoadMark"){ 
     OGRFieldDefn oFieldName("Name", OFTString);
@@ -161,7 +158,7 @@ OGRFeature *OGRXODRLayer::getLayer(){
 /*--------------------------------------------------------------------*/
 
 OGRFeature *OGRXODRLayer::getRefLine(){
-  odr::OpenDriveMap xodr(pszName);
+  odr::OpenDriveMap xodr(pszFilename);
   std::vector<odr::Road> Roads = xodr.get_roads();
   const double      eps = 0.9;
 
@@ -202,7 +199,7 @@ OGRFeature *OGRXODRLayer::getLanes(){
   OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
   OGRMultiLineString *poLS = new OGRMultiLineString();
   
-  odr::OpenDriveMap xodr(pszName);
+  odr::OpenDriveMap xodr(pszFilename);
   std::vector<odr::Road> Roads = xodr.get_roads();
   
   // epsilon for approximation 
@@ -237,8 +234,7 @@ OGRFeature *OGRXODRLayer::getLanes(){
         OGRGeometry *poGeometry = poLS->MakeValid();
 
         poFeature->SetGeometry(poGeometry);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), Road.id.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Road.id.c_str());
+        poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Lane.id);
         poFeature->SetFID(nNextFID++);
         delete poGeometry;
       }
@@ -257,7 +253,7 @@ OGRFeature *OGRXODRLayer::getRoadMark(){
   OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
   OGRMultiLineString *poLS = new OGRMultiLineString();
   
-  odr::OpenDriveMap xodr(pszName);
+  odr::OpenDriveMap xodr(pszFilename);
   std::vector<odr::Road> Roads = xodr.get_roads();
 
   const double      eps = 0.9;
@@ -307,18 +303,3 @@ OGRFeature *OGRXODRLayer::getRoadMark(){
   return NULL;
 }
 
-
-/*void OGRXODRLayer::GetXODR(){
-  odr::OpenDriveMap xodr(pszFilename);
-  const double      eps = 0.1;
-  std::vector<odr::Road> roads = xodr.get_roads();
-  for(int i = 0; i < roads.size(); i ++){
-    odr::Road road = roads[i];
-    odr::RefLine refLine = road.ref_line;
-    std::set<double> s_values = refLine.approximate_linear(eps, 0.0, road.length);
-    for (const double& s : s_vals)
-    {
-      odr::Vec3D geometry = ref_line.get_xyz(s);
-    }
-  }
-}*/

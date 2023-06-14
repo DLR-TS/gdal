@@ -1,0 +1,147 @@
+{
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_custom_target"
+		],
+		"files" : 
+		[
+			"apps/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 110,
+				"parent" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "gdalinfo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalbuildvrt::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdaladdo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_grid::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_translate::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalwarp::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_contour::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalenhance::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdallocationinfo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalmanage::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalsrsinfo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdaltindex::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_rasterize::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdaldem::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdaltransform::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_create::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdal_viewshed::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "ogrinfo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "ogr2ogr::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "ogrlineref::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "ogrtindex::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "nearblack::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalmdiminfo::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gdalmdimtranslate::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gnmanalyse::@9e189ee61a034fc9b705"
+		},
+		{
+			"id" : "gnmmanage::@9e189ee61a034fc9b705"
+		}
+	],
+	"id" : "gdalapps::@9e189ee61a034fc9b705",
+	"name" : "gdalapps",
+	"paths" : 
+	{
+		"build" : "apps",
+		"source" : "apps"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				1
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "build/apps/CMakeFiles/gdalapps",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/apps/CMakeFiles/gdalapps.rule",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "UTILITY"
+}

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "ogr/ogrsf_frmts/s57",
+		"source" : "ogr/ogrsf_frmts/s57"
+	}
+}

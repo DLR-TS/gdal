@@ -56,7 +56,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
 /*--------------------------------------------------------------------*/
 int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
 {
-    pszName = CPLStrdup(pszFilename);
+    
     bUpdate = CPL_TO_BOOL(bUpdate);
     CPLString osFilename(pszFilename);
     const CPLString osBaseFilename = CPLGetFilename(pszFilename);
@@ -84,14 +84,16 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     }
    
     // Create a corresponding layer.
-    nLayers = 1;
+    nLayers = 3;
     
     //papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
     papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
-   
-    papoLayers[0] = new OGRXODRLayer(pszFilename, fp,  "refLine");
-    papoLayers[1] = new OGRXODRLayer(pszFilename, fp,  "Lanes");
-    papoLayers[2] = new OGRXODRLayer(pszFilename, fp,  "RoadMark");
+    std::string layername = "refLine";
+    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername);
+    layername = "Lanes";
+    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername);
+    layername = "RoadMark";
+    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername);
     
     
     return TRUE;

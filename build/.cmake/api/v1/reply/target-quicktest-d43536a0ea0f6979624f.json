@@ -1,0 +1,123 @@
+{
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_custom_target"
+		],
+		"files" : 
+		[
+			"autotest/cpp/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 233,
+				"parent" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "test-unit::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-1::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-2::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-3::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-4::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-5::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-6::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-copy-words::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-closed-on-destroy-DM::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-threaded-condition::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-virtual-memory::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-write::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-block-cache-limit::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-multi-threaded-writing::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-destroy::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-bug1488::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-log::@56945048589f6c6c561b"
+		},
+		{
+			"id" : "test-proj-with-fork::@56945048589f6c6c561b"
+		}
+	],
+	"id" : "quicktest::@56945048589f6c6c561b",
+	"name" : "quicktest",
+	"paths" : 
+	{
+		"build" : "autotest/cpp",
+		"source" : "autotest/cpp"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				1
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "build/autotest/cpp/CMakeFiles/quicktest",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/autotest/cpp/CMakeFiles/quicktest.rule",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "UTILITY"
+}

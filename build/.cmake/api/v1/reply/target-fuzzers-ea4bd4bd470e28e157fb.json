@@ -1,0 +1,121 @@
+{
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_custom_target"
+		],
+		"files" : 
+		[
+			"fuzzers/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 154,
+				"parent" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "gdal_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "gdal_translate_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "gdal_vector_translate_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "get_jpeg2000_structure_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "gml_geom_import_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "ogr_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "osr_set_from_user_input_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "spatialite_geom_import_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "wkb_import_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "wkt_import_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "alg_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "gtiff_mmap::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "cad_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "gdal_filesystem_fuzzer::@874296c8d4af2a721352"
+		},
+		{
+			"id" : "ogr_filesystem_fuzzer::@874296c8d4af2a721352"
+		}
+	],
+	"id" : "fuzzers::@874296c8d4af2a721352",
+	"name" : "fuzzers",
+	"paths" : 
+	{
+		"build" : "fuzzers",
+		"source" : "fuzzers"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				1,
+				2
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "build/fuzzers/CMakeFiles/fuzzers",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/fuzzers/CMakeFiles/fuzzers.rule",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/fuzzers/gdal_fuzzer_seed_corpus.zip.rule",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "UTILITY"
+}

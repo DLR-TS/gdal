@@ -1802,13 +1802,27 @@ int VSIFCloseL( VSILFILE * fp )
  * @return 0 on success or -1 one failure.
  */
 
-int VSIFSeekL( VSILFILE * fp, vsi_l_offset nOffset, int nWhence )
+/*int VSIFSeekL( VSILFILE * fp, vsi_l_offset nOffset, int nWhence )
 
 {
     VSIVirtualHandle *poFileHandle = reinterpret_cast<VSIVirtualHandle *>(fp);
 
     return poFileHandle->Seek( nOffset, nWhence );
+}*/
+int VSIFSeekL(VSILFILE* fp, vsi_l_offset nOffset, int nWhence) {
+    if (fp == NULL) {
+        // Handle null pointer error
+        return -1;
+    }
+
+    VSIVirtualHandle* poFileHandle = reinterpret_cast<VSIVirtualHandle*>(fp);
+  
+
+    return poFileHandle->Seek(nOffset, nWhence);
 }
+
+
+
 
 /************************************************************************/
 /*                             VSIFTellL()                              */

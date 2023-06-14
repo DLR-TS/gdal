@@ -1,0 +1,1 @@
+/usr/bin/cc  -fvisibility=hidden CMakeFiles/test_load_virtual_ogr.dir/test_load_virtual_ogr.c.o -o test_load_virtual_ogr  /usr/lib/x86_64-linux-gnu/libsqlite3.so 

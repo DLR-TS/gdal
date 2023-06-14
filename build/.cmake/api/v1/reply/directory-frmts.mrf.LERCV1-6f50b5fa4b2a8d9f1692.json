@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "frmts/mrf/LERCV1",
+		"source" : "frmts/mrf/LERCV1"
+	}
+}

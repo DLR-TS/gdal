@@ -1,0 +1,7 @@
+if(DEFINED ENV{DESTDIR})
+  set(ROOT_DIR_ARG "--root=$ENV{DESTDIR}")
+endif()
+if(NOT "stdlibx" STREQUAL "x")
+  set(ENV{SETUPTOOLS_USE_DISTUTILS} stdlib)
+endif()
+execute_process(COMMAND /usr/bin/python3.10 /home/gdal/build/swig/python/setup.py install ${ROOT_DIR_ARG} --single-version-externally-managed --record=record.txt "--prefix=/usr/local" --install-layout=deb)

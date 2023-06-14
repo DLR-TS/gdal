@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "ogr/ogrsf_frmts/csw",
+		"source" : "ogr/ogrsf_frmts/csw"
+	}
+}

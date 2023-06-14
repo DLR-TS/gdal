@@ -1,0 +1,1 @@
+/usr/bin/cc -fPIC  -fvisibility=hidden  -Wl,--no-undefined -shared  -o ../../../gdalplugins/my_test_sqlite3_ext.so CMakeFiles/my_test_sqlite3_ext.dir/my_test_sqlite3_ext.c.o  /usr/lib/x86_64-linux-gnu/libsqlite3.so 

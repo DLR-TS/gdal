@@ -1,0 +1,398 @@
+Performing C SOURCE FILE Test HAVE_WFLAG_SHORTEN_64_TO_32 failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_b5468/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_b5468.dir/build.make CMakeFiles/cmTC_b5468.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b5468.dir/src.c.o
+/usr/bin/cc -DHAVE_WFLAG_SHORTEN_64_TO_32  -Wshorten-64-to-32 -std=gnu99 -o CMakeFiles/cmTC_b5468.dir/src.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command-line option '-Wshorten-64-to-32'
+gmake[1]: *** [CMakeFiles/cmTC_b5468.dir/build.make:78: CMakeFiles/cmTC_b5468.dir/src.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_b5468/fast] Error 2
+
+
+Source file was:
+ int main() { return 0; }
+Performing C++ SOURCE FILE Test HAVE_WFLAG_SHADOW_FIELD failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_46757/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_46757.dir/build.make CMakeFiles/cmTC_46757.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_46757.dir/src.cxx.o
+/usr/bin/c++ -DHAVE_WFLAG_SHADOW_FIELD  -Wshadow-field -std=gnu++14 -o CMakeFiles/cmTC_46757.dir/src.cxx.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command-line option '-Wshadow-field'; did you mean '-Wshadow-ivar'?
+gmake[1]: *** [CMakeFiles/cmTC_46757.dir/build.make:78: CMakeFiles/cmTC_46757.dir/src.cxx.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_46757/fast] Error 2
+
+
+Source file was:
+#include <cstdio>
+      int main() { return 0; }
+Performing C SOURCE FILE Test HAVE_WFLAG_DUPLICATE_COND failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_80a73/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_80a73.dir/build.make CMakeFiles/cmTC_80a73.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_80a73.dir/src.c.o
+/usr/bin/cc -DHAVE_WFLAG_DUPLICATE_COND  -Wduplicate-cond -std=gnu99 -o CMakeFiles/cmTC_80a73.dir/src.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command-line option '-Wduplicate-cond'; did you mean '-Wduplicated-cond'?
+gmake[1]: *** [CMakeFiles/cmTC_80a73.dir/build.make:78: CMakeFiles/cmTC_80a73.dir/src.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_80a73/fast] Error 2
+
+
+Source file was:
+ int main() { return 0; }
+Performing C SOURCE FILE Test HAVE_WFLAG_COMMA failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_23c16/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_23c16.dir/build.make CMakeFiles/cmTC_23c16.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_23c16.dir/src.c.o
+/usr/bin/cc -DHAVE_WFLAG_COMMA  -Wcomma -std=gnu99 -o CMakeFiles/cmTC_23c16.dir/src.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command-line option '-Wcomma'; did you mean '-Wcomment'?
+gmake[1]: *** [CMakeFiles/cmTC_23c16.dir/build.make:78: CMakeFiles/cmTC_23c16.dir/src.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_23c16/fast] Error 2
+
+
+Source file was:
+ int main() { return 0; }
+Performing C SOURCE FILE Test HAVE_WFLAG_DOCUMENTATION_AND_NO_DEPRECATED failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_8d1ef/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_8d1ef.dir/build.make CMakeFiles/cmTC_8d1ef.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_8d1ef.dir/src.c.o
+/usr/bin/cc -DHAVE_WFLAG_DOCUMENTATION_AND_NO_DEPRECATED  -Wdocumentation -Wno-documentation-deprecated-sync -std=gnu99 -o CMakeFiles/cmTC_8d1ef.dir/src.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command-line option '-Wdocumentation'
+gmake[1]: *** [CMakeFiles/cmTC_8d1ef.dir/build.make:78: CMakeFiles/cmTC_8d1ef.dir/src.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_8d1ef/fast] Error 2
+
+
+Source file was:
+ int main() { return 0; }
+Performing C++ SOURCE FILE Test HAVE_WFLAG_UNUSED_PRIVATE_FIELD failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_34df2/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_34df2.dir/build.make CMakeFiles/cmTC_34df2.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_34df2.dir/src.cxx.o
+/usr/bin/c++ -DHAVE_WFLAG_UNUSED_PRIVATE_FIELD  -Wunused-private-field -std=gnu++14 -o CMakeFiles/cmTC_34df2.dir/src.cxx.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command-line option '-Wunused-private-field'
+gmake[1]: *** [CMakeFiles/cmTC_34df2.dir/build.make:78: CMakeFiles/cmTC_34df2.dir/src.cxx.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_34df2/fast] Error 2
+
+
+Source file was:
+#include <cstdio>
+      int main() { return 0; }
+Determining if the include file xlocale.h exists failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_187a0/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_187a0.dir/build.make CMakeFiles/cmTC_187a0.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_187a0.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_187a0.dir/CheckIncludeFile.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c:1:10: fatal error: xlocale.h: No such file or directory
+    1 | #include <xlocale.h>
+      |          ^~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_187a0.dir/build.make:78: CMakeFiles/cmTC_187a0.dir/CheckIncludeFile.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_187a0/fast] Error 2
+
+
+
+Determining if the include file direct.h exists failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_a3868/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_a3868.dir/build.make CMakeFiles/cmTC_a3868.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a3868.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_a3868.dir/CheckIncludeFile.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c:1:10: fatal error: direct.h: No such file or directory
+    1 | #include <direct.h>
+      |          ^~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_a3868.dir/build.make:78: CMakeFiles/cmTC_a3868.dir/CheckIncludeFile.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_a3868/fast] Error 2
+
+
+
+Determining if the function ftell64 exists failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_aba31/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_aba31.dir/build.make CMakeFiles/cmTC_aba31.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_aba31.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=ftell64 -std=gnu99 -o CMakeFiles/cmTC_aba31.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_aba31
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_aba31.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=ftell64 CMakeFiles/cmTC_aba31.dir/CheckFunctionExists.c.o -o cmTC_aba31 
+/usr/bin/ld: CMakeFiles/cmTC_aba31.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `ftell64'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_aba31.dir/build.make:99: cmTC_aba31] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_aba31/fast] Error 2
+
+
+
+Determining if the function fseek64 exists failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_411e3/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_411e3.dir/build.make CMakeFiles/cmTC_411e3.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_411e3.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=fseek64 -std=gnu99 -o CMakeFiles/cmTC_411e3.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_411e3
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_411e3.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=fseek64 CMakeFiles/cmTC_411e3.dir/CheckFunctionExists.c.o -o cmTC_411e3 
+/usr/bin/ld: CMakeFiles/cmTC_411e3.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `fseek64'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_411e3.dir/build.make:99: cmTC_411e3] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_411e3/fast] Error 2
+
+
+
+Performing C SOURCE FILE Test NO_UNIX_STDIO_64 failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_4d435/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_4d435.dir/build.make CMakeFiles/cmTC_4d435.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_4d435.dir/src.c.o
+/usr/bin/cc -DNO_UNIX_STDIO_64  -std=gnu99 -o CMakeFiles/cmTC_4d435.dir/src.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.c
+/home/gdal/build/CMakeFiles/CMakeTmp/src.c: In function 'main':
+/home/gdal/build/CMakeFiles/CMakeTmp/src.c:9:37: error: storage size of 'buf' isn't known
+    9 |         int main() { struct _stat64 buf; _wstat64( "", &buf ); return 0; }
+      |                                     ^~~
+/home/gdal/build/CMakeFiles/CMakeTmp/src.c:9:42: warning: implicit declaration of function '_wstat64' [-Wimplicit-function-declaration]
+    9 |         int main() { struct _stat64 buf; _wstat64( "", &buf ); return 0; }
+      |                                          ^~~~~~~~
+gmake[1]: *** [CMakeFiles/cmTC_4d435.dir/build.make:78: CMakeFiles/cmTC_4d435.dir/src.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_4d435/fast] Error 2
+
+
+Source file was:
+
+        #if defined(__MINGW32__)
+        #ifndef __MSVCRT_VERSION__
+        #define __MSVCRT_VERSION__ 0x0601
+        #endif
+        #endif
+        #include <sys/types.h>
+        #include <sys/stat.h>
+        int main() { struct _stat64 buf; _wstat64( "", &buf ); return 0; }
+    
+Performing C++ SOURCE FILE Test DEPRECATE_SPRINTF failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_e4cff/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_e4cff.dir/build.make CMakeFiles/cmTC_e4cff.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_e4cff.dir/src.cxx.o
+/usr/bin/c++ -DDEPRECATE_SPRINTF  -std=gnu++14 -o CMakeFiles/cmTC_e4cff.dir/src.cxx.o -c /home/gdal/build/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_e4cff
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e4cff.dir/link.txt --verbose=1
+/usr/bin/c++ CMakeFiles/cmTC_e4cff.dir/src.cxx.o -o cmTC_e4cff 
+/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':
+(.text+0x1b): undefined reference to `main'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_e4cff.dir/build.make:99: cmTC_e4cff] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_e4cff/fast] Error 2
+
+
+Source file was:
+#define _XOPEN_SOURCE
+#include <vector>
+#include <stdio.h>
+extern "C"
+ {int sprintf(char *str, const char* fmt, ...);}
+Determining if the CL_VERSION_2_2 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_912a2/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_912a2.dir/build.make CMakeFiles/cmTC_912a2.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_912a2.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_912a2.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_912a2.dir/build.make:78: CMakeFiles/cmTC_912a2.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_912a2/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_2
+  return ((int*)(&CL_VERSION_2_2))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the CL_VERSION_2_1 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_b7931/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_b7931.dir/build.make CMakeFiles/cmTC_b7931.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b7931.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_b7931.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_b7931.dir/build.make:78: CMakeFiles/cmTC_b7931.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_b7931/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_1
+  return ((int*)(&CL_VERSION_2_1))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the CL_VERSION_2_0 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_82342/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_82342.dir/build.make CMakeFiles/cmTC_82342.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_82342.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_82342.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_82342.dir/build.make:78: CMakeFiles/cmTC_82342.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_82342/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_0
+  return ((int*)(&CL_VERSION_2_0))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the CL_VERSION_1_2 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_78b1d/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_78b1d.dir/build.make CMakeFiles/cmTC_78b1d.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_78b1d.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_78b1d.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_78b1d.dir/build.make:78: CMakeFiles/cmTC_78b1d.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_78b1d/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_1_2
+  return ((int*)(&CL_VERSION_1_2))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the CL_VERSION_1_1 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_7049f/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_7049f.dir/build.make CMakeFiles/cmTC_7049f.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_7049f.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_7049f.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_7049f.dir/build.make:78: CMakeFiles/cmTC_7049f.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_7049f/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_1_1
+  return ((int*)(&CL_VERSION_1_1))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the CL_VERSION_1_0 exist failed with the following output:
+Change Dir: /home/gdal/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_041d6/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_041d6.dir/build.make CMakeFiles/cmTC_041d6.dir/build
+gmake[1]: Entering directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_041d6.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_041d6.dir/CheckSymbolExists.c.o -c /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h: No such file or directory
+    2 | #include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+gmake[1]: *** [CMakeFiles/cmTC_041d6.dir/build.make:78: CMakeFiles/cmTC_041d6.dir/CheckSymbolExists.c.o] Error 1
+gmake[1]: Leaving directory '/home/gdal/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_041d6/fast] Error 2
+
+
+File /home/gdal/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <OpenCL_INCLUDE_DIR-NOTFOUND/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_1_0
+  return ((int*)(&CL_VERSION_1_0))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}

@@ -42,14 +42,14 @@ class OGRXODRLayer : public OGRLayer
 {
     OGRFeatureDefn          *poFeatureDefn;
     VSILFILE                *fpXODR;
-    CPLString                pszName;
+    //CPLString                pszName;
     char                    *pszFilename;
     int                      nNextFID;
     OGRSpatialReference     *poSRS;
     
 
 public:
-    OGRXODRLayer( const char *pszFilename, VSILFILE *fp, std::string layer);
+    OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer);
 ~OGRXODRLayer();
 
     //int                 layerID;
@@ -59,7 +59,9 @@ public:
     void                ResetReading();
     OGRFeature *        GetNextFeature();
 
-    OGRFeatureDefn *    GetLayerDefn() { return poFeatureDefn; }
+    OGRFeatureDefn *    GetLayerDefn() { 
+        return poFeatureDefn; 
+        }
 
     int                 TestCapability( const char * ) { return FALSE; }
     
@@ -83,7 +85,7 @@ private:
 
 class OGRXODRDataSource : public GDALDataset
 {
-    CPLString          pszName;
+    //CPLString          pszName;
     OGRXODRLayer       **papoLayers;
     int                 nLayers;
 
@@ -106,7 +108,7 @@ public:
 
 static GDALDataset* OGRXODRDriverOpen(GDALOpenInfo* poOpenInfo);
 static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
-static GDALDataset* OGRXODRDriverCreate(const char* pszName, int nXSize, int nYSize,
+static GDALDataset* OGRXODRDriverCreate(const char* pszLayerName, int nXSize, int nYSize,
                                     int nBands, GDALDataType eDT, char** papszOptions);
 /*--------------------------------------------------------------------*/
 
