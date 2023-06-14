@@ -1,6 +1,0 @@
-execute_process(COMMAND /usr/bin/python3.10 /home/gdal/build/swig/python/setup.py build_ext --inplace)
-file(TOUCH_NOCREATE osgeo/_gdal.cpython-310-x86_64-linux-gnu.so)
-file(TOUCH_NOCREATE osgeo/_gdalconst.cpython-310-x86_64-linux-gnu.so)
-file(TOUCH_NOCREATE osgeo/_gnm.cpython-310-x86_64-linux-gnu.so)
-file(TOUCH_NOCREATE osgeo/_ogr.cpython-310-x86_64-linux-gnu.so)
-file(TOUCH_NOCREATE osgeo/_osr.cpython-310-x86_64-linux-gnu.so)

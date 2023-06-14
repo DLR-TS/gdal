@@ -1,1 +1,0 @@
-/usr/bin/c++  -fvisibility=hidden CMakeFiles/gdalsrsinfo.dir/gdalsrsinfo.cpp.o -o gdalsrsinfo  -Wl,-rpath,/home/gdal/build:/usr/local/lib: /usr/lib/x86_64-linux-gnu/libproj.so ../libgdal.so.31.0.0 -Wl,-rpath-link,/usr/local/lib 
