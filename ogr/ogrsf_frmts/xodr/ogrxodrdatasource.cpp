@@ -27,8 +27,6 @@
  ****************************************************************************/
 
 #include "ogr_xodr.h"
-#include <OpenDrive/include/libopendrive.h>
-#include <OpenDrive/thirdparty/pugixml/pugixml.hpp>
 using namespace odr;
 using namespace pugi;
 

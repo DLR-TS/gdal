@@ -30,8 +30,7 @@
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
 #include <iostream>
-#include <OpenDrive/include/libopendrive.h>
-#include <OpenDrive/thirdparty/pugixml/pugixml.hpp>
+#include <OpenDriveMap.h>
 #include <vector>
 
 /*--------------------------------------------------------------------*/
