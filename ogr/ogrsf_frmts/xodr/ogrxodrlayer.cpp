@@ -43,36 +43,39 @@ using namespace std;
 
 OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
                            const char *pszLayerName, std::string layer,
-                           std::vector<odr::Road> roads):
+                           std::vector<odr::Road> roads, std::string refSystem):
     fpXODR(fp), 
     pszFilename(CPLStrdup(pszFilename)), 
     Roads(roads),
     RoadIter(Roads.begin()),
-    nNextFID(0){
+    nNextFID(0),
+    poSRS(NULL){
 
   layerName = layer;
 
   poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
   SetDescription(poFeatureDefn->GetName());
+  
   if (layerName == "refLine" || layerName == "Lanes" ||
       layerName == "RoadMark" ||
       layerName == "RoadObject") {
-
+    
     poFeatureDefn->SetGeomType(wkbMultiLineString);
   }
+  
+  
   poFeatureDefn->Reference();
   ResetReading();
-  poSRS = NULL; // if this line is in if statement -segmentation fault error
+  poSRS = new OGRSpatialReference();
+  poSRS->importFromProj4(refSystem.c_str());
+  poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
+  //poSRS = NULL; // if this line is in if statement -segmentation fault error
                 // return on testing
   getLayer();
 
   /* Georeferencing */
   /*-------------------------------*/
-  //xml_document doc;
-  //xml_parse_result result = doc.load_file(pszFilename);
-  //xml_node opendrive = doc.child("OpenDRIVE");
-  //xml_node header = opendrive.child("header");
-  //string georeference = header.child("geoReference").child_value();
+ 
   //if (!georeference.empty()) {
   //  poSRS = new OGRSpatialReference();
   //  poSRS->importFromProj4(georeference.c_str());
@@ -81,12 +84,6 @@ OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
   //}
   
 }
-
-/*The layer constructor is responsible for initialization.
-The most important initialization is setting up the OGRFeatureDefn for the
-layer. This defines the list of fields and their types, the geometry type and
-the coordinate system for the layer. In the SPF format the set of fields is
-fixed - a single string field and we have no coordinate system info to set.*/
 
 OGRXODRLayer::~OGRXODRLayer() {
   if (poFeatureDefn != NULL) {
@@ -184,7 +181,9 @@ OGRFeature *OGRXODRLayer::getRefLine() {
     poFeature->SetField(poFeatureDefn->GetFieldIndex("Length"), Road.length);
     poFeature->SetField(poFeatureDefn->GetFieldIndex("Junction"), Road.junction.c_str());
     poFeature->SetFID(nNextFID++);
-  
+    
+    
+    
     RoadIter ++;
     if ((m_poFilterGeom == NULL ||
             FilterGeometry(poFeature->GetGeometryRef())) &&
