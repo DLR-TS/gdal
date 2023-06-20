@@ -6,7 +6,7 @@
  * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
  *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)        
  *			 Cristhian Eduardo Murcia Galeano, cristhianmurcia182@gmail.com
- *			 Ana Maria Orozco, ana.orozco.net@gmail.com
+ *			 Ana Maria Orozco, ana.orozco.net@gmail.com 
  *
  ******************************************************************************
  * Copyright 2022 German Aerospace Center (DLR), Institute of Transportation Systems
@@ -25,13 +25,13 @@
  ****************************************************************************/
  
 
-#pragma once
-
+#pragma pack(pop)
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
 #include <iostream>
 #include <OpenDriveMap.h>
 #include <vector>
+
 
 /*--------------------------------------------------------------------*/
 /*---------------------  Layer declerations  -------------------------*/
@@ -41,20 +41,21 @@ class OGRXODRLayer : public OGRLayer
 {
     OGRFeatureDefn          *poFeatureDefn;
     VSILFILE                *fpXODR;
-    //CPLString                pszName;
     char                    *pszFilename;
     int                      nNextFID;
     OGRSpatialReference     *poSRS;
     
 
 public:
-    OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer);
+    OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer, std::vector<odr::Road> Roads);
 ~OGRXODRLayer();
 
-    //int                 layerID;
-    std::string         fileName;
-    std::string         layerName;
-   
+    std::string             fileName;
+    std::string             layerName;
+    std::vector<odr::Road>  Roads;
+
+    std::vector<odr::Road>::iterator  RoadIter;
+    
     void                ResetReading();
     OGRFeature *        GetNextFeature();
 
@@ -69,13 +70,13 @@ private:
         header = 0
     };
     
-    std::string         getReferenceSystem();
-    OGRFeature*         getLayer();
-    OGRFeature*         getRefLine();
-    OGRFeature*         getLanes();
-    OGRFeature*         getRoadMark();
-   
-       
+    std::string                 getReferenceSystem();
+    OGRFeature*                 getLayer();
+    OGRFeature*                 getRefLine();
+    OGRFeature*                 getLanes();
+    OGRFeature*                 getRoadMark();
+    OGRFeature*                 getRoadObjects();
+              
 };
 
 /*--------------------------------------------------------------------*/
@@ -84,9 +85,9 @@ private:
 
 class OGRXODRDataSource : public GDALDataset
 {
-    //CPLString          pszName;
     OGRXODRLayer       **papoLayers;
     int                 nLayers;
+    std::string         fileName;
 
 public:
                         OGRXODRDataSource();
@@ -98,7 +99,7 @@ public:
     OGRLayer            *GetLayer( int );
 
     virtual int         TestCapability( const char * ) override;
-    
+    std::vector<odr::Road>    roads;
 };
 
 /*--------------------------------------------------------------------*/
@@ -110,5 +111,3 @@ static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
 static GDALDataset* OGRXODRDriverCreate(const char* pszLayerName, int nXSize, int nYSize,
                                     int nBands, GDALDataType eDT, char** papszOptions);
 /*--------------------------------------------------------------------*/
-
-

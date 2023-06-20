@@ -58,7 +58,6 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     bUpdate = CPL_TO_BOOL(bUpdate);
     CPLString osFilename(pszFilename);
     const CPLString osBaseFilename = CPLGetFilename(pszFilename);
-    //const CPLString osExt = GetRealExtension(osFilename);
 
     VSILFILE *fp = nullptr;
 
@@ -69,7 +68,6 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     if( fp == nullptr )
     {
         CPLError(CE_Warning, CPLE_OpenFailed, "Failed to open %s.");
-                // VSIGetLastErrorMsg());
         return false;
     }
 
@@ -82,16 +80,20 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     }
    
     // Create a corresponding layer.
-    nLayers = 3;
-    
-    //papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
-    papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
+    nLayers = 4;
+    fileName = pszFilename;
+    odr::OpenDriveMap xodr(fileName);
+    std::vector<odr::Road> roads = xodr.get_roads();
+    papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
+    //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
     std::string layername = "refLine";
-    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername);
+    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
     layername = "Lanes";
-    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername);
+    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername, roads);
     layername = "RoadMark";
-    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername);
+    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
+    layername = "RoadObject";
+    papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
     
     
     return TRUE;
