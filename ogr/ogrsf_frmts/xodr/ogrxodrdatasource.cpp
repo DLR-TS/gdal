@@ -29,6 +29,7 @@
 #include "ogr_xodr.h"
 using namespace odr;
 using namespace pugi;
+using namespace std;
 
 CPL_CVSID("$Id$")
 
@@ -83,17 +84,23 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     nLayers = 4;
     fileName = pszFilename;
     odr::OpenDriveMap xodr(fileName);
-    std::vector<odr::Road> roads = xodr.get_roads();
+    xml_document doc;
+    xml_parse_result result = doc.load_file(pszFilename);
+    xml_node opendrive = doc.child("OpenDRIVE");
+    xml_node header = opendrive.child("header");
+    std::string RefSystem = header.child("geoReference").child_value();
+   
+    vector<Road> roads = xodr.get_roads();
     papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
     //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
-    std::string layername = "refLine";
-    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
+    string layername = "refLine";
+    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     layername = "Lanes";
-    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername, roads);
+    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername, roads, RefSystem);
     layername = "RoadMark";
-    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
+    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     layername = "RoadObject";
-    papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads);
+    papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     
     
     return TRUE;

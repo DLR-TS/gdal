@@ -30,6 +30,7 @@
 #include "ogr_api.h"
 #include <iostream>
 #include <OpenDriveMap.h>
+#include <pugixml/pugixml.hpp>
 #include <vector>
 
 
@@ -47,7 +48,7 @@ class OGRXODRLayer : public OGRLayer
     
 
 public:
-    OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer, std::vector<odr::Road> Roads);
+    OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer, std::vector<odr::Road> Roads, std::string refSystem);
 ~OGRXODRLayer();
 
     std::string             fileName;
