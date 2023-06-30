@@ -587,7 +587,6 @@ void CPL_DLL RegisterOGRLVBAG();
 void CPL_DLL RegisterOGRHANA();
 void CPL_DLL RegisterOGRParquet();
 void CPL_DLL RegisterOGRArrow();
-void CPL_DLL RegisterOGRXODR();
 // @endcond
 
 CPL_C_END

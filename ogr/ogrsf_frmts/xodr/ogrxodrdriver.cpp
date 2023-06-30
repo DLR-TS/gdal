@@ -67,8 +67,9 @@ static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
 
 void RegisterOGRXODR()
 {
-    if( !GDAL_CHECK_VERSION("OGR/XODR driver") )
+    if( GDALGetDriverByName("XODR") != NULL )
         return;
+
     GDALDriver *poDriver;
     if( GDALGetDriverByName( "XODR" ) == nullptr )
         
@@ -79,7 +80,7 @@ void RegisterOGRXODR()
         poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
         poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
         poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
-        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES");
+        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES"); //TODO really? not better "no"?
         
         poDriver->pfnOpen = OGRXODRDriverOpen;
         poDriver->pfnIdentify = OGRXODRDriverIdentity;

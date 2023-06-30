@@ -48,12 +48,9 @@ ogr_optional_driver(vdv "VDV-451/VDV-452/INTREST Data Format")
 ogr_optional_driver(flatgeobuf FlatGeobuf)
 ogr_optional_driver(mapml MapML)
 
-ogr_default_driver(xodr XODR)
-
 # ######################################################################################################################
 #
 # XML drivers
-#ogr_dependent_driver(xodr "XODR- GPS Road Information" "GDAL_USE_OPENDRIVE")
 ogr_dependent_driver(gpx "GPX - GPS Exchange Format" "GDAL_USE_EXPAT")
 ogr_dependent_driver(gmlas GMLAS "GDAL_USE_XERCESC;OGR_ENABLE_DRIVER_PGDUMP")
 ogr_dependent_driver(svg "Scalable Vector Graphics" "GDAL_USE_EXPAT")
@@ -67,6 +64,7 @@ ogr_dependent_driver(sosi "SOSI:Systematic Organization of Spatial Information" 
 ogr_dependent_driver(wfs "OGC WFS service" "GDAL_USE_CURL")
 ogr_dependent_driver(ngw "NextGIS Web" "GDAL_USE_CURL")
 ogr_dependent_driver(elastic "ElasticSearch" "GDAL_USE_CURL")
+ogr_dependent_driver(xodr XODR "GDAL_USE_OPENDRIVE")
 
 ogr_optional_driver(idrisi IDRISI)
 

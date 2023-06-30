@@ -1,10 +1,10 @@
 add_gdal_driver(
   TARGET ogr_XODR
-  BUILTIN
   SOURCES ogr_xodr.h 
-  ogrxodrdatasource.cpp 
-  ogrxodrlayer.cpp 
-  ogrxodrdriver.cpp)
+          ogrxodrdatasource.cpp 
+          ogrxodrlayer.cpp 
+          ogrxodrdriver.cpp
+  PLUGIN_CAPABLE)
 
 gdal_standard_includes(ogr_XODR)
 

@@ -1,18 +1,15 @@
-# xodr driver 
-## CMakeLists.txt 
-add_gdal_driver for define target, target purpose and source files for it. 
-reference: ogr_sqlite
+# How to build XODR driver
 
+Build GDAL with CMake using the following CMake options:
 
-```
-target_include_directories(ogr_XODR PRIVATE $<TARGET_PROPERTY:ogrsf_generic,SOURCE_DIR>)
-if(GDAL_USE_OPENDRIVE)
-  target_compile_definitions(ogr_XODR PRIVATE -DHAVE_OPENDRIVE)
-  gdal_target_link_libraries(ogr_XODR PRIVATE openDrive)
-  message(STATUS "Found OpenDRIVE")
-else()
-  message(WARNING "OpenDRIVE not found, please read the README.md")
-endif()
+- `OGR_ENABLE_DRIVER_XODR:BOOL = TRUE`
+- `OGR_ENABLE_DRIVER_XODR_PLUGIN:BOOL = TRUE`
 
-```
-# Git errors*
+Ensure to meet the dependencies:
+
+- libOpenDRIVE
+- PROJ
+- GEOS
+- Optional: SQLite3 with RTree extension if you want to export into GeoPackage
+
+After building and installing, you will find a new shared library `ogr_XODR` under `gdalplugins/` folder.
