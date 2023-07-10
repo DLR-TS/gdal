@@ -91,6 +91,7 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     std::string RefSystem = header.child("geoReference").child_value();
    
     vector<Road> roads = xodr.get_roads();
+   
     papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
     //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
     string layername = "refLine";

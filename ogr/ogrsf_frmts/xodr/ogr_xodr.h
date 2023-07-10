@@ -51,12 +51,22 @@ public:
     OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer, std::vector<odr::Road> Roads, std::string refSystem);
 ~OGRXODRLayer();
 
-    std::string             fileName;
-    std::string             layerName;
-    std::vector<odr::Road>  Roads;
+    std::string                     fileName;
+    std::string                     layerName;
+    std::vector<odr::Road>          Roads;
+    std::vector<odr::LaneSection>   LaneSections;
+    std::vector<odr::Lane>          Lanes;
+    std::vector<odr::Mesh3D>          LaneMeshes;
+    std::vector<odr::Mesh3D>          RoadMarkMeshes;
+    std::vector<odr::Mesh3D>          RoadObjectMeshes;
 
     std::vector<odr::Road>::iterator  RoadIter;
-    
+    std::vector<odr::Lane>::iterator  LaneIter;
+    std::vector<odr::LaneSection>::iterator  LaneSectionIter;
+    std::vector<odr::Mesh3D>::iterator  LaneMeshesIter;
+    std::vector<odr::Mesh3D>::iterator  RoadMarkMeshesIter;
+    std::vector<odr::Mesh3D>::iterator  RoadObjectMeshesIter;
+
     void                ResetReading();
     OGRFeature *        GetNextFeature();
 
@@ -77,8 +87,13 @@ private:
     OGRFeature*                 getLanes();
     OGRFeature*                 getRoadMark();
     OGRFeature*                 getRoadObjects();
-              
-};
+
+    std::vector<odr::LaneSection>      getFullLaneSections();
+    std::vector<odr::Lane>      getFullLanes();
+    std::vector<odr::Mesh3D>      getFullLaneMeshes();
+    std::vector<odr::Mesh3D>      getFullRoadMarkMeshes();
+    std::vector<odr::Mesh3D>      getFullRoadObjectMeshes();
+ };
 
 /*--------------------------------------------------------------------*/
 /*--------------------  Datasource declerations ----------------------*/
@@ -111,4 +126,5 @@ static GDALDataset* OGRXODRDriverOpen(GDALOpenInfo* poOpenInfo);
 static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
 static GDALDataset* OGRXODRDriverCreate(const char* pszLayerName, int nXSize, int nYSize,
                                     int nBands, GDALDataType eDT, char** papszOptions);
+
 /*--------------------------------------------------------------------*/

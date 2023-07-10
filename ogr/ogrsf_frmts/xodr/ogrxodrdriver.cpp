@@ -80,7 +80,11 @@ void RegisterOGRXODR()
         poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
         poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
         poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
-        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES"); //TODO really? not better "no"?
+        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES"); //TODO really? not better "no"? 
+        /*
+        * SetMetadataItem( GDAL_DCAP_VIRTUALIO, "YES" ) is specified to indicate that the driver can deal with files opened with the VSI*L GDAL API. 
+        * Otherwise this metadata item should not be defined.
+        */ 
         
         poDriver->pfnOpen = OGRXODRDriverOpen;
         poDriver->pfnIdentify = OGRXODRDriverIdentity;
