@@ -51,48 +51,50 @@ public:
     OGRXODRLayer( const char *pszFilename, VSILFILE *fp,  const char *pszLayerName, std::string layer, std::vector<odr::Road> Roads, std::string refSystem);
 ~OGRXODRLayer();
 
-    std::string                     fileName;
-    std::string                     layerName;
-    std::vector<odr::Road>          Roads;
-    std::vector<odr::LaneSection>   LaneSections;
-    std::vector<odr::Lane>          Lanes;
-    std::vector<odr::Mesh3D>          LaneMeshes;
-    std::vector<odr::Mesh3D>          RoadMarkMeshes;
-    std::vector<odr::Mesh3D>          RoadObjectMeshes;
+    std::string                                 fileName;
+    std::string                                 layerName;
+    std::vector<odr::Road>                      Roads;
+    std::vector<odr::LaneSection>               LaneSections;
+    std::vector<odr::Lane>                      Lanes;
+    std::vector<odr::RoadMark>                  RoadMarks;
+    std::vector<odr::RoadObject>                RoadObjects;
 
-    std::vector<odr::Road>::iterator  RoadIter;
-    std::vector<odr::Lane>::iterator  LaneIter;
-    std::vector<odr::LaneSection>::iterator  LaneSectionIter;
-    std::vector<odr::Mesh3D>::iterator  LaneMeshesIter;
-    std::vector<odr::Mesh3D>::iterator  RoadMarkMeshesIter;
-    std::vector<odr::Mesh3D>::iterator  RoadObjectMeshesIter;
+    std::vector<odr::Mesh3D>                    LaneMeshes;
+    std::vector<odr::Mesh3D>                    RoadMarkMeshes;
+    std::vector<odr::Mesh3D>                    RoadObjectMeshes;
 
-    void                ResetReading();
-    OGRFeature *        GetNextFeature();
+    std::vector<odr::Road>::iterator            RoadIter;
+    std::vector<odr::Lane>::iterator            LaneIter;
+    std::vector<odr::LaneSection>::iterator     LaneSectionIter;
+    std::vector<odr::RoadMark>::iterator        RoadMarkIter;
+    std::vector<odr::RoadObject>::iterator      RoadObjectIter;
 
-    OGRFeatureDefn *    GetLayerDefn() { 
-        return poFeatureDefn; 
-        }
+    std::vector<odr::Mesh3D>::iterator          LaneMeshesIter;
+    std::vector<odr::Mesh3D>::iterator          RoadMarkMeshesIter;
+    std::vector<odr::Mesh3D>::iterator          RoadObjectMeshesIter;
 
-    int                 TestCapability( const char * ) { return FALSE; }
+    void                                        ResetReading();
+    OGRFeature *                                GetNextFeature();
+
+    OGRFeatureDefn *                            GetLayerDefn() {return poFeatureDefn; }
+    int                                         TestCapability( const char * ) { return FALSE; }
     
 private:
     enum layer_value {
         header = 0
     };
     
-    std::string                 getReferenceSystem();
-    OGRFeature*                 getLayer();
-    OGRFeature*                 getRefLine();
-    OGRFeature*                 getLanes();
-    OGRFeature*                 getRoadMark();
-    OGRFeature*                 getRoadObjects();
+    std::string                         getReferenceSystem();
+    OGRFeature*                         getLayer();
 
-    std::vector<odr::LaneSection>      getFullLaneSections();
-    std::vector<odr::Lane>      getFullLanes();
-    std::vector<odr::Mesh3D>      getFullLaneMeshes();
-    std::vector<odr::Mesh3D>      getFullRoadMarkMeshes();
-    std::vector<odr::Mesh3D>      getFullRoadObjectMeshes();
+    std::vector<odr::LaneSection>       getFullLaneSections();
+    std::vector<odr::Lane>              getFullLanes();
+    std::vector<odr::RoadMark>          getFullRoadMarks();
+    std::vector<odr::RoadObject>          getFullRoadObjects();
+
+    std::vector<odr::Mesh3D>            getFullLaneMeshes();
+    std::vector<odr::Mesh3D>            getFullRoadMarkMeshes();
+    std::vector<odr::Mesh3D>            getFullRoadObjectMeshes();
  };
 
 /*--------------------------------------------------------------------*/
