@@ -81,7 +81,7 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     }
    
     // Create a corresponding layer.
-    nLayers = 4;
+    nLayers = 5;
     fileName = pszFilename;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
@@ -102,6 +102,8 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     layername = "RoadObject";
     papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
+    layername = "drive";
+    papoLayers[4] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     
     
     return TRUE;
