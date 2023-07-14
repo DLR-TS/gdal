@@ -25,7 +25,8 @@
  ****************************************************************************/
  
 
-#pragma pack(pop)
+//#pragma pack(pop)
+#pragma once
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
 #include <iostream>
@@ -42,7 +43,7 @@ class OGRXODRLayer : public OGRLayer
 {
     OGRFeatureDefn          *poFeatureDefn;
     VSILFILE                *fpXODR;
-    char                    *pszFilename;
+    const char              *pszFilename_;
     int                      nNextFID;
     OGRSpatialReference     *poSRS;
     
@@ -58,6 +59,9 @@ struct RoadElements{
 
   std::vector<odr::RoadObject> roadObjects;
   std::vector<odr::Mesh3D>     roadObjectMeshes;
+
+  std::vector<odr::RoadSignal> roadSignals;
+  std::vector<odr::Mesh3D>     roadSignalMeshes;
   
 };
 public:
@@ -72,11 +76,13 @@ public:
     std::vector<odr::Lane>                      Lanes;
     std::vector<odr::RoadMark>                  RoadMarks;
     std::vector<odr::RoadObject>                RoadObjects;
+    std::vector<odr::RoadSignal>                RoadSignals;
 
     std::vector<std::string>                    LanesRoadIDs;
     std::vector<odr::Mesh3D>                    LaneMeshes;
     std::vector<odr::Mesh3D>                    RoadMarkMeshes;
     std::vector<odr::Mesh3D>                    RoadObjectMeshes;
+    std::vector<odr::Mesh3D>                    RoadSignalMeshes;
 
 
     std::vector<odr::Road>::iterator            RoadIter;
@@ -85,16 +91,18 @@ public:
     std::vector<odr::LaneSection>::iterator     LaneSectionIter;
     std::vector<odr::RoadMark>::iterator        RoadMarkIter;
     std::vector<odr::RoadObject>::iterator      RoadObjectIter;
+    std::vector<odr::RoadSignal>::iterator      RoadSignalIter;
 
     std::vector<odr::Mesh3D>::iterator          LaneMeshesIter;
     std::vector<odr::Mesh3D>::iterator          RoadMarkMeshesIter;
     std::vector<odr::Mesh3D>::iterator          RoadObjectMeshesIter;
+    std::vector<odr::Mesh3D>::iterator          RoadSignalMeshesIter;
 
-    void                                        ResetReading();
-    OGRFeature *                                GetNextFeature();
+    virtual void                                ResetReading() override;
+    virtual OGRFeature *                        GetNextFeature() override;
 
-    OGRFeatureDefn *                            GetLayerDefn() {return poFeatureDefn; }
-    int                                         TestCapability( const char * ) { return FALSE; }
+    virtual OGRFeatureDefn *                    GetLayerDefn() override {return poFeatureDefn; }
+    virtual int                                 TestCapability( const char * ) override { return FALSE; }
     
 private:
     enum layer_value {
@@ -124,8 +132,8 @@ public:
 
     int                 Open(const char *pszFilename, int bUpdate);
 
-    int                 GetLayerCount() { return nLayers; }
-    OGRLayer            *GetLayer( int );
+    int                 GetLayerCount() override { return nLayers; }
+    OGRLayer            *GetLayer( int ) override;
 
     virtual int         TestCapability( const char * ) override;
     std::vector<odr::Road>    roads;

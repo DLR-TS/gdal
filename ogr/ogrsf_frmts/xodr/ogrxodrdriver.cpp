@@ -67,12 +67,11 @@ static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
 
 void RegisterOGRXODR()
 {
-    if( GDALGetDriverByName("XODR") != NULL )
+    if(GDALGetDriverByName("XODR") != NULL )
         return;
 
     GDALDriver *poDriver;
-    if( GDALGetDriverByName( "XODR" ) == nullptr )
-        
+    if(GDALGetDriverByName("XODR") == nullptr){
 
         poDriver = new GDALDriver();
 
@@ -90,5 +89,6 @@ void RegisterOGRXODR()
         poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
         GetGDALDriverManager()->RegisterDriver( poDriver );
+    }
 }
 

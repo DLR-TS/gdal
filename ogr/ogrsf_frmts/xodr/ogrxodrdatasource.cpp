@@ -94,7 +94,7 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
    
     papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
     //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
-    string layername = "refLine";
+    string layername = "ReferenceLine";
     papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     layername = "Lanes";
     papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername, roads, RefSystem);
@@ -102,8 +102,10 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     layername = "RoadObject";
     papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    layername = "drive";
+    layername = "RoadSignal";
     papoLayers[4] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
+    //layername = "drive";
+    //papoLayers[5] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
     
     
     return TRUE;
