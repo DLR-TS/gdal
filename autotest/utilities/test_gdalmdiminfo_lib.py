@@ -29,34 +29,12 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-import json
-import os
-import pytest
 import struct
 
-from osgeo import gdal
-from osgeo import osr
+import gdaltest
+import pytest
 
-###############################################################################
-# Validate against schema
-
-def _validate(res):
-    try:
-        import jsonschema
-    except ImportError:
-        return
-    if int(jsonschema.__version__.split('.')[0]) < 3:
-        return
-
-    if isinstance(res, str):
-        res = json.loads(res)
-
-    schema_filename = '../../gdal/data/gdalmdiminfo_output.schema.json'
-    if not os.path.exists(schema_filename):
-        return
-
-    jsonschema.validate(res, json.loads(open(schema_filename, 'rt').read()))
-
+from osgeo import gdal, osr
 
 ###############################################################################
 # Test with non multidim dataset
@@ -64,13 +42,14 @@ def _validate(res):
 
 def test_gdalmdiminfo_lib_non_multidim_dataset():
 
-    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Open("../gcore/data/byte.tif")
 
     with pytest.raises(TypeError):
         gdal.MultiDimInfo(ds)
 
-    with pytest.raises(TypeError):
-        gdal.MultiDimInfo('../gcore/data/byte.tif')
+    with pytest.raises(Exception):
+        gdal.MultiDimInfo("../gcore/data/byte.tif")
+
 
 ###############################################################################
 # Test with a empty MEM dataset
@@ -78,12 +57,12 @@ def test_gdalmdiminfo_lib_non_multidim_dataset():
 
 def test_gdalmdiminfo_lib_empty_mem_dataset():
 
-    drv = gdal.GetDriverByName('MEM')
-    ds = drv.CreateMultiDimensional('')
+    drv = gdal.GetDriverByName("MEM")
+    ds = drv.CreateMultiDimensional("")
     ret = gdal.MultiDimInfo(ds)
-    _validate(ret)
+    gdaltest.validate_json(ret, "gdalmdiminfo_output.schema.json")
 
-    assert ret == {'type': 'group', "driver": "MEM", 'name': '/'}
+    assert ret == {"type": "group", "driver": "MEM", "name": "/"}
 
 
 ###############################################################################
@@ -92,34 +71,43 @@ def test_gdalmdiminfo_lib_empty_mem_dataset():
 
 def test_gdalmdiminfo_lib_mem_dataset():
 
-    drv = gdal.GetDriverByName('MEM')
-    ds = drv.CreateMultiDimensional('')
+    drv = gdal.GetDriverByName("MEM")
+    ds = drv.CreateMultiDimensional("")
     rg = ds.GetRootGroup()
-    subg = rg.CreateGroup('subgroup')
-    subg.CreateGroup('subsubgroup')
+    subg = rg.CreateGroup("subgroup")
+    subg.CreateGroup("subsubgroup")
 
     dim0 = rg.CreateDimension("dim0", "my_type", "my_direction", 2)
-    comp0 = gdal.EDTComponent.Create('x', 0, gdal.ExtendedDataType.Create(gdal.GDT_Int16))
-    comp1 = gdal.EDTComponent.Create('y', 4, gdal.ExtendedDataType.Create(gdal.GDT_Int32))
+    comp0 = gdal.EDTComponent.Create(
+        "x", 0, gdal.ExtendedDataType.Create(gdal.GDT_Int16)
+    )
+    comp1 = gdal.EDTComponent.Create(
+        "y", 4, gdal.ExtendedDataType.Create(gdal.GDT_Int32)
+    )
     dt = gdal.ExtendedDataType.CreateCompound("mytype", 8, [comp0, comp1])
-    ar = rg.CreateMDArray("ar_compound", [ dim0 ], dt)
-    assert ar.Write(struct.pack('hi' * 2, 32767, 1000000, -32768, -1000000)) == gdal.CE_None
-    assert ar.SetNoDataValueRaw(struct.pack('hi', 32767, 1000000)) == gdal.CE_None
+    ar = rg.CreateMDArray("ar_compound", [dim0], dt)
+    assert (
+        ar.Write(struct.pack("hi" * 2, 32767, 1000000, -32768, -1000000))
+        == gdal.CE_None
+    )
+    assert ar.SetNoDataValueRaw(struct.pack("hi", 32767, 1000000)) == gdal.CE_None
 
     dim1 = rg.CreateDimension("dim1", None, None, 3)
-    ar = rg.CreateMDArray("ar_2d", [ dim0, dim1 ], gdal.ExtendedDataType.Create(gdal.GDT_Byte))
+    ar = rg.CreateMDArray(
+        "ar_2d", [dim0, dim1], gdal.ExtendedDataType.Create(gdal.GDT_Byte)
+    )
     ar.SetOffset(1)
     ar.SetScale(2)
-    ar.SetUnit('foo')
+    ar.SetUnit("foo")
     srs = osr.SpatialReference()
     srs.SetFromUserInput("+proj=utm +zone=31 +datum=WGS84")
-    srs.SetDataAxisToSRSAxisMapping([2,1])
+    srs.SetDataAxisToSRSAxisMapping([2, 1])
     ar.SetSpatialRef(srs)
-    attr = ar.CreateAttribute('myattr', [], gdal.ExtendedDataType.CreateString())
-    attr.WriteString('bar')
+    attr = ar.CreateAttribute("myattr", [], gdal.ExtendedDataType.CreateString())
+    attr.WriteString("bar")
 
-    ret = gdal.MultiDimInfo(ds, detailed = True, as_text = True)
-    _validate(ret)
+    ret = gdal.MultiDimInfo(ds, detailed=True, as_text=True)
+    gdaltest.validate_json(ret, "gdalmdiminfo_output.schema.json")
 
     expected = """{
   "type": "group",
@@ -207,15 +195,15 @@ def test_gdalmdiminfo_lib_mem_dataset():
   }
 }"""
     try:
-        expected = expected.decode('UTF-8')
-    except:
+        expected = expected.decode("UTF-8")
+    except Exception:
         pass
     if ret != expected:
         print(ret)
     assert ret == expected
 
-    ret = gdal.MultiDimInfo(ds, array = 'ar_compound', detailed = True, as_text = True)
-    _validate(ret)
+    ret = gdal.MultiDimInfo(ds, array="ar_compound", detailed=True, as_text=True)
+    gdaltest.validate_json(ret, "gdalmdiminfo_output.schema.json")
 
     expected = """{
   "type": "array",
@@ -263,44 +251,45 @@ def test_gdalmdiminfo_lib_mem_dataset():
 # Test arrayoption
 
 
+@pytest.mark.require_driver("netCDF")
 def test_gdalmdiminfo_lib_arrayoption():
 
-    if gdal.GetDriverByName('netCDF') is None:
-        pytest.skip('netCDF driver not enabled')
+    ret = gdal.MultiDimInfo("../gdrivers/data/netcdf/with_bounds.nc")
+    assert len(ret["arrays"]) == 2
 
-    ret = gdal.MultiDimInfo('../gdrivers/data/netcdf/with_bounds.nc')
-    assert len(ret['arrays']) == 2
-
-    ret = gdal.MultiDimInfo('../gdrivers/data/netcdf/with_bounds.nc',
-                            arrayoptions = ['SHOW_BOUNDS=NO'])
-    assert len(ret['arrays']) == 1
+    ret = gdal.MultiDimInfo(
+        "../gdrivers/data/netcdf/with_bounds.nc", arrayoptions=["SHOW_BOUNDS=NO"]
+    )
+    assert len(ret["arrays"]) == 1
 
 
 ###############################################################################
+
 
 def test_gdalmdiminfo_lib_int64():
 
-    drv = gdal.GetDriverByName('MEM')
-    ds = drv.CreateMultiDimensional('')
+    drv = gdal.GetDriverByName("MEM")
+    ds = drv.CreateMultiDimensional("")
     rg = ds.GetRootGroup()
     dim0 = rg.CreateDimension("dim0", "my_type", "my_direction", 1)
-    ar = rg.CreateMDArray("ar", [ dim0 ], gdal.ExtendedDataType.Create(gdal.GDT_Int64))
-    assert ar.Write(struct.pack('q', -10000000000)) == gdal.CE_None
+    ar = rg.CreateMDArray("ar", [dim0], gdal.ExtendedDataType.Create(gdal.GDT_Int64))
+    assert ar.Write(struct.pack("q", -10000000000)) == gdal.CE_None
 
-    ret = gdal.MultiDimInfo(ds, detailed = True)
-    assert ret['arrays']['ar']['values'] == [-10000000000]
+    ret = gdal.MultiDimInfo(ds, detailed=True)
+    assert ret["arrays"]["ar"]["values"] == [-10000000000]
 
 
 ###############################################################################
 
+
 def test_gdalmdiminfo_lib_uint64():
 
-    drv = gdal.GetDriverByName('MEM')
-    ds = drv.CreateMultiDimensional('')
+    drv = gdal.GetDriverByName("MEM")
+    ds = drv.CreateMultiDimensional("")
     rg = ds.GetRootGroup()
     dim0 = rg.CreateDimension("dim0", "my_type", "my_direction", 1)
-    ar = rg.CreateMDArray("ar", [ dim0 ], gdal.ExtendedDataType.Create(gdal.GDT_UInt64))
-    assert ar.Write(struct.pack('Q', 10000000000)) == gdal.CE_None
+    ar = rg.CreateMDArray("ar", [dim0], gdal.ExtendedDataType.Create(gdal.GDT_UInt64))
+    assert ar.Write(struct.pack("Q", 10000000000)) == gdal.CE_None
 
-    ret = gdal.MultiDimInfo(ds, detailed = True)
-    assert ret['arrays']['ar']['values'] == [10000000000]
+    ret = gdal.MultiDimInfo(ds, detailed=True)
+    assert ret["arrays"]["ar"]["values"] == [10000000000]

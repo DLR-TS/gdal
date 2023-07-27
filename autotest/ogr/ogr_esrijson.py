@@ -31,14 +31,13 @@
 
 import contextlib
 
-from osgeo import ogr
-from osgeo import gdal
-
 import gdaltest
 import ogrtest
 import pytest
 
-pytestmark = pytest.mark.require_driver('ESRIJson')
+from osgeo import gdal, ogr
+
+pytestmark = pytest.mark.require_driver("ESRIJson")
 
 ###############################################################################
 # Test utilities
@@ -47,25 +46,25 @@ pytestmark = pytest.mark.require_driver('ESRIJson')
 def validate_layer(lyr, name, features, typ, fields, box):
 
     if name is not None and name != lyr.GetName():
-        print('Wrong layer name')
+        print("Wrong layer name")
         return False
 
     if features != lyr.GetFeatureCount():
-        print('Wrong number of features')
+        print("Wrong number of features")
         return False
 
     lyrDefn = lyr.GetLayerDefn()
     if lyrDefn is None:
-        print('Layer definition is none')
+        print("Layer definition is none")
         return False
 
     if typ != lyrDefn.GetGeomType():
-        print('Wrong geometry type')
+        print("Wrong geometry type")
         print(lyrDefn.GetGeomType())
         return False
 
     if fields != lyrDefn.GetFieldCount():
-        print('Wrong number of fields')
+        print("Wrong number of fields")
         return False
 
     extent = lyr.GetExtent()
@@ -76,7 +75,7 @@ def validate_layer(lyr, name, features, typ, fields, box):
     maxy = abs(extent[3] - box[3])
 
     if max(minx, maxx, miny, maxy) > 0.0001:
-        print('Wrong spatial extent of layer')
+        print("Wrong spatial extent of layer")
         print(extent)
         return False
 
@@ -89,48 +88,46 @@ def validate_layer(lyr, name, features, typ, fields, box):
 
 def test_ogr_esrijson_read_point():
 
-    ds = ogr.Open('data/esrijson/esripoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esripoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
-    lyr = ds.GetLayerByName('esripoint')
-    assert lyr is not None, 'Missing layer called esripoint'
+    lyr = ds.GetLayerByName("esripoint")
+    assert lyr is not None, "Missing layer called esripoint"
 
     extent = (2, 2, 49, 49)
 
-    rc = validate_layer(lyr, 'esripoint', 1, ogr.wkbPoint, 4, extent)
+    rc = validate_layer(lyr, "esripoint", 1, ogr.wkbPoint, 4, extent)
     assert rc
 
     ref = lyr.GetSpatialRef()
-    gcs = int(ref.GetAuthorityCode('GEOGCS'))
+    gcs = int(ref.GetAuthorityCode("GEOGCS"))
 
     assert gcs == 4326, "Spatial reference was not valid"
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('POINT(2 49)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "POINT(2 49)")
 
     if feature.GetFID() != 1:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsInteger('fooInt') != 2:
+    if feature.GetFieldAsInteger("fooInt") != 2:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsDouble('fooDouble') != 3.4:
+    if feature.GetFieldAsDouble("fooDouble") != 3.4:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsString('fooString') != '56':
+    if feature.GetFieldAsString("fooString") != "56":
         feature.DumpReadable()
         pytest.fail()
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI linestring file
@@ -138,10 +135,10 @@ def test_ogr_esrijson_read_point():
 
 def test_ogr_esrijson_read_linestring():
 
-    ds = ogr.Open('data/esrijson/esrilinestring.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrilinestring.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -151,16 +148,14 @@ def test_ogr_esrijson_read_linestring():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('LINESTRING (2 49,3 50)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "LINESTRING (2 49,3 50)")
 
     lyr = None
     ds = None
 
     # MultiLineString
-    ds = ogr.Open("""{
+    ds = ogr.Open(
+        """{
   "geometryType": "esriGeometryPolyline",
   "fields": [],
   "features": [
@@ -173,13 +168,13 @@ def test_ogr_esrijson_read_linestring():
    }
   }
  ]
-}""")
+}"""
+    )
     lyr = ds.GetLayer(0)
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTILINESTRING ((2 49,2.1 49.1),(3 50,3.1 50.1))')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(
+        feature, "MULTILINESTRING ((2 49,2.1 49.1),(3 50,3.1 50.1))"
+    )
 
 
 ###############################################################################
@@ -188,10 +183,10 @@ def test_ogr_esrijson_read_linestring():
 
 def test_ogr_esrijson_read_polygon():
 
-    ds = ogr.Open('data/esrijson/esripolygon.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esripolygon.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -201,24 +196,25 @@ def test_ogr_esrijson_read_polygon():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOLYGON (((2 49,2 50,3 50,3 49,2 49),(2.1 49.1,2.1 49.9,2.9 49.9,2.9 49.1,2.1 49.1)),((-2 49,-2 50,-3 50,-3 49,-2 49)))')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ref_geom = ogr.CreateGeometryFromWkt(
+        "MULTIPOLYGON (((2 49,2 50,3 50,3 49,2 49),(2.1 49.1,2.1 49.9,2.9 49.9,2.9 49.1,2.1 49.1)),((-2 49,-2 50,-3 50,-3 49,-2 49)))"
+    )
+    ogrtest.check_feature_geometry(feature, ref_geom)
 
     lyr = None
     ds = None
 
-    ds = ogr.Open('data/esrijson/esripolygonempty.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esripolygonempty.json")
+    assert ds is not None, "Failed to open datasource"
     lyr = ds.GetLayer(0)
     feature = lyr.GetNextFeature()
-    if feature.GetGeometryRef().ExportToWkt() != 'POLYGON EMPTY':
+    if feature.GetGeometryRef().ExportToWkt() != "POLYGON EMPTY":
         feature.DumpReadable()
         pytest.fail()
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI multipoint file
@@ -226,10 +222,10 @@ def test_ogr_esrijson_read_polygon():
 
 def test_ogr_esrijson_read_multipoint():
 
-    ds = ogr.Open('data/esrijson/esrimultipoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrimultipoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -239,13 +235,11 @@ def test_ogr_esrijson_read_multipoint():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOINT (2 49,3 50)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "MULTIPOINT (2 49,3 50)")
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI point file with z value
@@ -253,10 +247,10 @@ def test_ogr_esrijson_read_multipoint():
 
 def test_ogr_esrijson_read_pointz():
 
-    ds = ogr.Open('data/esrijson/esrizpoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrizpoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -267,34 +261,32 @@ def test_ogr_esrijson_read_pointz():
     assert rc
 
     ref = lyr.GetSpatialRef()
-    gcs = int(ref.GetAuthorityCode('GEOGCS'))
+    gcs = int(ref.GetAuthorityCode("GEOGCS"))
 
     assert gcs == 4326, "Spatial reference was not valid"
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('POINT(2 49 1)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "POINT(2 49 1)")
 
     if feature.GetFID() != 1:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsInteger('fooInt') != 2:
+    if feature.GetFieldAsInteger("fooInt") != 2:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsDouble('fooDouble') != 3.4:
+    if feature.GetFieldAsDouble("fooDouble") != 3.4:
         feature.DumpReadable()
         pytest.fail()
 
-    if feature.GetFieldAsString('fooString') != '56':
+    if feature.GetFieldAsString("fooString") != "56":
         feature.DumpReadable()
         pytest.fail()
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI linestring file with z
@@ -302,10 +294,10 @@ def test_ogr_esrijson_read_pointz():
 
 def test_ogr_esrijson_read_linestringz():
 
-    ds = ogr.Open('data/esrijson/esrizlinestring.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrizlinestring.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -316,13 +308,11 @@ def test_ogr_esrijson_read_linestringz():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('LINESTRING (2 49 1,3 50 2)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "LINESTRING (2 49 1,3 50 2)")
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI multipoint file with z
@@ -330,10 +320,10 @@ def test_ogr_esrijson_read_linestringz():
 
 def test_ogr_esrijson_read_multipointz():
 
-    ds = ogr.Open('data/esrijson/esrizmultipoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrizmultipoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -344,13 +334,11 @@ def test_ogr_esrijson_read_multipointz():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOINT (2 49 1,3 50 2)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "MULTIPOINT (2 49 1,3 50 2)")
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI polygon file with z
@@ -358,10 +346,10 @@ def test_ogr_esrijson_read_multipointz():
 
 def test_ogr_esrijson_read_polygonz():
 
-    ds = ogr.Open('data/esrijson/esrizpolygon.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrizpolygon.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -372,13 +360,13 @@ def test_ogr_esrijson_read_polygonz():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('POLYGON ((2 49 1,2 50 2,3 50 3,3 49 4,2 49 1))')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(
+        feature, "POLYGON ((2 49 1,2 50 2,3 50 3,3 49 4,2 49 1))"
+    )
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI multipoint file with m, but no z (hasM=true, hasZ omitted)
@@ -386,10 +374,10 @@ def test_ogr_esrijson_read_polygonz():
 
 def test_ogr_esrijson_read_multipointm():
 
-    ds = ogr.Open('data/esrijson/esrihasmnozmultipoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrihasmnozmultipoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -399,13 +387,11 @@ def test_ogr_esrijson_read_multipointm():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOINT M ((2 49 1),(3 50 2))')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "MULTIPOINT M ((2 49 1),(3 50 2))")
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI multipoint file with hasZ=true, but only 2 components.
@@ -413,10 +399,10 @@ def test_ogr_esrijson_read_multipointm():
 
 def test_ogr_esrijson_read_pointz_withou_z():
 
-    ds = ogr.Open('data/esrijson/esriinvalidhaszmultipoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esriinvalidhaszmultipoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -426,13 +412,11 @@ def test_ogr_esrijson_read_pointz_withou_z():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOINT (2 49,3 50)')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "MULTIPOINT (2 49,3 50)")
 
     lyr = None
     ds = None
+
 
 ###############################################################################
 # Test reading ESRI multipoint file with z and m
@@ -440,10 +424,10 @@ def test_ogr_esrijson_read_pointz_withou_z():
 
 def test_ogr_esrijson_read_multipointzm():
 
-    ds = ogr.Open('data/esrijson/esrizmmultipoint.json')
-    assert ds is not None, 'Failed to open datasource'
+    ds = ogr.Open("data/esrijson/esrizmmultipoint.json")
+    assert ds is not None, "Failed to open datasource"
 
-    assert ds.GetLayerCount() == 1, 'Wrong number of layers'
+    assert ds.GetLayerCount() == 1, "Wrong number of layers"
 
     lyr = ds.GetLayer(0)
 
@@ -453,31 +437,28 @@ def test_ogr_esrijson_read_multipointzm():
     assert rc
 
     feature = lyr.GetNextFeature()
-    ref_geom = ogr.CreateGeometryFromWkt('MULTIPOINT ZM ((2 49 1 100),(3 50 2 100))')
-    if ogrtest.check_feature_geometry(feature, ref_geom) != 0:
-        feature.DumpReadable()
-        pytest.fail()
+    ogrtest.check_feature_geometry(feature, "MULTIPOINT ZM ((2 49 1 100),(3 50 2 100))")
 
     lyr = None
     ds = None
 
+
 ###############################################################################
 # Test ESRI FeatureService scrolling
 
+
 @pytest.mark.parametrize("prefix", ["", "ESRIJSON:"])
 def test_ogr_esrijson_featureservice_scrolling(prefix):
-
     @contextlib.contextmanager
     def cleanup_after_me():
         yield
-        files = gdal.ReadDir('/vsimem/esrijson')
+        files = gdal.ReadDir("/vsimem/esrijson")
         if files:
             for f in files:
-                gdal.Unlink('/vsimem/esrijson/' + f)
-
+                gdal.Unlink("/vsimem/esrijson/" + f)
 
     with cleanup_after_me():
-        with gdaltest.config_option('CPL_CURL_ENABLE_VSIMEM', 'YES'):
+        with gdaltest.config_option("CPL_CURL_ENABLE_VSIMEM", "YES"):
 
             resultOffset0 = """
         { "type":"FeatureCollection",
@@ -498,32 +479,38 @@ def test_ogr_esrijson_featureservice_scrolling(prefix):
             }
             } ] }"""
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=1', resultOffset0)
-            ds = ogr.Open('/vsimem/esrijson/test.json?resultRecordCount=1')
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=1", resultOffset0
+            )
+            ds = ogr.Open("/vsimem/esrijson/test.json?resultRecordCount=1")
             lyr = ds.GetLayer(0)
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 1
             f = lyr.GetNextFeature()
             assert f is None
             ds = None
-            gdal.Unlink('/vsimem/esrijson/test.json?resultRecordCount=1')
+            gdal.Unlink("/vsimem/esrijson/test.json?resultRecordCount=1")
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=10', resultOffset0)
-            gdal.PushErrorHandler()
-            ds = ogr.Open('/vsimem/esrijson/test.json?resultRecordCount=10')
-            gdal.PopErrorHandler()
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=10", resultOffset0
+            )
+            with gdaltest.error_handler():
+                ds = ogr.Open("/vsimem/esrijson/test.json?resultRecordCount=10")
             lyr = ds.GetLayer(0)
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 1
             f = lyr.GetNextFeature()
             assert f is None
             ds = None
-            gdal.Unlink('/vsimem/esrijson/test.json?resultRecordCount=10')
+            gdal.Unlink("/vsimem/esrijson/test.json?resultRecordCount=10")
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?', resultOffset0)
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=0', resultOffset0)
+            gdal.FileFromMemBuffer("/vsimem/esrijson/test.json?", resultOffset0)
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=0",
+                resultOffset0,
+            )
 
-            ds = ogr.Open('/vsimem/esrijson/test.json?')
+            ds = ogr.Open("/vsimem/esrijson/test.json?")
             lyr = ds.GetLayer(0)
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 1
@@ -548,29 +535,34 @@ def test_ogr_esrijson_featureservice_scrolling(prefix):
                 "a_property": 1,
             }
             } ] }"""
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1', resultOffset1)
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1",
+                resultOffset1,
+            )
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 2
             f = lyr.GetNextFeature()
             assert f is None
 
-            gdal.PushErrorHandler()
-            fc = lyr.GetFeatureCount()
-            gdal.PopErrorHandler()
+            with gdaltest.error_handler():
+                fc = lyr.GetFeatureCount()
             assert fc == 2
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?returnCountOnly=true',
-                                """{ "count": 123456}""")
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?returnCountOnly=true",
+                """{ "count": 123456}""",
+            )
             fc = lyr.GetFeatureCount()
             assert fc == 123456
 
-            gdal.PushErrorHandler()
-            extent = lyr.GetExtent()
-            gdal.PopErrorHandler()
+            with gdaltest.error_handler():
+                extent = lyr.GetExtent()
             assert extent == (2, 2, 49, 49)
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?returnExtentOnly=true&f=geojson',
-                                """{"type":"FeatureCollection","bbox":[1, 2, 3, 4],"features":[]}""")
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?returnExtentOnly=true&f=geojson",
+                """{"type":"FeatureCollection","bbox":[1, 2, 3, 4],"features":[]}""",
+            )
             extent = lyr.GetExtent()
             assert extent == (1.0, 3.0, 2.0, 4.0)
 
@@ -578,7 +570,7 @@ def test_ogr_esrijson_featureservice_scrolling(prefix):
 
             assert lyr.TestCapability(ogr.OLCFastGetExtent) == 0
 
-            assert lyr.TestCapability('foo') == 0
+            assert lyr.TestCapability("foo") == 0
 
             # Test scrolling with ESRI json
             resultOffset0 = """
@@ -632,26 +624,33 @@ def test_ogr_esrijson_featureservice_scrolling(prefix):
         }
         """
 
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=1', resultOffset0)
-            gdal.FileFromMemBuffer('/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1', resultOffset1)
-            ds = ogr.Open(prefix + '/vsimem/esrijson/test.json?resultRecordCount=1')
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=1", resultOffset0
+            )
+            gdal.FileFromMemBuffer(
+                "/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1",
+                resultOffset1,
+            )
+            ds = ogr.Open(prefix + "/vsimem/esrijson/test.json?resultRecordCount=1")
             lyr = ds.GetLayer(0)
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 1
             f = lyr.GetNextFeature()
             assert f is not None and f.GetFID() == 20
             ds = None
-            gdal.Unlink('/vsimem/esrijson/test.json?resultRecordCount=1')
-            gdal.Unlink('/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1')
+            gdal.Unlink("/vsimem/esrijson/test.json?resultRecordCount=1")
+            gdal.Unlink("/vsimem/esrijson/test.json?resultRecordCount=1&resultOffset=1")
+
 
 ###############################################################################
 # Test reading ESRIJSON files starting with {"features":[{"geometry":.... (#7198)
 
+
 def test_ogr_esrijson_read_starting_with_features_geometry():
 
-    ds = ogr.Open('data/esrijson/esrijsonstartingwithfeaturesgeometry.json')
+    ds = ogr.Open("data/esrijson/esrijsonstartingwithfeaturesgeometry.json")
     assert ds is not None
-    assert ds.GetDriver().GetName() == 'ESRIJSON'
+    assert ds.GetDriver().GetName() == "ESRIJSON"
     lyr = ds.GetLayer(0)
     assert lyr.GetFeatureCount() == 1
 
@@ -662,15 +661,16 @@ def test_ogr_esrijson_read_starting_with_features_geometry():
 
 def test_ogr_esrijson_create_geometry_from_esri_json():
 
-    with gdaltest.error_handler():
-        assert not ogr.CreateGeometryFromEsriJson('error')
+    with pytest.raises(Exception):
+        assert not ogr.CreateGeometryFromEsriJson("error")
 
     g = ogr.CreateGeometryFromEsriJson('{ "x": 2, "y": 49 }')
-    assert g.ExportToWkt() == 'POINT (2 49)'
+    assert g.ExportToWkt() == "POINT (2 49)"
 
 
 ###############################################################################
 # Test for https://github.com/OSGeo/gdal/issues/2007
+
 
 def test_ogr_esrijson_identify_srs():
 
@@ -689,4 +689,4 @@ def test_ogr_esrijson_identify_srs():
     lyr = ds.GetLayer(0)
     sr = lyr.GetSpatialRef()
     assert sr
-    assert sr.GetAuthorityCode(None) == '2223'
+    assert sr.GetAuthorityCode(None) == "2223"

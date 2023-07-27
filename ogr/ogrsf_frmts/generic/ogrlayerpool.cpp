@@ -31,16 +31,12 @@
 #include "ogrlayerpool.h"
 #include "ogr_recordbatch.h"
 
-CPL_CVSID("$Id$")
-
 /************************************************************************/
 /*                      OGRAbstractProxiedLayer()                       */
 /************************************************************************/
 
-OGRAbstractProxiedLayer::OGRAbstractProxiedLayer( OGRLayerPool* poPoolIn ) :
-    poPrevLayer(nullptr),
-    poNextLayer(nullptr),
-    poPool(poPoolIn)
+OGRAbstractProxiedLayer::OGRAbstractProxiedLayer(OGRLayerPool *poPoolIn)
+    : poPrevLayer(nullptr), poNextLayer(nullptr), poPool(poPoolIn)
 {
     CPLAssert(poPoolIn != nullptr);
 }
@@ -59,12 +55,11 @@ OGRAbstractProxiedLayer::~OGRAbstractProxiedLayer()
 /*                            OGRLayerPool()                            */
 /************************************************************************/
 
-OGRLayerPool::OGRLayerPool(int nMaxSimultaneouslyOpenedIn) :
-    poMRULayer(nullptr),
-    poLRULayer(nullptr),
-    nMRUListSize(0),
-    nMaxSimultaneouslyOpened(nMaxSimultaneouslyOpenedIn)
-{}
+OGRLayerPool::OGRLayerPool(int nMaxSimultaneouslyOpenedIn)
+    : poMRULayer(nullptr), poLRULayer(nullptr), nMRUListSize(0),
+      nMaxSimultaneouslyOpened(nMaxSimultaneouslyOpenedIn)
+{
+}
 
 /************************************************************************/
 /*                           ~OGRLayerPool()                            */
@@ -72,22 +67,22 @@ OGRLayerPool::OGRLayerPool(int nMaxSimultaneouslyOpenedIn) :
 
 OGRLayerPool::~OGRLayerPool()
 {
-    CPLAssert( poMRULayer == nullptr );
-    CPLAssert( poLRULayer == nullptr );
-    CPLAssert( nMRUListSize == 0 );
+    CPLAssert(poMRULayer == nullptr);
+    CPLAssert(poLRULayer == nullptr);
+    CPLAssert(nMRUListSize == 0);
 }
 
 /************************************************************************/
 /*                          SetLastUsedLayer()                          */
 /************************************************************************/
 
-void OGRLayerPool::SetLastUsedLayer(OGRAbstractProxiedLayer* poLayer)
+void OGRLayerPool::SetLastUsedLayer(OGRAbstractProxiedLayer *poLayer)
 {
     /* If we are already the MRU layer, nothing to do */
     if (poLayer == poMRULayer)
         return;
 
-    //CPLDebug("OGR", "SetLastUsedLayer(%s)", poLayer->GetName());
+    // CPLDebug("OGR", "SetLastUsedLayer(%s)", poLayer->GetName());
 
     if (poLayer->poPrevLayer != nullptr || poLayer->poNextLayer != nullptr)
     {
@@ -117,23 +112,24 @@ void OGRLayerPool::SetLastUsedLayer(OGRAbstractProxiedLayer* poLayer)
     poMRULayer = poLayer;
     if (poLRULayer == nullptr)
         poLRULayer = poLayer;
-    nMRUListSize ++;
+    nMRUListSize++;
 }
 
 /************************************************************************/
 /*                           UnchainLayer()                             */
 /************************************************************************/
 
-void OGRLayerPool::UnchainLayer(OGRAbstractProxiedLayer* poLayer)
+void OGRLayerPool::UnchainLayer(OGRAbstractProxiedLayer *poLayer)
 {
-    OGRAbstractProxiedLayer* poPrevLayer = poLayer->poPrevLayer;
-    OGRAbstractProxiedLayer* poNextLayer = poLayer->poNextLayer;
+    OGRAbstractProxiedLayer *poPrevLayer = poLayer->poPrevLayer;
+    OGRAbstractProxiedLayer *poNextLayer = poLayer->poNextLayer;
 
     CPLAssert(poPrevLayer == nullptr || poPrevLayer->poNextLayer == poLayer);
     CPLAssert(poNextLayer == nullptr || poNextLayer->poPrevLayer == poLayer);
 
-    if (poPrevLayer != nullptr || poNextLayer != nullptr || poLayer == poMRULayer)
-        nMRUListSize --;
+    if (poPrevLayer != nullptr || poNextLayer != nullptr ||
+        poLayer == poMRULayer)
+        nMRUListSize--;
 
     if (poLayer == poMRULayer)
         poMRULayer = poNextLayer;
@@ -151,17 +147,13 @@ void OGRLayerPool::UnchainLayer(OGRAbstractProxiedLayer* poLayer)
 /*                          OGRProxiedLayer()                           */
 /************************************************************************/
 
-OGRProxiedLayer::OGRProxiedLayer( OGRLayerPool* poPoolIn,
-                                  OpenLayerFunc pfnOpenLayerIn,
-                                  FreeUserDataFunc pfnFreeUserDataIn,
-                                  void* pUserDataIn ) :
-    OGRAbstractProxiedLayer(poPoolIn),
-    pfnOpenLayer(pfnOpenLayerIn),
-    pfnFreeUserData(pfnFreeUserDataIn),
-    pUserData(pUserDataIn),
-    poUnderlyingLayer(nullptr),
-    poFeatureDefn(nullptr),
-    poSRS(nullptr)
+OGRProxiedLayer::OGRProxiedLayer(OGRLayerPool *poPoolIn,
+                                 OpenLayerFunc pfnOpenLayerIn,
+                                 FreeUserDataFunc pfnFreeUserDataIn,
+                                 void *pUserDataIn)
+    : OGRAbstractProxiedLayer(poPoolIn), pfnOpenLayer(pfnOpenLayerIn),
+      pfnFreeUserData(pfnFreeUserDataIn), pUserData(pUserDataIn),
+      poUnderlyingLayer(nullptr), poFeatureDefn(nullptr), poSRS(nullptr)
 {
     CPLAssert(pfnOpenLayerIn != nullptr);
 }
@@ -174,13 +166,13 @@ OGRProxiedLayer::~OGRProxiedLayer()
 {
     delete poUnderlyingLayer;
 
-    if( poSRS )
+    if (poSRS)
         poSRS->Release();
 
-    if( poFeatureDefn )
+    if (poFeatureDefn)
         poFeatureDefn->Release();
 
-    if( pfnFreeUserData != nullptr )
+    if (pfnFreeUserData != nullptr)
         pfnFreeUserData(pUserData);
 }
 
@@ -194,10 +186,9 @@ int OGRProxiedLayer::OpenUnderlyingLayer()
     CPLAssert(poUnderlyingLayer == nullptr);
     poPool->SetLastUsedLayer(this);
     poUnderlyingLayer = pfnOpenLayer(pUserData);
-    if( poUnderlyingLayer == nullptr )
+    if (poUnderlyingLayer == nullptr)
     {
-        CPLError(CE_Failure, CPLE_FileIO,
-                 "Cannot open underlying layer");
+        CPLError(CE_Failure, CPLE_FileIO, "Cannot open underlying layer");
     }
     return poUnderlyingLayer != nullptr;
 }
@@ -217,9 +208,9 @@ void OGRProxiedLayer::CloseUnderlyingLayer()
 /*                          GetUnderlyingLayer()                        */
 /************************************************************************/
 
-OGRLayer* OGRProxiedLayer::GetUnderlyingLayer()
+OGRLayer *OGRProxiedLayer::GetUnderlyingLayer()
 {
-    if( poUnderlyingLayer == nullptr )
+    if (poUnderlyingLayer == nullptr)
     {
         //  If the open fails, poUnderlyingLayer will still be a nullptr
         // and the user will be warned by the open call.
@@ -235,7 +226,8 @@ OGRLayer* OGRProxiedLayer::GetUnderlyingLayer()
 
 OGRGeometry *OGRProxiedLayer::GetSpatialFilter()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
     return poUnderlyingLayer->GetSpatialFilter();
 }
 
@@ -243,9 +235,10 @@ OGRGeometry *OGRProxiedLayer::GetSpatialFilter()
 /*                          SetSpatialFilter()                          */
 /************************************************************************/
 
-void        OGRProxiedLayer::SetSpatialFilter( OGRGeometry * poGeom )
+void OGRProxiedLayer::SetSpatialFilter(OGRGeometry *poGeom)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return;
     poUnderlyingLayer->SetSpatialFilter(poGeom);
 }
 
@@ -253,18 +246,20 @@ void        OGRProxiedLayer::SetSpatialFilter( OGRGeometry * poGeom )
 /*                          SetSpatialFilter()                          */
 /************************************************************************/
 
-void        OGRProxiedLayer::SetSpatialFilter( int iGeomField, OGRGeometry * poGeom )
+void OGRProxiedLayer::SetSpatialFilter(int iGeomField, OGRGeometry *poGeom)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return;
     poUnderlyingLayer->SetSpatialFilter(iGeomField, poGeom);
 }
 /************************************************************************/
 /*                          SetAttributeFilter()                        */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::SetAttributeFilter( const char * poAttrFilter )
+OGRErr OGRProxiedLayer::SetAttributeFilter(const char *poAttrFilter)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->SetAttributeFilter(poAttrFilter);
 }
 
@@ -272,9 +267,10 @@ OGRErr      OGRProxiedLayer::SetAttributeFilter( const char * poAttrFilter )
 /*                            ResetReading()                            */
 /************************************************************************/
 
-void        OGRProxiedLayer::ResetReading()
+void OGRProxiedLayer::ResetReading()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return;
     poUnderlyingLayer->ResetReading();
 }
 
@@ -284,7 +280,8 @@ void        OGRProxiedLayer::ResetReading()
 
 OGRFeature *OGRProxiedLayer::GetNextFeature()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
     return poUnderlyingLayer->GetNextFeature();
 }
 
@@ -294,7 +291,8 @@ OGRFeature *OGRProxiedLayer::GetNextFeature()
 
 GDALDataset *OGRProxiedLayer::GetDataset()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
     return poUnderlyingLayer->GetDataset();
 }
 
@@ -302,10 +300,10 @@ GDALDataset *OGRProxiedLayer::GetDataset()
 /*                          GetArrowStream()                            */
 /************************************************************************/
 
-bool OGRProxiedLayer::GetArrowStream(struct ArrowArrayStream* out_stream,
+bool OGRProxiedLayer::GetArrowStream(struct ArrowArrayStream *out_stream,
                                      CSLConstList papszOptions)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() )
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
     {
         memset(out_stream, 0, sizeof(*out_stream));
         return false;
@@ -317,9 +315,10 @@ bool OGRProxiedLayer::GetArrowStream(struct ArrowArrayStream* out_stream,
 /*                           SetNextByIndex()                           */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::SetNextByIndex( GIntBig nIndex )
+OGRErr OGRProxiedLayer::SetNextByIndex(GIntBig nIndex)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->SetNextByIndex(nIndex);
 }
 
@@ -327,9 +326,10 @@ OGRErr      OGRProxiedLayer::SetNextByIndex( GIntBig nIndex )
 /*                             GetFeature()                             */
 /************************************************************************/
 
-OGRFeature *OGRProxiedLayer::GetFeature( GIntBig nFID )
+OGRFeature *OGRProxiedLayer::GetFeature(GIntBig nFID)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
     return poUnderlyingLayer->GetFeature(nFID);
 }
 
@@ -337,9 +337,10 @@ OGRFeature *OGRProxiedLayer::GetFeature( GIntBig nFID )
 /*                             ISetFeature()                             */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::ISetFeature( OGRFeature *poFeature )
+OGRErr OGRProxiedLayer::ISetFeature(OGRFeature *poFeature)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->SetFeature(poFeature);
 }
 
@@ -347,19 +348,50 @@ OGRErr      OGRProxiedLayer::ISetFeature( OGRFeature *poFeature )
 /*                            ICreateFeature()                           */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::ICreateFeature( OGRFeature *poFeature )
+OGRErr OGRProxiedLayer::ICreateFeature(OGRFeature *poFeature)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->CreateFeature(poFeature);
+}
+
+/************************************************************************/
+/*                            IUpsertFeature()                          */
+/************************************************************************/
+
+OGRErr OGRProxiedLayer::IUpsertFeature(OGRFeature *poFeature)
+{
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
+    return poUnderlyingLayer->UpsertFeature(poFeature);
+}
+
+/************************************************************************/
+/*                            IUpdateFeature()                          */
+/************************************************************************/
+
+OGRErr OGRProxiedLayer::IUpdateFeature(OGRFeature *poFeature,
+                                       int nUpdatedFieldsCount,
+                                       const int *panUpdatedFieldsIdx,
+                                       int nUpdatedGeomFieldsCount,
+                                       const int *panUpdatedGeomFieldsIdx,
+                                       bool bUpdateStyleString)
+{
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
+    return poUnderlyingLayer->UpdateFeature(
+        poFeature, nUpdatedFieldsCount, panUpdatedFieldsIdx,
+        nUpdatedGeomFieldsCount, panUpdatedGeomFieldsIdx, bUpdateStyleString);
 }
 
 /************************************************************************/
 /*                           DeleteFeature()                            */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::DeleteFeature( GIntBig nFID )
+OGRErr OGRProxiedLayer::DeleteFeature(GIntBig nFID)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->DeleteFeature(nFID);
 }
 
@@ -369,7 +401,8 @@ OGRErr      OGRProxiedLayer::DeleteFeature( GIntBig nFID )
 
 const char *OGRProxiedLayer::GetName()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return "";
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return "";
     return poUnderlyingLayer->GetName();
 }
 
@@ -379,7 +412,8 @@ const char *OGRProxiedLayer::GetName()
 
 OGRwkbGeometryType OGRProxiedLayer::GetGeomType()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return wkbUnknown;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return wkbUnknown;
     return poUnderlyingLayer->GetGeomType();
 }
 
@@ -389,10 +423,10 @@ OGRwkbGeometryType OGRProxiedLayer::GetGeomType()
 
 OGRFeatureDefn *OGRProxiedLayer::GetLayerDefn()
 {
-    if( poFeatureDefn != nullptr )
+    if (poFeatureDefn != nullptr)
         return poFeatureDefn;
 
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() )
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
     {
         poFeatureDefn = new OGRFeatureDefn("");
     }
@@ -412,11 +446,12 @@ OGRFeatureDefn *OGRProxiedLayer::GetLayerDefn()
 
 OGRSpatialReference *OGRProxiedLayer::GetSpatialRef()
 {
-    if( poSRS != nullptr )
+    if (poSRS != nullptr)
         return poSRS;
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
-    OGRSpatialReference* poRet = poUnderlyingLayer->GetSpatialRef();
-    if( poRet != nullptr )
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
+    OGRSpatialReference *poRet = poUnderlyingLayer->GetSpatialRef();
+    if (poRet != nullptr)
     {
         poSRS = poRet;
         poSRS->Reference();
@@ -428,9 +463,10 @@ OGRSpatialReference *OGRProxiedLayer::GetSpatialRef()
 /*                          GetFeatureCount()                           */
 /************************************************************************/
 
-GIntBig         OGRProxiedLayer::GetFeatureCount( int bForce )
+GIntBig OGRProxiedLayer::GetFeatureCount(int bForce)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return 0;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return 0;
     return poUnderlyingLayer->GetFeatureCount(bForce);
 }
 
@@ -438,9 +474,11 @@ GIntBig         OGRProxiedLayer::GetFeatureCount( int bForce )
 /*                             GetExtent()                              */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::GetExtent(int iGeomField, OGREnvelope *psExtent, int bForce)
+OGRErr OGRProxiedLayer::GetExtent(int iGeomField, OGREnvelope *psExtent,
+                                  int bForce)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->GetExtent(iGeomField, psExtent, bForce);
 }
 
@@ -448,9 +486,10 @@ OGRErr      OGRProxiedLayer::GetExtent(int iGeomField, OGREnvelope *psExtent, in
 /*                             GetExtent()                              */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::GetExtent(OGREnvelope *psExtent, int bForce)
+OGRErr OGRProxiedLayer::GetExtent(OGREnvelope *psExtent, int bForce)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->GetExtent(psExtent, bForce);
 }
 
@@ -458,9 +497,10 @@ OGRErr      OGRProxiedLayer::GetExtent(OGREnvelope *psExtent, int bForce)
 /*                           TestCapability()                           */
 /************************************************************************/
 
-int         OGRProxiedLayer::TestCapability( const char * pszCapability )
+int OGRProxiedLayer::TestCapability(const char *pszCapability)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return FALSE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return FALSE;
     return poUnderlyingLayer->TestCapability(pszCapability);
 }
 
@@ -468,10 +508,10 @@ int         OGRProxiedLayer::TestCapability( const char * pszCapability )
 /*                            CreateField()                             */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::CreateField( OGRFieldDefn *poField,
-                                            int bApproxOK )
+OGRErr OGRProxiedLayer::CreateField(OGRFieldDefn *poField, int bApproxOK)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->CreateField(poField, bApproxOK);
 }
 
@@ -479,9 +519,10 @@ OGRErr      OGRProxiedLayer::CreateField( OGRFieldDefn *poField,
 /*                            DeleteField()                             */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::DeleteField( int iField )
+OGRErr OGRProxiedLayer::DeleteField(int iField)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->DeleteField(iField);
 }
 
@@ -489,9 +530,10 @@ OGRErr      OGRProxiedLayer::DeleteField( int iField )
 /*                            ReorderFields()                           */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::ReorderFields( int* panMap )
+OGRErr OGRProxiedLayer::ReorderFields(int *panMap)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->ReorderFields(panMap);
 }
 
@@ -499,9 +541,11 @@ OGRErr      OGRProxiedLayer::ReorderFields( int* panMap )
 /*                           AlterFieldDefn()                           */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::AlterFieldDefn( int iField, OGRFieldDefn* poNewFieldDefn, int nFlagsIn )
+OGRErr OGRProxiedLayer::AlterFieldDefn(int iField, OGRFieldDefn *poNewFieldDefn,
+                                       int nFlagsIn)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->AlterFieldDefn(iField, poNewFieldDefn, nFlagsIn);
 }
 
@@ -509,19 +553,23 @@ OGRErr      OGRProxiedLayer::AlterFieldDefn( int iField, OGRFieldDefn* poNewFiel
 /*                         AlterGeomFieldDefn()                         */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::AlterGeomFieldDefn( int iGeomField, const OGRGeomFieldDefn* poNewGeomFieldDefn, int nFlagsIn )
+OGRErr OGRProxiedLayer::AlterGeomFieldDefn(
+    int iGeomField, const OGRGeomFieldDefn *poNewGeomFieldDefn, int nFlagsIn)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
-    return poUnderlyingLayer->AlterGeomFieldDefn(iGeomField, poNewGeomFieldDefn, nFlagsIn);
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
+    return poUnderlyingLayer->AlterGeomFieldDefn(iGeomField, poNewGeomFieldDefn,
+                                                 nFlagsIn);
 }
 
 /************************************************************************/
 /*                            SyncToDisk()                              */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::SyncToDisk()
+OGRErr OGRProxiedLayer::SyncToDisk()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->SyncToDisk();
 }
 
@@ -531,7 +579,8 @@ OGRErr      OGRProxiedLayer::SyncToDisk()
 
 OGRStyleTable *OGRProxiedLayer::GetStyleTable()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return nullptr;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return nullptr;
     return poUnderlyingLayer->GetStyleTable();
 }
 
@@ -539,9 +588,10 @@ OGRStyleTable *OGRProxiedLayer::GetStyleTable()
 /*                       SetStyleTableDirectly()                        */
 /************************************************************************/
 
-void        OGRProxiedLayer::SetStyleTableDirectly( OGRStyleTable *poStyleTable )
+void OGRProxiedLayer::SetStyleTableDirectly(OGRStyleTable *poStyleTable)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return;
     return poUnderlyingLayer->SetStyleTableDirectly(poStyleTable);
 }
 
@@ -549,9 +599,10 @@ void        OGRProxiedLayer::SetStyleTableDirectly( OGRStyleTable *poStyleTable 
 /*                           SetStyleTable()                            */
 /************************************************************************/
 
-void        OGRProxiedLayer::SetStyleTable(OGRStyleTable *poStyleTable)
+void OGRProxiedLayer::SetStyleTable(OGRStyleTable *poStyleTable)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return;
     return poUnderlyingLayer->SetStyleTable(poStyleTable);
 }
 
@@ -559,9 +610,10 @@ void        OGRProxiedLayer::SetStyleTable(OGRStyleTable *poStyleTable)
 /*                          StartTransaction()                          */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::StartTransaction()
+OGRErr OGRProxiedLayer::StartTransaction()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->StartTransaction();
 }
 
@@ -569,9 +621,10 @@ OGRErr      OGRProxiedLayer::StartTransaction()
 /*                          CommitTransaction()                         */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::CommitTransaction()
+OGRErr OGRProxiedLayer::CommitTransaction()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->CommitTransaction();
 }
 
@@ -579,9 +632,10 @@ OGRErr      OGRProxiedLayer::CommitTransaction()
 /*                        RollbackTransaction()                         */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::RollbackTransaction()
+OGRErr OGRProxiedLayer::RollbackTransaction()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->RollbackTransaction();
 }
 
@@ -591,7 +645,8 @@ OGRErr      OGRProxiedLayer::RollbackTransaction()
 
 const char *OGRProxiedLayer::GetFIDColumn()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return "";
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return "";
     return poUnderlyingLayer->GetFIDColumn();
 }
 
@@ -601,7 +656,8 @@ const char *OGRProxiedLayer::GetFIDColumn()
 
 const char *OGRProxiedLayer::GetGeometryColumn()
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return "";
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return "";
     return poUnderlyingLayer->GetGeometryColumn();
 }
 
@@ -609,9 +665,10 @@ const char *OGRProxiedLayer::GetGeometryColumn()
 /*                          SetIgnoredFields()                          */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::SetIgnoredFields( const char **papszFields )
+OGRErr OGRProxiedLayer::SetIgnoredFields(const char **papszFields)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->SetIgnoredFields(papszFields);
 }
 
@@ -619,9 +676,10 @@ OGRErr      OGRProxiedLayer::SetIgnoredFields( const char **papszFields )
 /*                              Rename()                                */
 /************************************************************************/
 
-OGRErr      OGRProxiedLayer::Rename(const char* pszNewName)
+OGRErr OGRProxiedLayer::Rename(const char *pszNewName)
 {
-    if( poUnderlyingLayer == nullptr && !OpenUnderlyingLayer() ) return OGRERR_FAILURE;
+    if (poUnderlyingLayer == nullptr && !OpenUnderlyingLayer())
+        return OGRERR_FAILURE;
     return poUnderlyingLayer->Rename(pszNewName);
 }
 

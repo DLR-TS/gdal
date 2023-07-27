@@ -67,6 +67,15 @@ foreach(_comp IN LISTS libkml_known_components)
   endif()
 endforeach()
 
+set(libkml_helpers MINIZIP URIPARSER)
+foreach(_helper IN LISTS libkml_helpers)
+  string(TOLOWER ${_helper} _name)
+  find_library(LIBKML_${_helper}_LIBRARY
+               NAMES ${_name} lib${_name}
+               HINTS ${PC_LIBKML_LIBRARY_DIRS} )
+  mark_as_advanced(LIBKML_${_helper}_LIBRARY)
+endforeach()
+
 if(LIBKML_INCLUDE_DIR AND NOT LIBKML_VERSION)
   file(STRINGS ${LIBKML_INCLUDE_DIR}/kml/base/version.h libkml_version_h_string
        REGEX "^#define[\t ]+LIBKML_(MAJOR|MINOR|MICRO)_VERSION[\t ]+[0-9]+")
@@ -88,14 +97,14 @@ find_package_handle_standard_args(LibKML
                                   VERSION_VAR LIBKML_VERSION_STRING)
 
 if(LIBKML_FOUND)
-  set(LIBKML_INCLUDE_DIRS ${LIBKML_INCLUDE_DIR})
-  set(LIBKML_LIBRARIES ${LIBKML_BASE_LIBRARY})
+  set(LIBKML_INCLUDE_DIRS "${LIBKML_INCLUDE_DIR}")
+  set(LIBKML_LIBRARIES "${LIBKML_BASE_LIBRARY}")
   if(NOT TARGET LIBKML::LibKML)
     add_library(LIBKML::LibKML UNKNOWN IMPORTED)
     set_target_properties(LIBKML::LibKML PROPERTIES
-                          INTERFACE_INCLUDE_DIRECTORIES ${LIBKML_INCLUDE_DIR}
+                          INTERFACE_INCLUDE_DIRECTORIES "${LIBKML_INCLUDE_DIR}"
                           IMPORTED_LINK_INTERFACE_LANGUAGES "C++"
-                          IMPORTED_LOCATION ${LIBKML_BASE_LIBRARY})
+                          IMPORTED_LOCATION "${LIBKML_BASE_LIBRARY}")
   endif()
   foreach(_comp IN LISTS libkml_known_components)
     if(${_comp} IN_LIST LibKML_FIND_COMPONENTS)
@@ -105,6 +114,17 @@ if(LIBKML_FOUND)
         set_target_properties(LIBKML::${_comp} PROPERTIES
                               IMPORTED_LINK_INTERFACE_LANGUAGES "C++"
                               IMPORTED_LOCATION "${LIBKML_${_comp}_LIBRARY}")
+      endif()
+    endif()
+  endforeach()
+  foreach(_helper IN LISTS libkml_helpers)
+    if(LIBKML_${_helper}_LIBRARY)
+      list(APPEND LIBKML_LIBRARIES "${LIBKML_${_helper}_LIBRARY}")
+      if(NOT TARGET LIBKML::${_helper})
+        add_library(LIBKML::${_helper} UNKNOWN IMPORTED)
+        set_target_properties(LIBKML::${_helper} PROPERTIES
+                              IMPORTED_LINK_INTERFACE_LANGUAGES "C++"
+                              IMPORTED_LOCATION "${LIBKML_${_helper}_LIBRARY}")
       endif()
     endif()
   endforeach()

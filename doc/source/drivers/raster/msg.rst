@@ -38,7 +38,7 @@ Build Instructions
 CMake builds
 ++++++++++++
 
-See the ``GDAL_USE_PUBLICDECOMPWT`` option of :ref:`build_hints`.
+See the ``GDAL_USE_PUBLICDECOMPWT`` option of :ref:`building_from_source`.
 
 Other build systems
 +++++++++++++++++++
@@ -204,6 +204,6 @@ the images.
 See Also
 --------
 
--  Implemented as ``gdal/frmts/msg/msgdataset.cpp``.
+-  Implemented as :source_file:`frmts/msg/msgdataset.cpp`.
 -  http://www.eumetsat.int - European Organisation for the Exploitation
    of Meteorological Satellites

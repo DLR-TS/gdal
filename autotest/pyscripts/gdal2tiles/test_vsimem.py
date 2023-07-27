@@ -29,23 +29,30 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-from osgeo import gdal
+import pytest
 
+from osgeo import gdal
 from osgeo_utils import gdal2tiles
 
 
 def test_gdal2tiles_vsimem():
 
-    gdal2tiles.main(argv = ['-q', '../../gcore/data/byte.tif', '/vsimem/gdal2tiles'])
+    if gdal.GetDriverByName("PNG") is None:
+        pytest.skip("PNG driver is missing")
 
-    assert set(gdal.ReadDirRecursive('/vsimem/gdal2tiles')) == set([
-        '14/',
-        '14/2837/',
-        '14/2837/9833.png',
-        '14/2838/',
-        '14/2838/9833.png',
-        'googlemaps.html',
-        'leaflet.html',
-        'openlayers.html',
-        'tilemapresource.xml'])
-    gdal.RmdirRecursive('/vsimem/gdal2tiles')
+    gdal2tiles.main(argv=["-q", "../../gcore/data/byte.tif", "/vsimem/gdal2tiles"])
+
+    assert set(gdal.ReadDirRecursive("/vsimem/gdal2tiles")) == set(
+        [
+            "14/",
+            "14/2837/",
+            "14/2837/9833.png",
+            "14/2838/",
+            "14/2838/9833.png",
+            "googlemaps.html",
+            "leaflet.html",
+            "openlayers.html",
+            "tilemapresource.xml",
+        ]
+    )
+    gdal.RmdirRecursive("/vsimem/gdal2tiles")

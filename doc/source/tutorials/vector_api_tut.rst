@@ -158,6 +158,16 @@ With GDAL 2.3 and C++11:
 
     for( auto&& oField: *poFeature )
     {
+        if( oField.IsUnset() )
+        {
+            printf("(unset),");
+            continue;
+        }
+        if( oField.IsNull() )
+        {
+            printf("(null),");
+            continue;
+        }
         switch( oField.GetType() )
         {
             case OFTInteger:
@@ -170,9 +180,13 @@ With GDAL 2.3 and C++11:
                 printf( "%.3f,", oField.GetDouble() );
                 break;
             case OFTString:
+                // GetString() returns a C string
                 printf( "%s,", oField.GetString() );
                 break;
             default:
+                // Note: we use GetAsString() and not GetString(), since
+                // the later assumes the field type to be OFTString while the
+                // former will do a conversion from the original type to string.
                 printf( "%s,", oField.GetAsString() );
                 break;
         }
@@ -185,6 +199,16 @@ With GDAL < 2.3 and C++ :
     OGRFeatureDefn *poFDefn = poLayer->GetLayerDefn();
     for( int iField = 0; iField < poFDefn->GetFieldCount(); iField++ )
     {
+        if( !poFeature->IsFieldSet(iField) )
+        {
+            printf("(unset),");
+            continue;
+        }
+        if( poFeature->IsFieldNull(iField) )
+        {
+            printf("(null),");
+            continue;
+        }
         OGRFieldDefn *poFieldDefn = poFDefn->GetFieldDefn( iField );
 
         switch( poFieldDefn->GetType() )
@@ -217,6 +241,17 @@ In C :
     for( iField = 0; iField < OGR_FD_GetFieldCount(hFDefn); iField++ )
     {
         OGRFieldDefnH hFieldDefn = OGR_FD_GetFieldDefn( hFDefn, iField );
+
+        if( !OGR_F_IsFieldSet(hFeature, iField) )
+        {
+            printf("(unset),");
+            continue;
+        }
+        if( OGR_F_IsFieldNull(hFeature, iField) )
+        {
+            printf("(null),");
+            continue;
+        }
 
         switch( OGR_Fld_GetType(hFieldDefn) )
         {
@@ -448,6 +483,16 @@ With GDAL 2.3 and C++11 :
             {
                 for( const auto& oField: *poFeature )
                 {
+                    if( oField.IsUnset() )
+                    {
+                        printf("(unset),");
+                        continue;
+                    }
+                    if( oField.IsNull() )
+                    {
+                        printf("(null),");
+                        continue;
+                    }
                     switch( oField.GetType() )
                     {
                         case OFTInteger:
@@ -460,9 +505,13 @@ With GDAL 2.3 and C++11 :
                             printf( "%.3f,", oField.GetDouble() );
                             break;
                         case OFTString:
+                            // GetString() returns a C string
                             printf( "%s,", oField.GetString() );
                             break;
                         default:
+                            // Note: we use GetAsString() and not GetString(), since
+                            // the later assumes the field type to be OFTString while the
+                            // former will do a conversion from the original type to string.
                             printf( "%s,", oField.GetAsString() );
                             break;
                     }
@@ -513,6 +562,16 @@ In C++ :
         {
             for( int iField = 0; iField < poFDefn->GetFieldCount(); iField++ )
             {
+                if( !poFeature->IsFieldSet(iField) )
+                {
+                    printf("(unset),");
+                    continue;
+                }
+                if( poFeature->IsFieldNull(iField) )
+                {
+                    printf("(null),");
+                    continue;
+                }
                 OGRFieldDefn *poFieldDefn = poFDefn->GetFieldDefn( iField );
 
                 switch( poFieldDefn->GetType() )
@@ -588,6 +647,17 @@ In C :
             for( iField = 0; iField < OGR_FD_GetFieldCount(hFDefn); iField++ )
             {
                 OGRFieldDefnH hFieldDefn = OGR_FD_GetFieldDefn( hFDefn, iField );
+
+                if( !OGR_F_IsFieldSet(hFeature, iField) )
+                {
+                    printf("(unset),");
+                    continue;
+                }
+                if( OGR_F_IsFieldNull(hFeature, iField) )
+                {
+                    printf("(null),");
+                    continue;
+                }
 
                 switch( OGR_Fld_GetType(hFieldDefn) )
                 {
@@ -675,7 +745,7 @@ Reading From OGR using the Arrow C Stream data interface
 
 .. versionadded:: 3.6
 
-Instead of retrieving features one at a time, it is also possible to retrive
+Instead of retrieving features one at a time, it is also possible to retrieve
 them by batches, with a column-oriented memory layout, using the
 :cpp:func:`OGRLayer::GetArrowStream` method. Note that this method is more
 difficult to use than the traditional :cpp:func:`OGRLayer::GetNextFeature` approach,
@@ -727,7 +797,7 @@ https://github.com/apache/arrow/blob/master/cpp/src/arrow/c/abi.h
 to get API/ABI compatibility with Apache Arrow C++. This header file must be
 explicitly included when the related array batch API is used.
 
-The GetArrowStream() method has the followin signature:
+The GetArrowStream() method has the following signature:
 
   .. code-block:: cpp
 
@@ -801,7 +871,7 @@ OGRLayer has a base implementation of GetArrowStream() that is such:
   may fallback to the default (slower) implementation when filters are set.
 
   Mixing calls to GetNextFeature() and get_next() is not recommended, as
-  the behaviour will be unspecified (but it should not crash).
+  the behavior will be unspecified (but it should not crash).
 
   When get_next() returns 0, and the array is no longer needed, it must
   be released with the following procedure, to take into account that it might
@@ -813,16 +883,16 @@ OGRLayer has a base implementation of GetArrowStream() that is such:
           if( out_array->release )
               out_array->release(out_array)
 
-Drivers that have a specialized implementation advertize the
+Drivers that have a specialized implementation advertise the
 new OLCFastGetArrowStream layer capability.
 
-Using directly (as a producer or a consumer) a ArrowArray is admitedly not
+Using directly (as a producer or a consumer) a ArrowArray is admittedly not
 trivial, and requires good intimacy with the Arrow C data interface and columnar
 array specifications, to know, in which buffer of an array, data is to be read,
 which data type void* buffers should be cast to, how to use buffers that contain
 null/not_null information, how to use offset buffers for data types of type List, etc.
 The study of the gdal_array._RecordBatchAsNumpy() method of the SWIG Python
-bindings (https://github.com/OSGeo/gdal/blob/master/swig/include/gdal_array.i)
+bindings (:source_file:`swig/include/gdal_array.i`)
 can give a good hint of how to use an ArrowArray object, in conjunction
 with the associated ArrowSchema.
 

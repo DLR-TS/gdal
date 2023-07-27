@@ -450,7 +450,9 @@ typedef void retGetPoints;
 %constant ALTER_DEFAULT_FLAG = 16;
 %constant ALTER_UNIQUE_FLAG = 32;
 %constant ALTER_DOMAIN_FLAG = 64;
-%constant ALTER_ALL_FLAG = 1 + 2 + 4 + 8 + 16 + 32 + 64;
+%constant ALTER_ALTERNATIVE_NAME_FLAG = 128;
+%constant ALTER_COMMENT_FLAG = 256;
+%constant ALTER_ALL_FLAG = 1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256;
 
 %constant ALTER_GEOM_FIELD_DEFN_NAME_FLAG = 4096;
 %constant ALTER_GEOM_FIELD_DEFN_TYPE_FLAG = 8192;
@@ -465,6 +467,18 @@ typedef void retGetPoints;
 %constant F_VAL_ALLOW_NULL_WHEN_DEFAULT = 0x00000008; /***<Allow fields that are null when there's an associated default value. */
 %constant F_VAL_ALL = 0xFFFFFFFF; /**< Enable all validation tests */
 
+/** Flag for OGR_L_GetGeometryTypes() indicating that
+ * OGRGeometryTypeCounter::nCount value is not needed */
+%constant GGT_COUNT_NOT_NEEDED = 0x1;
+
+/** Flag for OGR_L_GetGeometryTypes() indicating that iteration might stop as
+ * sooon as 2 distinct geometry types are found. */
+%constant GGT_STOP_IF_MIXED = 0x2;
+
+/** Flag for OGR_L_GetGeometryTypes() indicating that a GeometryCollectionZ
+ * whose first subgeometry is a TinZ should be reported as TinZ */
+%constant GGT_GEOMCOLLECTIONZ_TINZ = 0x4;
+
 %constant char *OLCRandomRead          = "RandomRead";
 %constant char *OLCSequentialWrite     = "SequentialWrite";
 %constant char *OLCRandomWrite         = "RandomWrite";
@@ -478,12 +492,15 @@ typedef void retGetPoints;
 %constant char *OLCAlterGeomFieldDefn  = "AlterGeomFieldDefn";
 %constant char *OLCTransactions        = "Transactions";
 %constant char *OLCDeleteFeature       = "DeleteFeature";
+%constant char *OLCUpsertFeature       = "UpsertFeature";
+%constant char *OLCUpdateFeature       = "UpdateFeature";
 %constant char *OLCFastSetNextByIndex  = "FastSetNextByIndex";
 %constant char *OLCStringsAsUTF8       = "StringsAsUTF8";
 %constant char *OLCIgnoreFields        = "IgnoreFields";
 %constant char *OLCCreateGeomField     = "CreateGeomField";
 %constant char *OLCCurveGeometries     = "CurveGeometries";
 %constant char *OLCMeasuredGeometries  = "MeasuredGeometries";
+%constant char *OLCZGeometries         = "ZGeometries";
 %constant char *OLCRename              = "Rename";
 %constant char *OLCFastGetArrowStream  = "FastGetArrowStream";
 
@@ -494,6 +511,7 @@ typedef void retGetPoints;
 %constant char *ODsCTransactions       = "Transactions";
 %constant char *ODsCEmulatedTransactions = "EmulatedTransactions";
 %constant char *ODsCMeasuredGeometries = "MeasuredGeometries";
+%constant char *ODsCZGeometries        = "ZGeometries";
 %constant char *ODsCRandomLayerRead    = "RandomLayerRead";
 /* Note the unfortunate trailing space at the end of the string */
 %constant char *ODsCRandomLayerWrite   = "RandomLayerWrite ";
@@ -528,13 +546,16 @@ typedef int OGRErr;
 #define OLCAlterGeomFieldDefn  "AlterGeomFieldDefn"
 #define OLCTransactions        "Transactions"
 #define OLCDeleteFeature       "DeleteFeature"
+#define OLCUpsertFeature       "UpsertFeature"
+#define OLCUpdateFeature       "UpdateFeature"
 #define OLCFastSetNextByIndex  "FastSetNextByIndex"
 #define OLCStringsAsUTF8       "StringsAsUTF8"
 #define OLCCreateGeomField     "CreateGeomField"
 #define OLCCurveGeometries     "CurveGeometries"
 #define OLCMeasuredGeometries  "MeasuredGeometries"
+#define OLCZGeometries         "ZGeometries"
 #define OLCRename              "Rename"
-#define OLCFastGetArrowStream  "FastGetArrowStream";
+#define OLCFastGetArrowStream  "FastGetArrowStream"
 
 #define ODsCCreateLayer        "CreateLayer"
 #define ODsCDeleteLayer        "DeleteLayer"
@@ -542,10 +563,11 @@ typedef int OGRErr;
 #define ODsCCurveGeometries    "CurveGeometries"
 #define ODsCTransactions       "Transactions"
 #define ODsCEmulatedTransactions "EmulatedTransactions"
-#define ODsCMeasuredGeometries  "MeasuredGeometries";
-#define ODsCRandomLayerRead    "RandomLayerRead";
+#define ODsCMeasuredGeometries  "MeasuredGeometries"
+#define ODsCZGeometries        "ZGeometries"
+#define ODsCRandomLayerRead    "RandomLayerRead"
 /* Note the unfortunate trailing space at the end of the string */
-#define ODsCRandomLayerWrite   "RandomLayerWrite ";
+#define ODsCRandomLayerWrite   "RandomLayerWrite "
 
 #define ODrCCreateDataSource   "CreateDataSource"
 #define ODrCDeleteDataSource   "DeleteDataSource"
@@ -990,6 +1012,57 @@ public:
 #endif /* FROM_GDAL_I */
 
 #ifdef SWIGPYTHON
+
+class ArrowArray {
+  ArrowArray();
+public:
+%extend {
+
+  ~ArrowArray() {
+    if( self->release )
+      self->release(self);
+    free(self);
+  }
+
+  VoidPtrAsLong _getPtr() {
+    return self;
+  }
+
+  GIntBig GetChildrenCount() {
+    return self->n_children;
+  }
+
+  GIntBig GetLength() {
+    return self->length;
+  }
+
+} /* %extend */
+
+}; /* class ArrowArray */
+
+class ArrowSchema {
+  ArrowSchema();
+public:
+%extend {
+
+  ~ArrowSchema() {
+    if( self->release )
+      self->release(self);
+    free(self);
+  }
+
+  VoidPtrAsLong _getPtr() {
+    return self;
+  }
+
+  GIntBig GetChildrenCount() {
+    return self->n_children;
+  }
+
+} /* %extend */
+
+}; /* class ArrowSchema */
+
 class ArrowArrayStream {
   ArrowArrayStream();
 public:
@@ -1001,7 +1074,8 @@ public:
     free(self);
   }
 
-  VoidPtrAsLong _GetSchemaPtr()
+%newobject GetSchema;
+  ArrowSchema* GetSchema()
   {
       struct ArrowSchema* schema = (struct ArrowSchema* )malloc(sizeof(struct ArrowSchema));
       if( self->get_schema(self, schema) == 0 )
@@ -1011,19 +1085,12 @@ public:
       else
       {
           free(schema);
-          return 0;
+          return NULL;
       }
   }
 
-  static void _FreeSchemaPtr(VoidPtrAsLong ptr)
-  {
-      struct ArrowSchema* schema = (struct ArrowSchema* )ptr;
-      if( schema && schema->release )
-          schema->release(schema);
-      free(schema);
-  }
-
-  VoidPtrAsLong _GetNextRecordBatchPtr(char** options = NULL)
+%newobject GetNextRecordBatch;
+  ArrowArray* GetNextRecordBatch(char** options = NULL)
   {
       struct ArrowArray* array = (struct ArrowArray* )malloc(sizeof(struct ArrowArray));
       if( self->get_next(self, array) == 0 && array->release != NULL )
@@ -1033,18 +1100,9 @@ public:
       else
       {
           free(array);
-          return 0;
+          return NULL;
       }
   }
-
-  static void _FreeRecordBatchPtr(VoidPtrAsLong ptr)
-  {
-      struct ArrowArray* array = (struct ArrowArray* )ptr;
-      if( array && array->release )
-          array->release(array);
-      free(array);
-  }
-
 } /* %extend */
 
 
@@ -1152,6 +1210,28 @@ public:
   OGRErr CreateFeature(OGRFeatureShadow *feature) {
     return OGR_L_CreateFeature(self, feature);
   }
+
+  OGRErr UpsertFeature(OGRFeatureShadow *feature) {
+    return OGR_L_UpsertFeature(self, feature);
+  }
+
+%apply (int nList, int *pList ) { (int nUpdatedFieldsCount, int *panUpdatedFieldsIdx ) };
+%apply (int nList, int *pList ) { (int nUpdatedGeomFieldsCount, int *panUpdatedGeomFieldsIdx ) };
+  OGRErr UpdateFeature(OGRFeatureShadow *feature,
+                       int nUpdatedFieldsCount,
+                       const int *panUpdatedFieldsIdx,
+                       int nUpdatedGeomFieldsCount,
+                       const int *panUpdatedGeomFieldsIdx,
+                       bool bUpdateStyleString) {
+    return OGR_L_UpdateFeature(self, feature,
+                               nUpdatedFieldsCount,
+                               panUpdatedFieldsIdx,
+                               nUpdatedGeomFieldsCount,
+                               panUpdatedGeomFieldsIdx,
+                               bUpdateStyleString);
+  }
+%clear (int nUpdatedFieldsCount, int *panUpdatedFieldsIdx );
+%clear (int nUpdatedGeomFieldsCount, int *panUpdatedGeomFieldsIdx );
 %clear OGRFeatureShadow *feature;
 
   OGRErr DeleteFeature(GIntBig fid) {
@@ -1162,8 +1242,12 @@ public:
     return OGR_L_SyncToDisk(self);
   }
 
+  %newobject GetLayerDefn;
   OGRFeatureDefnShadow *GetLayerDefn() {
-    return (OGRFeatureDefnShadow*) OGR_L_GetLayerDefn(self);
+    auto defn = (OGRFeatureDefnShadow*) OGR_L_GetLayerDefn(self);
+    if (defn)
+        OGR_FD_Reference(defn);
+    return defn;
   }
 
 #ifndef SWIGJAVA
@@ -1393,6 +1477,31 @@ public:
   }
 #endif
 
+#ifdef SWIGPYTHON
+    %feature( "kwargs" ) GetGeometryTypes;
+    void GetGeometryTypes(OGRGeometryTypeCounter** ppRet, int* pnEntryCount,
+                          int geom_field = 0, int flags = 0,
+                          GDALProgressFunc callback=NULL,
+                          void* callback_data=NULL)
+    {
+        *ppRet = OGR_L_GetGeometryTypes(self, geom_field, flags, pnEntryCount, callback, callback_data);
+    }
+#endif
+
+#ifdef SWIGPYTHON
+    %feature( "kwargs" ) GetSupportedSRSList;
+    void GetSupportedSRSList(OGRSpatialReferenceH** ppRet, int* pnEntryCount,
+                             int geom_field = 0)
+    {
+        *ppRet = OGR_L_GetSupportedSRSList(self, geom_field, pnEntryCount);
+    }
+#endif
+
+    OGRErr SetActiveSRS(int geom_field, OSRSpatialReferenceShadow* srs)
+    {
+        return OGR_L_SetActiveSRS(self, geom_field, srs);
+    }
+
 } /* %extend */
 
 
@@ -1567,6 +1676,23 @@ public:
 	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, field_name);
       else
 	  return (const char *) OGR_F_GetFieldAsString(self, i);
+      return NULL;
+  }
+
+  /* ------------------------------------------- */
+
+  /* ---- GetFieldAsISO8601DateTime ------------ */
+
+  const char* GetFieldAsISO8601DateTime(int id, char** options = 0) {
+    return OGR_F_GetFieldAsISO8601DateTime(self, id, options);
+  }
+
+  const char* GetFieldAsISO8601DateTime(const char* field_name, char** options = 0) {
+      int i = OGR_F_GetFieldIndex(self, field_name);
+      if (i == -1)
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, field_name);
+      else
+          return OGR_F_GetFieldAsISO8601DateTime(self, i, options);
       return NULL;
   }
 
@@ -2462,6 +2588,13 @@ public:
     OGR_Fld_SetDomainName( self, name );
   }
 
+  const char* GetComment() {
+    return OGR_Fld_GetComment(self);
+  }
+
+  void SetComment(const char* comment ) {
+    OGR_Fld_SetComment( self, comment );
+  }
 } /* %extend */
 
 
@@ -2982,6 +3115,10 @@ public:
 
   double Area() {
     return OGR_G_Area(self);
+  }
+
+  bool IsClockwise() {
+    return OGR_G_IsClockwise(self);
   }
 
   /* old, non-standard API */
@@ -3825,7 +3962,15 @@ int OGRGetNonLinearGeometriesEnabledFlag(void);
 %inline %{
   OGRDataSourceShadow* Open( const char *utf8_path, int update =0 ) {
     CPLErrorReset();
-    OGRDataSourceShadow* ds = (OGRDataSourceShadow*)OGROpen(utf8_path,update,NULL);
+    int nOpenFlags = GDAL_OF_VECTOR;
+    if( update )
+      nOpenFlags |= GDAL_OF_UPDATE;
+#ifdef SWIGPYTHON
+    if( GetUseExceptions() )
+      nOpenFlags |= GDAL_OF_VERBOSE_ERROR;
+#endif
+    OGRDataSourceShadow* ds = (OGRDataSourceShadow*)GDALOpenEx( utf8_path, nOpenFlags, NULL,
+                                      NULL, NULL );
 #ifndef SWIGPYTHON
     if( CPLGetLastErrorType() == CE_Failure && ds != NULL )
     {
@@ -3853,7 +3998,15 @@ int OGRGetNonLinearGeometriesEnabledFlag(void);
 %inline %{
   OGRDataSourceShadow* OpenShared( const char *utf8_path, int update =0 ) {
     CPLErrorReset();
-    OGRDataSourceShadow* ds = (OGRDataSourceShadow*)OGROpenShared(utf8_path,update,NULL);
+    int nOpenFlags = GDAL_OF_VECTOR | GDAL_OF_SHARED;
+    if( update )
+      nOpenFlags |= GDAL_OF_UPDATE;
+#ifdef SWIGPYTHON
+    if( GetUseExceptions() )
+      nOpenFlags |= GDAL_OF_VERBOSE_ERROR;
+#endif
+    OGRDataSourceShadow* ds = (OGRDataSourceShadow*)GDALOpenEx( utf8_path, nOpenFlags, NULL,
+                                      NULL, NULL );
 #ifndef SWIGPYTHON
     if( CPLGetLastErrorType() == CE_Failure && ds != NULL )
     {

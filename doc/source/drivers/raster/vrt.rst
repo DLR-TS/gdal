@@ -50,6 +50,31 @@ This tutorial will cover the .vrt file format (suitable for users editing
 .vrt files), and how .vrt files may be created and manipulated programmatically
 for developers.
 
+Creation options
+----------------
+
+The following creations options are supported:
+
+-  .. oo:: BLOCKXSIZE
+      :since: 3.7
+
+      Sets block width.
+
+-  .. oo:: BLOCKYSIZE
+      :since: 3.7
+
+      Sets block height.
+
+      Setting explicitly the block size is an advanced setting that should only be
+      used when the user has determined that it is needed. By default the block size
+      is set to:
+
+      - 128x128 for a source-based VRT raster band. Unless the VRT is made of a single
+        source and this single source is not subsetted, in which case the block size of
+        the unique source will be set as the VRT raster band block size)
+
+      - 512x128 for a warped VRT.
+
 .vrt Format
 -----------
 
@@ -78,7 +103,7 @@ The allowed subelements for VRTDataset are :
 
 The **dataAxisToSRSAxisMapping** attribute is allowed since GDAL 3.0 to describe the relationship between the axis indicated in the CRS definition and the axis of the GeoTransform or GCP metadata. The value of the attribute is a comma separated list of integers. The number of elements of this list must be the number of axis of the CRS. Values start at 1. If m denotes the array values of this attribute, then m[0] is the data axis number for the first axis of the CRS. If the attribute is missing, then the OAMS_TRADITIONAL_GIS_ORDER data axis to CRS axis mapping strategy is implied.
 
-- **GeoTransform**: This element contains a six value affine geotransformation for the dataset, mapping between pixel/line coordinates and georeferenced coordinates.
+- **GeoTransform**: This element contains a six value affine geotransformation for the dataset, mapping between pixel/line coordinates and georeferenced coordinates. Typically (geotransform[0], geotransform[3]) will be the (easting, northing) of the upper-left corner of the raster, geotransform[1] the horizontal resolution in geospatial coordinates/pixel, and geotransform[5] the vertical resolution in geospatial coordinates/pixel, as a negative value if the image is north-up oriented. See :ref:`raster_data_model_geotransform` for more details about that mapping.
 
 .. code-block:: xml
 
@@ -128,7 +153,12 @@ The **dataAxisToSRSAxisMapping** attribute is allowed since GDAL 3.0 to describe
   to a lower resolution.
   This element can also be used with an existing VRT dataset by running
   :cpp:func:`GDALDataset::BuildOverviews` or :program:`gdaladdo` with the
-  :decl_configoption:`VRT_VIRTUAL_OVERVIEWS` configuration option set to ``YES``.
+  :config:`VRT_VIRTUAL_OVERVIEWS` configuration option set to ``YES``:
+
+  .. config:: VRT_VIRTUAL_OVERVIEWS
+     :choices: YES, NO
+     :default: NO
+
   Virtual overviews have the least priority compared to the **Overview** element
   at the **VRTRasterBand** level, or to materialized .vrt.ovr files.
 
@@ -287,6 +317,12 @@ The SimpleSource may have the SourceFilename, SourceBand, SrcRect, and DstRect
 subelements.  The SrcRect element will indicate what rectangle on the indicated
 source file should be read, and the DstRect element indicates how that
 rectangle of source data should be mapped into the VRTRasterBands space.
+
+SrcRect and DstRect are expressed in pixel/line coordinate space. Their
+relationship with the geospatial coordinate space is given by the geotransform
+matrix of the source for SrcRect, and of the VRT itself (**GeoTransform**
+element) for DstRect.
+See :ref:`raster_data_model_geotransform` for more details about that mapping.
 
 The relativeToVRT attribute on the SourceFilename indicates whether the
 filename should be interpreted as relative to the .vrt file (value is 1)
@@ -853,7 +889,7 @@ GDAL provides a set of default pixel functions that can be used without writing 
    * - **div**
      - 2
      - -
-     - divide one rasted band by another (``b1 / b2``)
+     - divide one raster band by another (``b1 / b2``)
    * - **exp**
      - 1
      - ``base`` (optional), ``fact`` (optional)
@@ -1067,16 +1103,18 @@ set to VRTDerivedRasterBand) are :
 
 - **BufferRadius** (optional, defaults to 0): Amount of extra pixels, with respect to the original RasterIO() request to satisfy, that are fetched at the left, right, bottom and top of the input and output buffers passed to the pixel function. Note that the values of the output buffer in this buffer zone willbe ignored.
 
+- **SkipNonContributingSources** (optional, added in GDAL 3.7, defaults to false) = true/false: Whether sources that do not intersect the VRTRasterBand RasterIO() requested region should be omitted. By default, data for all sources, including ones that do not intersect it, are passed to the pixel function. By setting this parameter to false, only sources that intersect the requested region will be passed.
+
 The signature of the Python pixel function must have the following arguments:
 
-- **in_ar**: list of input NumPy arrays (one NumPy array for each source)
+- **in_ar**: list of input NumPy arrays. One NumPy array for each source. If SkipNonContributingSources=true, only contributing sources will be passed.
 - **out_ar**: output NumPy array to fill. The array is initialized at the right dimensions and with the VRTRasterBand.dataType.
 - **xoff**: pixel offset to the top left corner of the accessed region of the band. Generally not needed except if the processing depends on the pixel position in the raster.
 - **yoff** line offset to the top left corner of the accessed region of the band. Generally not needed.
 - **xsize**: width of the region of the accessed region of the band. Can be used together with out_ar.shape[1] to determine the horizontal resampling ratio of the request.
 - **ysize**: height of the region of the accessed region of the band. Can be used together with out_ar.shape[0] to determine the vertical resampling ratio of the request.
-- **raster_xsize**: total with of the raster band. Generally not needed.
-- **raster_ysize**: total with of the raster band. Generally not needed.
+- **raster_xsize**: total width of the raster band. Generally not needed.
+- **raster_ysize**: total height of the raster band. Generally not needed.
 - **buf_radius**: radius of the buffer (in pixels) added to the left, right, top and bottom of in_ar / out_ar. This is the value of the optional BufferRadius element that can be set so that the original pixel request is extended by a given amount of pixels.
 - **gt**: geotransform. Array of 6 double values.
 - **kwargs**: dictionary with user arguments defined in PixelFunctionArguments
@@ -1242,12 +1280,22 @@ Security implications
 The ability to run Python code potentially opens the door to many potential
 vulnerabilities if the user of GDAL may process untrusted datasets. To avoid
 such issues, by default, execution of Python pixel function will be disabled.
-The execution policy can be controlled with the :decl_configoption:`GDAL_VRT_ENABLE_PYTHON`
-configuration option, which can accept 3 values:
+The execution policy can be controlled with the following
+configuration options:
 
-- YES: all VRT scripts are considered as trusted and their Python pixel functions will be run when pixel operations are involved.
-- NO: all VRT scripts are considered untrusted, and none Python pixelfunction will be run.
-- TRUSTED_MODULES (default setting): all VRT scripts with inline Python code in their PixelFunctionCode elements will be considered untrusted and will not be run. VRT scripts that use a PixelFunctionType of the form "module_name.function_name" will be considered as trusted, only if "module_name" is allowed in the :decl_configoption:`GDAL_VRT_TRUSTED_MODULES` configuration option. The value of this configuration option is a comma separated listed of trusted module names. The '*' wildcard can be used at the name of a string to match all strings beginning with the substring before the '*' character. For example 'every*' will make 'every.thing' or 'everything' module trusted. '*' can also be used to make all modules to be trusted. The ".*" wildcard can also be used to match exact modules or submodules names. For example 'every.*' will make 'every' and 'every.thing' modules trusted, but not 'everything'.
+-  .. config:: GDAL_VRT_ENABLE_PYTHON
+      :choices: YES, NO, TRUSTED_MODULES
+      :default: TRUSTED_MODULES
+
+      Determine what Python code can be called from GDAL.
+
+      - YES: all VRT scripts are considered as trusted and their Python pixel functions will be run when pixel operations are involved.
+      - NO: all VRT scripts are considered untrusted, and none Python pixelfunction will be run.
+      - TRUSTED_MODULES (default setting): all VRT scripts with inline Python code in their PixelFunctionCode elements will be considered untrusted and will not be run. VRT scripts that use a PixelFunctionType of the form "module_name.function_name" will be considered as trusted, only if "module_name" is allowed in the :config:`GDAL_VRT_PYTHON_TRUSTED_MODULES` configuration option.
+
+-  .. config:: GDAL_VRT_PYTHON_TRUSTED_MODULES
+
+      The value of this configuration option is a comma separated listed of trusted module names. The '*' wildcard can be used at the name of a string to match all strings beginning with the substring before the '*' character. For example 'every*' will make 'every.thing' or 'everything' module trusted. '*' can also be used to make all modules to be trusted. The ".*" wildcard can also be used to match exact modules or submodules names. For example 'every.*' will make 'every' and 'every.thing' modules trusted, but not 'everything'.
 
 .. _linking_mechanism_to_python_interpreter:
 
@@ -1259,19 +1307,19 @@ is not explicitly linked at build time to any of the CPython library. When GDAL
 will need to run Python code, it will first determine if the Python interpreter
 is loaded in the current process (which is the case if the program is a Python
 interpreter itself, or if another program, e.g. QGIS, has already loaded the
-CPython library). Otherwise it will look if the :decl_configoption:`PYTHONSO` configuration option is
+CPython library). Otherwise it will look if the :config:`PYTHONSO` configuration option is
 defined. This option can be set to point to the name of the Python library to
-use, either as a shortname like "libpython2.7.so" if it is accessible through
+use, either as a shortname like "libpython3.10.so" if it is accessible through
 the Linux dynamic loader (so typically in one of the paths in /etc/ld.so.conf or
-LD_LIBRARY_PATH) or as a full path name like "/usr/lib/x86_64-linux-gnu/libpython2.7.so".
-The same holds on Windows will shortnames like "python27.dll" if accessible through
-the PATH or full path names like "c:\\python27\\python27.dll". If the :decl_configoption:`PYTHONSO`
+LD_LIBRARY_PATH) or as a full path name like "/usr/lib/x86_64-linux-gnu/libpython3.10.so".
+The same holds on Windows will shortnames like "python310.dll" if accessible through
+the PATH or full path names like "c:\\python310\\python310.dll". If the :config:`PYTHONSO`
 configuration option is not defined, it will look for a "python" binary in the
 directories of the PATH and will try to determine the related shared object
 (it will retry with "python3" if no "python" has been found). If the above
 was not successful, then a predefined list of shared objects names
-will be tried. At the time of writing, the order of versions searched is 2.7,
-3.5, 3.6, 3.7, 3.8, 3.9, 3.4, 3.3, 3.2. Enabling debug information (CPL_DEBUG=ON) will
+will be tried. At the time of writing, the order of versions searched is
+3.8, 3.9, 3.10, 3.11, 3.12, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2. Enabling debug information (:config:`CPL_DEBUG=ON`) will
 show which Python version is used.
 
 Just-in-time compilation
@@ -1291,7 +1339,7 @@ Given the following :file:`mandelbrot.py` file :
         from numba import jit
         #print('Using numba')
         g_max_iterations = 100
-    except:
+    except Exception:
         class jit(object):
             def __init__(self, nopython = True, nogil = True):
                 pass
@@ -1465,7 +1513,7 @@ in the computation of the pansharpening, but not exposed as an output band.
 Panchromatic and spectral bands should generally come from different datasets,
 since bands of a GDAL dataset are assumed to have all the same dimensions.
 Spectral bands themselves can come from one or several datasets. The only
-constraint is that they have all the same dimensions.
+constraint is that they have all the same dimensions and geotransform.
 
 An example of a minimalist working VRT is the following. It will generates a dataset with 3 output
 bands corresponding to the 3 input spectral bands of multispectral.tif, pansharpened
@@ -1510,10 +1558,10 @@ the PansharpeningOptions element may have the following children elements :
 - **Algorithm**: to specify the pansharpening algorithm. Currently, only WeightedBrovey is supported.
 - **AlgorithmOptions**: to specify the options of the pansharpening algorithm. With WeightedBrovey algorithm, the only supported option is a **Weights** child element whose content must be a comma separated list of real values assigning the weight of each of the declared input spectral bands. There must be as many values as declared input spectral bands.
 - **Resampling**: the resampling kernel used to resample the spectral bands to the resolution of the panchromatic band. Can be one of Cubic (default), Average, Near, CubicSpline, Bilinear, Lanczos.
-- **NumThreads**: Number of worker threads. Integer number or ALL_CPUS. If this option is not set, the :decl_configoption:`GDAL_NUM_THREADS` configuration option will be queried (its value can also be set to an integer or ALL_CPUS)
+- **NumThreads**: Number of worker threads. Integer number or ALL_CPUS. If this option is not set, the :config:`GDAL_NUM_THREADS` configuration option will be queried (its value can also be set to an integer or ALL_CPUS)
 - **BitDepth**: Can be used to specify the bit depth of the panchromatic and spectral bands (e.g. 12). If not specified, the NBITS metadata item from the panchromatic band will be used if it exists.
 - **NoData**: Nodata value to take into account for panchromatic and spectral bands. It will be also used as the output nodata value. If not specified and all input bands have the same nodata value, it will be implicitly used (unless the special None value is put in NoData to prevent that).
-- **SpatialExtentAdjustment**: Can be one of **Union** (default), **Intersection**, **None** or **NoneWithoutWarning**. Controls the behavior when panchromatic and spectral bands have not the same geospatial extent. By default, Union will take the union of all spatial extents. Intersection the intersection of all spatial extents. None will not proceed to any adjustment at all (might be useful if the geotransform are somehow dummy, and the top-left and bottom-right corners of all bands match), but will emit a warning. NoneWithoutWarning is the same as None, but in a silent way.
+- **SpatialExtentAdjustment**: Can be one of **Union** (default), **Intersection**, **None** or **NoneWithoutWarning**. Controls the behavior when panchromatic and spectral bands have not the same geospatial extent. By default, Union will take the union of all spatial extents. Intersection the intersection of all spatial extents. None will not proceed to any adjustment at all, but will emit a warning. NoneWithoutWarning is the same as None, but in a silent way.
 
 The below examples creates a VRT dataset with 4 bands. The first band is the
 panchromatic band. The 3 following bands are than red, green, blue pansharpened
@@ -1607,18 +1655,104 @@ the dataset name since GDAL 3.1
 
     vrt://{path_to_gdal_dataset}?[bands=num1,...,numN]
 
+::
+
+    vrt://{path_to_gdal_dataset}?[a_srs=srs_def]
+
+::
+
+    vrt://{path_to_gdal_dataset}?[a_ullr=ulx,uly,lrx,lry]
+
+
 For example:
 
 ::
 
     vrt://my.tif?bands=3,2,1
 
-The only supported option currently is bands. Other may be added in the future.
+::
 
-The effect of this option is to change the band composition. The values specified
+    vrt://my.tif?a_srs=OGC:CRS84
+
+::
+
+    vrt://my.tif?a_ullr=0,1,1,-1
+
+::
+
+    vrt://my.tif?bands=2&ovr=4
+
+
+The supported options currently are ``bands``, ``a_srs``, ``a_ullr``, ``ovr``, ``expand``,
+``a_scale``, ``a_offset``, ``ot``, ``gcp``, ``if``, ``scale``, ``exponent``, and ``outsize``.
+
+Other options may be added in the future.
+
+The effect of the ``bands`` option is to change the band composition. The values specified
 are the source band numbers (between 1 and N), possibly out-of-order or with repetitions.
 The ``mask`` value can be used to specify the global mask band. This can also
 be seen as an equivalent of running `gdal_translate -of VRT -b num1 ... -b numN`.
+
+The effect of the ``a_srs`` option (added in GDAL 3.7) is to assign (override) the coordinate
+reference system of the source in the same way as (:ref:`gdal_translate`), it may be missing,
+or incorrect. The value provided for ``a_srs`` may be a string or a file containing a srs
+definition.
+
+The effect of the ``a_ullr`` option (added in GDAL 3.7) is to assign (override) the georeferenced
+bounds of the source in the same way as (:ref:`gdal_translate`). The value consists of four numeric
+values separated by commas, in the order 'xmin,ymax,xmax,ymin' (upper left x,y, lower right x,y).
+
+The effect of the ``ovr`` option (added in GDAL 3.7) is to specify which overview
+level of source file must be used, with the first overview level being 0 (:ref:`gdal_translate`).
+
+The effect of the ``expand`` option (added in GDAL 3.7) is to expose a dataset with 1 band with
+a color table as a dataset with 3 (RGB) or 4 (RGBA) bands, as with (:ref:`gdal_translate`).
+
+The effect of the ``a_scale`` option (added in GDAL 3.7) is to set band scaling value (no
+modification of pixel values is done), as with (:ref:`gdal_translate`).
+
+The effect of the ``a_offset`` option (added in GDAL 3.7) is to set band offset value (no
+modification of pixel values is done), as with (:ref:`gdal_translate`).
+
+The effect of the ``ot`` option (added in GDAL 3.7) is to force the output image bands to have a
+specific data type supported by the driver as with (:ref:`gdal_translate`).
+
+The effect of the ``gcp`` option (added in GDAL 3.7) is to add the indicated ground control point
+to the output dataset. Values are a set of numbers as per (:ref:`gdal_translate`) ``pixel,line,easting,northing[,elevation]``.
+Multiple entries may be included. This can also be seen as an equivalent of running
+`gdal_translate -of VRT -gcp pixel1 line1 easting1 northing1 [elevation1] -gcp pixel2 line2 easting2 northing2 [elevation2] ... -gcp pixelN lineN eastingN northingN [elevationN]`.
+
+The effect of the ``if`` option (added in GDAL 3.7) is to specify the format/driver name/s
+to be attempted to open the input file (:ref:`gdal_translate`). Values may be repeated separated by comma
+This can also be seen as an equivalent of running `gdal_translate -of VRT -if DRV1 -if DRV2 ... -if DRVN`.
+
+The effect of the ``scale`` option (added in GDAL 3.7) is to rescale the input pixel values from the
+range **src_min** to **src_max** to the range **dst_min** to **dst_max**  ``src_min,src_max[,dst_min,dst_max]``
+either 2 or 4 comma separated values. The same rules apply for the source and destination ranges, and ``scale_bn`` syntax may be used as it is
+with (:ref:`gdal_translate`).
+
+The effect of the ``exponent`` option (added in GDAL 3.7) is to apply non-linear scaling with a power function,
+a single value to be used with the ``scale`` option. The same ``exponent_bn`` syntax may be used in combination with ``scale_bn`` to
+target specific band/s as per (:ref:`gdal_translate`).
+
+The effect of the ``outsize`` option (added in GDAL 3.7) is to set the size of the output, in numbers `pixel,line` or in fraction `pixel%,line%` as per (:ref:`gdal_translate`).
+
+The options may be chained together separated by '&'. (Beware the need for quoting to protect
+the ampersand).
+
+::
+
+    "vrt://my.tif?a_srs=OGC:CRS84&bands=2,1&a_ullr=-180,90,180,-90"
+
+
+
+Multi-threading optimizations
+-----------------------------
+
+Starting with GDAL 3.6, the ComputeStatistics() implementation can benefit from
+multi-threading if the sources are not overlapping and belong to different
+datasets. This can be enabled by setting the :config:`GDAL_NUM_THREADS`
+configuration option to an integer or ``ALL_CPUS``.
 
 Multi-threading issues
 ----------------------
@@ -1654,11 +1788,15 @@ of datasets opened by VRT files whose maximum limit is 100 by default. When it
 needs to access a dataset referenced by a VRT, it checks if it is already in
 the pool of open datasets. If not, when the pool has reached its limit, it closes
 the least recently used dataset to be able to open the new one. This maximum
-limit of the pool can be increased by setting the :decl_configoption:`GDAL_MAX_DATASET_POOL_SIZE`
+limit of the pool can be increased by setting the :config:`GDAL_MAX_DATASET_POOL_SIZE`
 configuration option to a bigger value. Note that a typical user process on
 Linux is limited to 1024 simultaneously opened files, and you should let some
 margin for shared libraries, etc...
 gdal_translate and gdalwarp, by default, increase the pool size to 450.
+
+Starting with GDAL 3.7, the :config:`GDAL_MAX_DATASET_POOL_RAM_USAGE`
+configuration option to a number of bytes, to limit the RAM usage of opened
+datasets in the pool.
 
 Driver capabilities
 -------------------

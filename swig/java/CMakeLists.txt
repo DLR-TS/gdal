@@ -5,6 +5,17 @@ if (CMAKE_CXX_FLAGS)
   string(REPLACE "/WX " " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
 endif ()
 
+list(APPEND GDAL_SWIG_COMMON_INTERFACE_FILES
+   ${PROJECT_SOURCE_DIR}/swig/include/java/callback.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/gdalconst_java.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/gdal_java.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/gnm_java.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/java_exceptions.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/ogr_java_extend.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/ogr_java.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/osr_java.i
+   ${PROJECT_SOURCE_DIR}/swig/include/java/typemaps_java.i)
+
 function (GDAL_JAVA_WRAP)
   set(_options CXX)
   set(_oneValueArgs TARGET)
@@ -84,8 +95,15 @@ target_link_libraries(gdalalljni PRIVATE $<TARGET_NAME:${GDAL_LIB_TARGET_NAME}>)
 # Build javadoc
 file(STRINGS ${PROJECT_SOURCE_DIR}/VERSION GDAL_VERSION)
 
-option(GDAL_JAVA_GENERATE_JAVADOC "Generate Javadoc of Java bindings" ON)
+if(Java_JAVADOC_EXECUTABLE)
+    option(GDAL_JAVA_GENERATE_JAVADOC "Generate Javadoc of Java bindings" ON)
+else()
+    option(GDAL_JAVA_GENERATE_JAVADOC "Generate Javadoc of Java bindings" OFF)
+endif()
 if (GDAL_JAVA_GENERATE_JAVADOC)
+  if (NOT Java_JAVADOC_EXECUTABLE)
+      message(FATAL_ERROR "javadoc executable is a requirement for GDAL_JAVA_GENERATE_JAVADOC")
+  endif()
   add_executable(add_javadoc add_javadoc.c)
   set(JAVADOC_ZIP ${CMAKE_CURRENT_BINARY_DIR}/javadoc.zip)
   add_custom_command(

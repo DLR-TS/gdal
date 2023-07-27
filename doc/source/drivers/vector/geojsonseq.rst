@@ -19,6 +19,11 @@ Sequences)
 Such files are equivalent to a GeoJSON FeatureCollection, but are more
 friendly for incremental parsing.
 
+The driver automatically reprojects geometries to WGS84 longitude, latitude,
+if the layer is created with another SRS.
+
+Appending to an existing file is supported since GDAL 3.6
+
 Driver capabilities
 -------------------
 
@@ -43,24 +48,51 @@ The driver accepts three types of sources of data:
 The URL/filename/text might be prefixed with GeoJSONSeq: to avoid any
 ambiguity with other drivers.
 
+Configuration options
+---------------------
+
+The following :ref:`configuration option <configoptions>` is
+available:
+
+-  :copy-config:`OGR_GEOJSON_MAX_OBJ_SIZE`
+
 Layer creation options
 ----------------------
 
--  **RS**\ =YES/NO: whether to start records with the RS=0x1E character,
-   so as to be compatible with the `RFC
-   8142 <https://tools.ietf.org/html/rfc8142>`__ standard. Defaults to
-   NO, unless the filename extension is "geojsons"
--  **COORDINATE_PRECISION** = int_number: Maximum number of figures
-   after decimal separator to write in coordinates. Default to 7.
-   "Smart" truncation will occur to remove trailing zeros.
--  **SIGNIFICANT_FIGURES** = int_number: Maximum number of significant
-   figures when writing floating-point numbers. Default to 17. If
-   explicitly specified, and COORDINATE_PRECISION is not, this will also
-   apply to coordinates.
--  **ID_FIELD**\ =string. Name of the source field that must be written
-   as the 'id' member of Feature objects.
--  **ID_TYPE**\ =AUTO/String/Integer. Type of the 'id' member of Feature
-   objects.
+-  .. lco:: RS
+      :choices: YES, NO
+
+      whether to start records with the RS=0x1E character,
+      so as to be compatible with the `RFC
+      8142 <https://tools.ietf.org/html/rfc8142>`__ standard. Defaults to
+      NO, unless the filename extension is "geojsons"
+
+-  .. lco:: COORDINATE_PRECISION
+      :choices: <integer>
+      :default: 7
+
+      Maximum number of figures
+      after decimal separator to write in coordinates.
+      "Smart" truncation will occur to remove trailing zeros.
+
+-  .. lco:: SIGNIFICANT_FIGURES
+      :choices: <integer>
+      :default: 17
+
+      Maximum number of significant
+      figures when writing floating-point numbers. If
+      explicitly specified, and :lco:`COORDINATE_PRECISION` is not, this will also
+      apply to coordinates.
+
+-  .. lco:: ID_FIELD
+
+      Name of the source field that must be written
+      as the 'id' member of Feature objects.
+
+-  .. lco:: ID_TYPE
+      :choices: AUTO, String, Integer
+
+      Type of the 'id' member of Feature objects.
 
 See Also
 --------

@@ -30,31 +30,44 @@
 ###############################################################################
 
 
-
+import pytest
 import test_py_scripts
 
 from osgeo import gdal
-import pytest
+
+pytestmark = pytest.mark.skipif(
+    test_py_scripts.get_py_script("gdal_sieve") is None,
+    reason="gdal_sieve not available",
+)
+
+
+@pytest.fixture()
+def script_path():
+    return test_py_scripts.get_py_script("gdal_sieve")
+
 
 ###############################################################################
 # Test a fairly default case.
 
 
-def test_gdal_sieve_1():
+@pytest.mark.require_driver("AAIGRID")
+def test_gdal_sieve_1(script_path):
 
-    script_path = test_py_scripts.get_py_script('gdal_sieve')
-    if script_path is None:
-        pytest.skip()
-
-    drv = gdal.GetDriverByName('GTiff')
-    dst_ds = drv.Create('tmp/sieve_1.tif', 5, 7, 1, gdal.GDT_Byte)
+    drv = gdal.GetDriverByName("GTiff")
+    dst_ds = drv.Create("tmp/sieve_1.tif", 5, 7, 1, gdal.GDT_Byte)
     dst_ds = None
 
-    test_py_scripts.run_py_script(script_path, 'gdal_sieve', '-nomask -st 2 -4 '+test_py_scripts.get_data_path('alg')+'sieve_src.grd tmp/sieve_1.tif')
+    test_py_scripts.run_py_script(
+        script_path,
+        "gdal_sieve",
+        "-nomask -st 2 -4 "
+        + test_py_scripts.get_data_path("alg")
+        + "sieve_src.grd tmp/sieve_1.tif",
+    )
 
-    dst_ds = gdal.Open('tmp/sieve_1.tif')
+    dst_ds = gdal.Open("tmp/sieve_1.tif")
     dst_band = dst_ds.GetRasterBand(1)
-    assert dst_band.GetNoDataValue() == 132 # nodata value of alg/sieve_src.grd
+    assert dst_band.GetNoDataValue() == 132  # nodata value of alg/sieve_src.grd
 
     cs_expected = 364
     cs = dst_band.Checksum()
@@ -62,29 +75,31 @@ def test_gdal_sieve_1():
     dst_band = None
     dst_ds = None
 
-    if cs == cs_expected \
-       or gdal.GetConfigOption('CPL_DEBUG', 'OFF') != 'ON':
+    if cs == cs_expected or gdal.GetConfigOption("CPL_DEBUG", "OFF") != "ON":
         # Reload because of side effects of run_py_script()
-        drv = gdal.GetDriverByName('GTiff')
-        drv.Delete('tmp/sieve_1.tif')
+        drv = gdal.GetDriverByName("GTiff")
+        drv.Delete("tmp/sieve_1.tif")
 
     if cs != cs_expected:
-        print('Got: ', cs)
-        pytest.fail('got wrong checksum')
+        print("Got: ", cs)
+        pytest.fail("got wrong checksum")
+
 
 ###############################################################################
 # Test with source dataset without nodata
 
 
-def test_gdal_sieve_src_without_nodata():
+def test_gdal_sieve_src_without_nodata(script_path):
 
-    script_path = test_py_scripts.get_py_script('gdal_sieve')
-    if script_path is None:
-        pytest.skip()
+    test_py_scripts.run_py_script(
+        script_path,
+        "gdal_sieve",
+        "-st 0 "
+        + test_py_scripts.get_data_path("gcore")
+        + "byte.tif tmp/test_gdal_sieve_src_without_nodata.tif",
+    )
 
-    test_py_scripts.run_py_script(script_path, 'gdal_sieve', '-st 0 ' + test_py_scripts.get_data_path('gcore')+'byte.tif tmp/test_gdal_sieve_src_without_nodata.tif')
-
-    dst_ds = gdal.Open('tmp/test_gdal_sieve_src_without_nodata.tif')
+    dst_ds = gdal.Open("tmp/test_gdal_sieve_src_without_nodata.tif")
     dst_band = dst_ds.GetRasterBand(1)
     assert dst_band.GetNoDataValue() is None
     assert dst_band.Checksum() == 4672
@@ -92,4 +107,4 @@ def test_gdal_sieve_src_without_nodata():
     dst_band = None
     dst_ds = None
 
-    gdal.GetDriverByName('GTiff').Delete('tmp/test_gdal_sieve_src_without_nodata.tif')
+    gdal.GetDriverByName("GTiff").Delete("tmp/test_gdal_sieve_src_without_nodata.tif")

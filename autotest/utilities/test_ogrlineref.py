@@ -28,109 +28,125 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-import sys
 import os
+import sys
+
 import pytest
 
-sys.path.append('../ogr')
+sys.path.append("../ogr")
+
+import gdaltest
+import test_cli_utilities
 
 from osgeo import ogr
-import gdaltest
-import ogrtest
-import test_cli_utilities
+
+pytestmark = [
+    pytest.mark.skipif(
+        test_cli_utilities.get_ogrlineref_path() is None,
+        reason="ogrlineref not available",
+    ),
+    pytest.mark.require_geos,
+]
+
+
+@pytest.fixture()
+def ogrlineref_path():
+    return test_cli_utilities.get_ogrlineref_path()
+
 
 ###############################################################################
 # create test
 
 
-def test_ogrlineref_1():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
+def test_ogrlineref_1(ogrlineref_path):
 
-    if os.path.exists('tmp/parts.shp'):
-        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/parts.shp')
+    if os.path.exists("tmp/parts.shp"):
+        ogr.GetDriverByName("ESRI Shapefile").DeleteDataSource("tmp/parts.shp")
 
-    _, err = gdaltest.runexternal_out_and_err(test_cli_utilities.get_ogrlineref_path() + ' -create -l data/path.shp -p data/mstones.shp -pm pos -o tmp/parts.shp -s 1000')
-    assert err is None or err == '', ('got error/warning: "%s"' % err)
+    _, err = gdaltest.runexternal_out_and_err(
+        ogrlineref_path
+        + " -create -l data/path.shp -p data/mstones.shp -pm pos -o tmp/parts.shp -s 1000"
+    )
+    assert err is None or err == "", 'got error/warning: "%s"' % err
 
-    ds = ogr.Open('tmp/parts.shp')
+    ds = ogr.Open("tmp/parts.shp")
     assert ds is not None and ds.GetLayer(0).GetFeatureCount() == 9
+
 
 ###############################################################################
 # get_pos test
 
 
-def test_ogrlineref_2():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
+def test_ogrlineref_2(ogrlineref_path):
 
-    ret = gdaltest.runexternal(test_cli_utilities.get_ogrlineref_path() + ' -get_pos -r tmp/parts.shp -x -1.4345 -y 51.9497 -quiet').strip()
+    ret = gdaltest.runexternal(
+        ogrlineref_path + " -get_pos -r tmp/parts.shp -x -1.4345 -y 51.9497 -quiet"
+    ).strip()
 
-    expected = '15977.724709'
-    assert ret == expected, ('"%s" != %s' % (ret.strip(), expected))
+    expected = "15977.724709"
+    assert ret == expected, '"%s" != %s' % (ret.strip(), expected)
+
 
 ###############################################################################
 # get_coord test
 
 
-def test_ogrlineref_3():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
+def test_ogrlineref_3(ogrlineref_path):
 
-    ret = gdaltest.runexternal(test_cli_utilities.get_ogrlineref_path() + ' -get_coord -r tmp/parts.shp -m 15977.724709 -quiet').strip()
+    ret = gdaltest.runexternal(
+        ogrlineref_path + " -get_coord -r tmp/parts.shp -m 15977.724709 -quiet"
+    ).strip()
 
-    expected = '-1.435097,51.950080,0.000000'
-    assert ret == expected, ('%s != %s' % (ret.strip(), expected))
+    expected = "-1.435097,51.950080,0.000000"
+    assert ret == expected, "%s != %s" % (ret.strip(), expected)
+
 
 ###############################################################################
 # get_subline test
 
 
-def test_ogrlineref_4():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
+def test_ogrlineref_4(ogrlineref_path):
 
-    if os.path.exists('tmp/subline.shp'):
-        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/subline.shp')
+    if os.path.exists("tmp/subline.shp"):
+        ogr.GetDriverByName("ESRI Shapefile").DeleteDataSource("tmp/subline.shp")
 
-    gdaltest.runexternal(test_cli_utilities.get_ogrlineref_path() + ' -get_subline -r tmp/parts.shp -mb 13300 -me 17400 -o tmp/subline.shp')
+    gdaltest.runexternal(
+        ogrlineref_path
+        + " -get_subline -r tmp/parts.shp -mb 13300 -me 17400 -o tmp/subline.shp"
+    )
 
-    ds = ogr.Open('tmp/subline.shp')
-    assert ds is not None, 'ds is None'
+    ds = ogr.Open("tmp/subline.shp")
+    assert ds is not None, "ds is None"
 
     feature_count = ds.GetLayer(0).GetFeatureCount()
-    assert feature_count == 1, ('feature count %d != 1' % feature_count)
+    assert feature_count == 1, "feature count %d != 1" % feature_count
     ds = None
 
-    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/subline.shp')
+    ogr.GetDriverByName("ESRI Shapefile").DeleteDataSource("tmp/subline.shp")
+
 
 ###############################################################################
 # test kml
 
 
-def test_ogrlineref_5():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
+def test_ogrlineref_5(ogrlineref_path):
 
-    if os.path.exists('tmp/parts.kml'):
-        ogr.GetDriverByName('KML').DeleteDataSource('tmp/parts.kml')
+    if os.path.exists("tmp/parts.kml"):
+        ogr.GetDriverByName("KML").DeleteDataSource("tmp/parts.kml")
 
-    gdaltest.runexternal_out_and_err(test_cli_utilities.get_ogrlineref_path() + ' -create -f "KML" -l data/path.shp -p data/mstones.shp -pm pos -o tmp/parts.kml -s 222')
-    if os.path.exists('tmp/parts.kml'):
+    gdaltest.runexternal_out_and_err(
+        ogrlineref_path
+        + ' -create -f "KML" -l data/path.shp -p data/mstones.shp -pm pos -o tmp/parts.kml -s 222'
+    )
+    if os.path.exists("tmp/parts.kml"):
         return
 
     pytest.fail()
 
 
 def test_ogrlineref_cleanup():
-    if not ogrtest.have_geos() or test_cli_utilities.get_ogrlineref_path() is None:
-        pytest.skip()
 
-    if os.path.exists('tmp/parts.shp'):
-        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/parts.shp')
-    if os.path.exists('tmp/parts.kml'):
-        ogr.GetDriverByName('KML').DeleteDataSource('tmp/parts.kml')
-
-    
-
-
+    if os.path.exists("tmp/parts.shp"):
+        ogr.GetDriverByName("ESRI Shapefile").DeleteDataSource("tmp/parts.shp")
+    if os.path.exists("tmp/parts.kml"):
+        ogr.GetDriverByName("KML").DeleteDataSource("tmp/parts.kml")

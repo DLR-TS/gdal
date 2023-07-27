@@ -1,3 +1,59 @@
+MIGRATION GUIDE FROM GDAL 3.6 to GDAL 3.7
+-----------------------------------------
+
+- Following RFC 87, PIXELTYPE=SIGNEDBYTE in IMAGE_STRUCTURE metadata domain is
+  no longer reported by drivers that used to do it. The new GDT_Int8 data type
+  is now reported.
+  On writing, the PIXELTYPE=SIGNEDBYTE creation option is preserved in drivers
+  that used to support it, but is deprecated and external code should rather use
+  the GDT_Int8 data type.
+
+- The VSILFILE* type is no longer aliased to FILE* in builds without the DEBUG
+  define (that is production builds). External code that used FILE* with
+  GDAL VSI*L API has to be changed to use VSILFILE*.
+  This aliasing dates back to old times where both types were indifferently
+  used in the code base. In the mean time, this was cleaned up. But there was a
+  drawback of having VSILFILE* being either a dedicated type oor an alias of
+  FILE* depending whether DEBUG is defined, especially with the C++ API, for
+  people building their plugins with DEBUG and running them against a non-DEBUG
+  GDAL build, or the reverse.
+
+- GDALFlushCache() and GDALDataset::FlushCache() are modified to return a CPLErr
+  error code instead of void. Affects out-of-tree drivers.
+
+- A Close() virtual method is added to GDALDataset per RFC 91. Out-of-tree
+  drivers with write support are encouraged to implement it for error
+  propagation.
+
+- Pansharpening now requires that panchromatic and multispectral bands have
+  valid geotransform (in early versions, it was assumed in the case of missing
+  geotransform that they covered the same geospatial extent).
+  The undocumented VRT pansharpened MSShiftX and MSShiftY options (and the
+  corresponding C++ GDALPansharpenOptions::dfMSShiftX and dfMSShiftY members)
+  have been removed, due to using the inverted convention as one would expect,
+  and being sub-par solution compared to using geotransform to correlate pixels
+  of panchromatic and multispectral bands.
+
+- OGRCoordinateTransformation::GetSourceCS() and GetTargetCS() now returns
+  a const OGRSpatialReference*
+
+- OGRGeometry::getSpatialReference() now returns a const OGRSpatialReference*
+
+- OGRGeomFieldDefn::GetSpatialRef() now returns a const OGRSpatialReference*
+
+MIGRATION GUIDE FROM GDAL 3.5 to GDAL 3.6
+-----------------------------------------
+
+- Out-of-tree vector drivers:
+  * GDALDataset::IBuildOverviews(): parameters panOverviewList and panBandList
+    are now of type 'const int*' (previously 'int*')
+    Added a CSLConstList papszOptions member.
+  * GDALRasterBand::BuildOverviews(): parameter panOverviewList is now of
+    type 'const int*' (previously 'int*')
+    Added a CSLConstList papszOptions member.
+  * Compatibility layers of GDAL 3.0 _GetProjectionRef(), _GetGCPProjectionRef(),
+    _SetProjection(), _SetGCPs() have been removed
+
 MIGRATION GUIDE FROM GDAL 3.4 to GDAL 3.5
 -----------------------------------------
 

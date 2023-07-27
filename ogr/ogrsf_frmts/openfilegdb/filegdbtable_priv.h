@@ -31,17 +31,20 @@
 #define FILEGDBTABLE_PRIV_H_INCLUDED
 
 #include "filegdbtable.h"
+
+#include "cpl_conv.h"
 #include "cpl_error.h"
 #include "cpl_time.h"
 
 #include <algorithm>
 #include <cwchar>
 #include <vector>
+#include <limits>
 
-#define DIV_ROUND_UP(a, b) ( ((a) % (b)) == 0 ? ((a) / (b)) : (((a) / (b)) + 1) )
+#define DIV_ROUND_UP(a, b) (((a) % (b)) == 0 ? ((a) / (b)) : (((a) / (b)) + 1))
 
-#define TEST_BIT(ar, bit)                       (ar[(bit) / 8] & (1 << ((bit) % 8)))
-#define BIT_ARRAY_SIZE_IN_BYTES(bitsize)        (((bitsize)+7)/8)
+#define TEST_BIT(ar, bit) (ar[(bit) / 8] & (1 << ((bit) % 8)))
+#define BIT_ARRAY_SIZE_IN_BYTES(bitsize) (((bitsize) + 7) / 8)
 
 namespace OpenFileGDB
 {
@@ -50,7 +53,7 @@ namespace OpenFileGDB
 /*                              GetInt16()                              */
 /************************************************************************/
 
-inline GInt16 GetInt16(const GByte* pBaseAddr, int iOffset)
+inline GInt16 GetInt16(const GByte *pBaseAddr, int iOffset)
 {
     GInt16 nVal;
     memcpy(&nVal, pBaseAddr + sizeof(nVal) * iOffset, sizeof(nVal));
@@ -62,7 +65,7 @@ inline GInt16 GetInt16(const GByte* pBaseAddr, int iOffset)
 /*                              GetUInt16()                             */
 /************************************************************************/
 
-inline GUInt16 GetUInt16(const GByte* pBaseAddr, int iOffset)
+inline GUInt16 GetUInt16(const GByte *pBaseAddr, int iOffset)
 {
     GUInt16 nVal;
     memcpy(&nVal, pBaseAddr + sizeof(nVal) * iOffset, sizeof(nVal));
@@ -74,7 +77,7 @@ inline GUInt16 GetUInt16(const GByte* pBaseAddr, int iOffset)
 /*                              GetInt32()                              */
 /************************************************************************/
 
-inline GInt32 GetInt32(const GByte* pBaseAddr, int iOffset)
+inline GInt32 GetInt32(const GByte *pBaseAddr, int iOffset)
 {
     GInt32 nVal;
     memcpy(&nVal, pBaseAddr + sizeof(nVal) * iOffset, sizeof(nVal));
@@ -86,7 +89,7 @@ inline GInt32 GetInt32(const GByte* pBaseAddr, int iOffset)
 /*                              GetUInt32()                             */
 /************************************************************************/
 
-inline GUInt32 GetUInt32(const GByte* pBaseAddr, int iOffset)
+inline GUInt32 GetUInt32(const GByte *pBaseAddr, int iOffset)
 {
     GUInt32 nVal;
     memcpy(&nVal, pBaseAddr + sizeof(nVal) * iOffset, sizeof(nVal));
@@ -98,7 +101,7 @@ inline GUInt32 GetUInt32(const GByte* pBaseAddr, int iOffset)
 /*                              GetUInt64()                             */
 /************************************************************************/
 
-inline uint64_t GetUInt64(const GByte* pBaseAddr, int iOffset)
+inline uint64_t GetUInt64(const GByte *pBaseAddr, int iOffset)
 {
     uint64_t nVal;
     memcpy(&nVal, pBaseAddr + sizeof(nVal) * iOffset, sizeof(nVal));
@@ -110,7 +113,7 @@ inline uint64_t GetUInt64(const GByte* pBaseAddr, int iOffset)
 /*                             GetFloat32()                             */
 /************************************************************************/
 
-inline float GetFloat32(const GByte* pBaseAddr, int iOffset)
+inline float GetFloat32(const GByte *pBaseAddr, int iOffset)
 {
     float fVal;
     memcpy(&fVal, pBaseAddr + sizeof(fVal) * iOffset, sizeof(fVal));
@@ -122,7 +125,7 @@ inline float GetFloat32(const GByte* pBaseAddr, int iOffset)
 /*                             GetFloat64()                             */
 /************************************************************************/
 
-inline double GetFloat64(const GByte* pBaseAddr, int iOffset)
+inline double GetFloat64(const GByte *pBaseAddr, int iOffset)
 {
     double dfVal;
     memcpy(&dfVal, pBaseAddr + sizeof(dfVal) * iOffset, sizeof(dfVal));
@@ -134,7 +137,7 @@ inline double GetFloat64(const GByte* pBaseAddr, int iOffset)
 /*                          ReadUInt32()                                */
 /************************************************************************/
 
-inline bool ReadUInt32(VSILFILE* fp, uint32_t& nVal)
+inline bool ReadUInt32(VSILFILE *fp, uint32_t &nVal)
 {
     const bool bRet = VSIFReadL(&nVal, 1, sizeof(nVal), fp) == sizeof(nVal);
     CPL_LSBPTR32(&nVal);
@@ -145,7 +148,7 @@ inline bool ReadUInt32(VSILFILE* fp, uint32_t& nVal)
 /*                          WriteUInt32()                               */
 /************************************************************************/
 
-inline bool WriteUInt32(VSILFILE* fp, uint32_t nVal)
+inline bool WriteUInt32(VSILFILE *fp, uint32_t nVal)
 {
     CPL_LSBPTR32(&nVal);
     return VSIFWriteL(&nVal, 1, sizeof(nVal), fp) == sizeof(nVal);
@@ -155,7 +158,7 @@ inline bool WriteUInt32(VSILFILE* fp, uint32_t nVal)
 /*                          WriteUInt64()                               */
 /************************************************************************/
 
-inline bool WriteUInt64(VSILFILE* fp, uint64_t nVal)
+inline bool WriteUInt64(VSILFILE *fp, uint64_t nVal)
 {
     CPL_LSBPTR64(&nVal);
     return VSIFWriteL(&nVal, 1, sizeof(nVal), fp) == sizeof(nVal);
@@ -165,7 +168,7 @@ inline bool WriteUInt64(VSILFILE* fp, uint64_t nVal)
 /*                          WriteFloat64()                               */
 /************************************************************************/
 
-inline bool WriteFloat64(VSILFILE* fp, double dfVal)
+inline bool WriteFloat64(VSILFILE *fp, double dfVal)
 {
     CPL_LSBPTR64(&dfVal);
     return VSIFWriteL(&dfVal, 1, sizeof(dfVal), fp) == sizeof(dfVal);
@@ -175,24 +178,33 @@ inline bool WriteFloat64(VSILFILE* fp, double dfVal)
 /*                          WriteUInt32()                               */
 /************************************************************************/
 
-inline void WriteUInt32(std::vector<GByte>& abyBuffer, uint32_t nVal, size_t nPos = static_cast<size_t>(-1))
+inline void WriteUInt32(std::vector<GByte> &abyBuffer, uint32_t nVal)
 {
     CPL_LSBPTR32(&nVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&nVal);
-    if( nPos == static_cast<size_t>(-1) )
-        abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
-    else
-        memcpy(&abyBuffer[nPos], pabyInput, sizeof(nVal));
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
+    abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
+}
+
+/************************************************************************/
+/*                          WriteUInt32()                               */
+/************************************************************************/
+
+inline void WriteUInt32(std::vector<GByte> &abyBuffer, uint32_t nVal,
+                        size_t nPos)
+{
+    CPL_LSBPTR32(&nVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
+    memcpy(&abyBuffer[nPos], pabyInput, sizeof(nVal));
 }
 
 /************************************************************************/
 /*                          WriteFloat32()                               */
 /************************************************************************/
 
-inline void WriteFloat32(std::vector<GByte>& abyBuffer, float fVal)
+inline void WriteFloat32(std::vector<GByte> &abyBuffer, float fVal)
 {
     CPL_LSBPTR32(&fVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&fVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&fVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(fVal));
 }
 
@@ -200,10 +212,10 @@ inline void WriteFloat32(std::vector<GByte>& abyBuffer, float fVal)
 /*                          WriteFloat64()                               */
 /************************************************************************/
 
-inline void WriteFloat64(std::vector<GByte>& abyBuffer, double dfVal)
+inline void WriteFloat64(std::vector<GByte> &abyBuffer, double dfVal)
 {
     CPL_LSBPTR64(&dfVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&dfVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&dfVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(dfVal));
 }
 
@@ -211,10 +223,10 @@ inline void WriteFloat64(std::vector<GByte>& abyBuffer, double dfVal)
 /*                          WriteInt32()                                */
 /************************************************************************/
 
-inline void WriteInt32(std::vector<GByte>& abyBuffer, int32_t nVal)
+inline void WriteInt32(std::vector<GByte> &abyBuffer, int32_t nVal)
 {
     CPL_LSBPTR32(&nVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&nVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
 }
 
@@ -222,10 +234,10 @@ inline void WriteInt32(std::vector<GByte>& abyBuffer, int32_t nVal)
 /*                          WriteUInt16()                               */
 /************************************************************************/
 
-inline void WriteUInt16(std::vector<GByte>& abyBuffer, uint16_t nVal)
+inline void WriteUInt16(std::vector<GByte> &abyBuffer, uint16_t nVal)
 {
     CPL_LSBPTR16(&nVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&nVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
 }
 
@@ -233,10 +245,10 @@ inline void WriteUInt16(std::vector<GByte>& abyBuffer, uint16_t nVal)
 /*                          WriteInt16()                                */
 /************************************************************************/
 
-inline void WriteInt16(std::vector<GByte>& abyBuffer, int16_t nVal)
+inline void WriteInt16(std::vector<GByte> &abyBuffer, int16_t nVal)
 {
     CPL_LSBPTR16(&nVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&nVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
 }
 
@@ -244,7 +256,7 @@ inline void WriteInt16(std::vector<GByte>& abyBuffer, int16_t nVal)
 /*                          WriteUInt8()                                */
 /************************************************************************/
 
-inline void WriteUInt8(std::vector<GByte>& abyBuffer, uint8_t nVal)
+inline void WriteUInt8(std::vector<GByte> &abyBuffer, uint8_t nVal)
 {
     abyBuffer.push_back(nVal);
 }
@@ -253,10 +265,10 @@ inline void WriteUInt8(std::vector<GByte>& abyBuffer, uint8_t nVal)
 /*                          WriteUInt64()                               */
 /************************************************************************/
 
-inline void WriteUInt64(std::vector<GByte>& abyBuffer, uint64_t nVal)
+inline void WriteUInt64(std::vector<GByte> &abyBuffer, uint64_t nVal)
 {
     CPL_LSBPTR64(&nVal);
-    const GByte* pabyInput = reinterpret_cast<const GByte*>(&nVal);
+    const GByte *pabyInput = reinterpret_cast<const GByte *>(&nVal);
     abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + sizeof(nVal));
 }
 
@@ -264,11 +276,11 @@ inline void WriteUInt64(std::vector<GByte>& abyBuffer, uint64_t nVal)
 /*                             WriteVarUInt()                           */
 /************************************************************************/
 
-inline void WriteVarUInt(std::vector<GByte>& abyBuffer, uint64_t nVal)
+inline void WriteVarUInt(std::vector<GByte> &abyBuffer, uint64_t nVal)
 {
-    while( true )
+    while (true)
     {
-        if( nVal >= 0x80 )
+        if (nVal >= 0x80)
         {
             WriteUInt8(abyBuffer, static_cast<uint8_t>(0x80 | (nVal & 0x7F)));
             nVal >>= 7;
@@ -285,18 +297,19 @@ inline void WriteVarUInt(std::vector<GByte>& abyBuffer, uint64_t nVal)
 /*                             WriteVarInt()                            */
 /************************************************************************/
 
-inline void WriteVarInt(std::vector<GByte>& abyBuffer, int64_t nVal)
+inline void WriteVarInt(std::vector<GByte> &abyBuffer, int64_t nVal)
 {
     uint64_t nUVal;
-    if( nVal < 0 )
+    if (nVal < 0)
     {
-        if( nVal == std::numeric_limits<int64_t>::min() )
+        if (nVal == std::numeric_limits<int64_t>::min())
             nUVal = static_cast<uint64_t>(1) << 63;
         else
             nUVal = -nVal;
-        if( nUVal >= 0x40 )
+        if (nUVal >= 0x40)
         {
-            WriteUInt8(abyBuffer, static_cast<uint8_t>(0x80 | 0x40 | (nUVal & 0x3F)));
+            WriteUInt8(abyBuffer,
+                       static_cast<uint8_t>(0x80 | 0x40 | (nUVal & 0x3F)));
             nUVal >>= 6;
         }
         else
@@ -308,7 +321,7 @@ inline void WriteVarInt(std::vector<GByte>& abyBuffer, int64_t nVal)
     else
     {
         nUVal = nVal;
-        if( nUVal >= 0x40 )
+        if (nUVal >= 0x40)
         {
             WriteUInt8(abyBuffer, static_cast<uint8_t>(0x80 | (nUVal & 0x3F)));
             nUVal >>= 6;
@@ -324,6 +337,22 @@ inline void WriteVarInt(std::vector<GByte>& abyBuffer, int64_t nVal)
 }
 
 /************************************************************************/
+/*                            ReadUTF16String()                         */
+/************************************************************************/
+
+inline std::string ReadUTF16String(const GByte *pabyIter, int nCarCount)
+{
+    std::wstring osWideStr;
+    for (int j = 0; j < nCarCount; j++)
+        osWideStr += pabyIter[2 * j] | (pabyIter[2 * j + 1] << 8);
+    char *pszStr =
+        CPLRecodeFromWChar(osWideStr.c_str(), CPL_ENC_UCS2, CPL_ENC_UTF8);
+    std::string osRet(pszStr);
+    CPLFree(pszStr);
+    return osRet;
+}
+
+/************************************************************************/
 /*                           WriteUTF16String()                         */
 /************************************************************************/
 
@@ -335,24 +364,23 @@ enum UTF16StringFormat
     NUMBER_OF_CHARS_ON_UINT32,
 };
 
-inline void WriteUTF16String(std::vector<GByte>& abyBuffer,
-                             const char* pszStr,
+inline void WriteUTF16String(std::vector<GByte> &abyBuffer, const char *pszStr,
                              UTF16StringFormat eFormat)
 {
-    wchar_t* pszWStr = CPLRecodeToWChar(pszStr, CPL_ENC_UTF8, CPL_ENC_UCS2);
+    wchar_t *pszWStr = CPLRecodeToWChar(pszStr, CPL_ENC_UTF8, CPL_ENC_UCS2);
     size_t nWLen = wcslen(pszWStr);
-    switch( eFormat )
+    switch (eFormat)
     {
         case NUMBER_OF_BYTES_ON_UINT16:
         {
             // Write length as bytes
-            const auto nLenToWrite = std::min(static_cast<size_t>(65534),
-                                              sizeof(uint16_t) * nWLen);
-            if( nLenToWrite < sizeof(uint16_t) * nWLen )
+            const auto nLenToWrite =
+                std::min(static_cast<size_t>(65534), sizeof(uint16_t) * nWLen);
+            if (nLenToWrite < sizeof(uint16_t) * nWLen)
             {
                 CPLError(CE_Warning, CPLE_AppDefined,
-                         "String %s truncated to %u bytes",
-                         pszStr, static_cast<uint32_t>(nLenToWrite));
+                         "String %s truncated to %u bytes", pszStr,
+                         static_cast<uint32_t>(nLenToWrite));
                 nWLen = nLenToWrite / sizeof(uint16_t);
             }
             WriteUInt16(abyBuffer, static_cast<uint16_t>(nLenToWrite));
@@ -370,11 +398,11 @@ inline void WriteUTF16String(std::vector<GByte>& abyBuffer,
         {
             // Write length as number of UTF16 characters
             const auto nLenToWrite = std::min(static_cast<size_t>(255), nWLen);
-            if( nLenToWrite < nWLen )
+            if (nLenToWrite < nWLen)
             {
                 CPLError(CE_Warning, CPLE_AppDefined,
-                         "String %s truncated to %u UTF16 characters",
-                         pszStr, static_cast<uint32_t>(nLenToWrite));
+                         "String %s truncated to %u UTF16 characters", pszStr,
+                         static_cast<uint32_t>(nLenToWrite));
                 nWLen = nLenToWrite;
             }
             WriteUInt8(abyBuffer, static_cast<uint8_t>(nLenToWrite));
@@ -389,16 +417,18 @@ inline void WriteUTF16String(std::vector<GByte>& abyBuffer,
         }
     }
 
-    if( nWLen )
+    if (nWLen)
     {
         std::vector<uint16_t> anChars(nWLen);
-        for( size_t i = 0; i < nWLen; ++i )
+        for (size_t i = 0; i < nWLen; ++i)
         {
             anChars[i] = static_cast<uint16_t>(pszWStr[i]);
             CPL_LSBPTR16(&anChars[i]);
         }
-        const GByte* pabyInput = reinterpret_cast<const GByte*>(anChars.data());
-        abyBuffer.insert(abyBuffer.end(), pabyInput, pabyInput + nWLen * sizeof(uint16_t));
+        const GByte *pabyInput =
+            reinterpret_cast<const GByte *>(anChars.data());
+        abyBuffer.insert(abyBuffer.end(), pabyInput,
+                         pabyInput + nWLen * sizeof(uint16_t));
     }
     CPLFree(pszWStr);
 }
@@ -407,7 +437,7 @@ inline void WriteUTF16String(std::vector<GByte>& abyBuffer,
 /*                      FileGDBOGRDateToDoubleDate()                    */
 /************************************************************************/
 
-inline double FileGDBOGRDateToDoubleDate(const OGRField* psField)
+inline double FileGDBOGRDateToDoubleDate(const OGRField *psField)
 {
     struct tm brokendowntime;
     brokendowntime.tm_year = psField->Date.Year - 1900;
@@ -417,14 +447,14 @@ inline double FileGDBOGRDateToDoubleDate(const OGRField* psField)
     brokendowntime.tm_min = psField->Date.Minute;
     brokendowntime.tm_sec = static_cast<int>(psField->Date.Second + 0.5);
     GIntBig nUnixTime = CPLYMDHMSToUnixTime(&brokendowntime);
-    if( psField->Date.TZFlag > 1 && psField->Date.TZFlag != 100 )
+    if (psField->Date.TZFlag > 1 && psField->Date.TZFlag != 100)
     {
         // Convert to GMT
         const int TZOffset = std::abs(psField->Date.TZFlag - 100) * 15;
         const int TZHour = TZOffset / 60;
         const int TZMinute = TZOffset - TZHour * 60;
         const int nOffset = TZHour * 3600 + TZMinute * 60;
-        if( psField->Date.TZFlag >= 100 )
+        if (psField->Date.TZFlag >= 100)
             nUnixTime -= nOffset;
         else
             nUnixTime += nOffset;
@@ -433,30 +463,45 @@ inline double FileGDBOGRDateToDoubleDate(const OGRField* psField)
     return static_cast<double>(nUnixTime) / 3600.0 / 24.0 + 25569.0;
 }
 
-void FileGDBTablePrintError(const char* pszFile, int nLineNumber);
+void FileGDBTablePrintError(const char *pszFile, int nLineNumber);
 
-#define PrintError()        FileGDBTablePrintError(__FILE__, __LINE__)
+#define PrintError() FileGDBTablePrintError(__FILE__, __LINE__)
 
 /************************************************************************/
 /*                          returnError()                               */
 /************************************************************************/
 
-#define returnError() \
-    do { PrintError(); return (errorRetValue); } while(0)
+#define returnError()                                                          \
+    do                                                                         \
+    {                                                                          \
+        PrintError();                                                          \
+        return (errorRetValue);                                                \
+    } while (0)
 
 /************************************************************************/
 /*                         returnErrorIf()                              */
 /************************************************************************/
 
-#define returnErrorIf(expr) \
-    do { if( (expr) ) returnError(); } while(0)
+#define returnErrorIf(expr)                                                    \
+    do                                                                         \
+    {                                                                          \
+        if ((expr))                                                            \
+            returnError();                                                     \
+    } while (0)
 
 /************************************************************************/
 /*                       returnErrorAndCleanupIf()                      */
 /************************************************************************/
 
-#define returnErrorAndCleanupIf(expr, cleanup) \
-    do { if( (expr) ) { cleanup; returnError(); } } while(0)
+#define returnErrorAndCleanupIf(expr, cleanup)                                 \
+    do                                                                         \
+    {                                                                          \
+        if ((expr))                                                            \
+        {                                                                      \
+            cleanup;                                                           \
+            returnError();                                                     \
+        }                                                                      \
+    } while (0)
 
 } /* namespace OpenFileGDB */
 

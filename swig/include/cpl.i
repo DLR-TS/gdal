@@ -99,6 +99,14 @@ void CPL_STDCALL PyCPLErrorHandler(CPLErr eErrClass, int err_no, const char* psz
 }
 %}
 
+/* We don't want errors to be cleared or thrown by this */
+/* call */
+%exception PushErrorHandler
+{
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
+    $action
+}
+
 %inline %{
   CPLErr PushErrorHandler( CPLErrorHandler pfnErrorHandler = NULL, void* user_data = NULL )
   {
@@ -109,6 +117,12 @@ void CPL_STDCALL PyCPLErrorHandler(CPLErr eErrClass, int err_no, const char* psz
     return CE_None;
   }
 %}
+
+%exception PopErrorHandler
+{
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
+    $action
+}
 
 %inline %{
   void PopErrorHandler()
@@ -186,9 +200,12 @@ void CPL_STDCALL PyCPLErrorHandler(CPLErr eErrClass, int err_no, const char* psz
 %rename (GetConfigOption) wrapper_CPLGetConfigOption;
 %rename (SetThreadLocalConfigOption) CPLSetThreadLocalConfigOption;
 %rename (GetThreadLocalConfigOption) wrapper_CPLGetThreadLocalConfigOption;
-%rename (SetCredential) VSISetCredential;
+%rename (SetCredential) wrapper_VSISetCredential;
 %rename (GetCredential) wrapper_VSIGetCredential;
 %rename (ClearCredentials) wrapper_VSIClearCredentials;
+%rename (SetPathSpecificOption) VSISetPathSpecificOption;
+%rename (GetPathSpecificOption) wrapper_VSIGetPathSpecificOption;
+%rename (ClearPathSpecificOptions) wrapper_VSIClearPathSpecificOptions;
 %rename (CPLBinaryToHex) CPLBinaryToHex;
 %rename (CPLHexToBinary) CPLHexToBinary;
 %rename (FileFromMemBuffer) wrapper_VSIFileFromMemBuffer;
@@ -269,7 +286,7 @@ void EscapeBinary(int len, char *bin_string, size_t *pnLenOut, char** pOut, int 
 }
 %}
 %clear (int len, char *bin_string);
-%clean  (size_t *pnLenOut, char* pOut);
+%clear (size_t *pnLenOut, char* pOut);
 
 #else
 %apply (int nLen, char *pBuf ) { (int len, char *bin_string)};
@@ -288,7 +305,7 @@ char* EscapeString(int len, char *bin_string , int scheme=CPLES_SQL) {
 {
 #ifdef SWIGPYTHON
 %#ifdef SED_HACKS
-    if( bUseExceptions ) bLocalUseExceptionsCode = FALSE;
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
 %#endif
 #endif
     result = CPLGetLastErrorNo();
@@ -303,7 +320,7 @@ int CPLGetLastErrorNo();
 {
 #ifdef SWIGPYTHON
 %#ifdef SED_HACKS
-    if( bUseExceptions ) bLocalUseExceptionsCode = FALSE;
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
 %#endif
 #endif
     result = CPLGetLastErrorType();
@@ -320,7 +337,7 @@ CPLErr CPLGetLastErrorType();
 {
 #ifdef SWIGPYTHON
 %#ifdef SED_HACKS
-    if( bUseExceptions ) bLocalUseExceptionsCode = FALSE;
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
 %#endif
 #endif
     result = (char*)CPLGetLastErrorMsg();
@@ -336,7 +353,7 @@ const char *CPLGetLastErrorMsg();
 {
 #ifdef SWIGPYTHON
 %#ifdef SED_HACKS
-    if( bUseExceptions ) bLocalUseExceptionsCode = FALSE;
+    if( GetUseExceptions() ) bLocalUseExceptionsCode = FALSE;
 %#endif
 #endif
     result = CPLGetErrorCounter();
@@ -484,12 +501,22 @@ const char *wrapper_CPLGetThreadLocalConfigOption( const char * pszKey, const ch
 }
 
 %apply Pointer NONNULL {const char * pszPathPrefix};
-void VSISetCredential( const char* pszPathPrefix, const char * pszKey, const char * pszValue );
+void VSISetPathSpecificOption( const char* pszPathPrefix, const char * pszKey, const char * pszValue );
 
 %inline {
+void wrapper_VSISetCredential( const char* pszPathPrefix, const char * pszKey, const char * pszValue )
+{
+    VSISetPathSpecificOption(pszPathPrefix, pszKey, pszValue);
+}
+
 const char *wrapper_VSIGetCredential( const char* pszPathPrefix, const char * pszKey, const char * pszDefault = NULL )
 {
-    return VSIGetCredential( pszPathPrefix, pszKey, pszDefault );
+    return VSIGetPathSpecificOption( pszPathPrefix, pszKey, pszDefault );
+}
+
+const char *wrapper_VSIGetPathSpecificOption( const char* pszPathPrefix, const char * pszKey, const char * pszDefault = NULL )
+{
+    return VSIGetPathSpecificOption( pszPathPrefix, pszKey, pszDefault );
 }
 }
 
@@ -500,7 +527,11 @@ const char *wrapper_VSIGetCredential( const char* pszPathPrefix, const char * ps
 %inline {
 void wrapper_VSIClearCredentials(const char * pszPathPrefix = NULL)
 {
-    VSIClearCredentials( pszPathPrefix );
+    VSIClearPathSpecificOptions( pszPathPrefix );
+}
+void wrapper_VSIClearPathSpecificOptions(const char * pszPathPrefix = NULL)
+{
+    VSIClearPathSpecificOptions( pszPathPrefix );
 }
 }
 
@@ -640,6 +671,37 @@ bool VSIAbortPendingUploads(const char *utf8_path );
 
 #endif
 
+%rename (CopyFile) wrapper_VSICopyFile;
+#if defined(SWIGPYTHON)
+%apply (const char* utf8_path_or_none) {(const char* pszSource)};
+#else
+%apply (const char* utf8_path) {(const char* pszSource)};
+#endif
+%apply (const char* utf8_path) {(const char* pszTarget)};
+
+#if defined(SWIGPYTHON)
+%feature( "kwargs" ) wrapper_VSICopyFile;
+#endif
+
+%inline {
+int wrapper_VSICopyFile(const char* pszSource,
+                        const char* pszTarget,
+                        VSILFILE* fpSource = NULL,
+                        GIntBig nSourceSize = -1,
+                        char** options = NULL,
+                        GDALProgressFunc callback=NULL,
+                        void* callback_data=NULL)
+{
+    return VSICopyFile(
+        pszSource, pszTarget, fpSource,
+        nSourceSize < 0 ? static_cast<vsi_l_offset>(-1) : static_cast<vsi_l_offset>(nSourceSize),
+        options, callback, callback_data );
+}
+}
+
+%clear (const char* pszSource);
+%clear (const char* pszTarget);
+
 const char* VSIGetActualURL(const char * utf8_path);
 
 %inline {
@@ -738,7 +800,12 @@ int wrapper_VSIStatL( const char * utf8_path, StatBuf *psStatBufOut, int nFlags 
 #endif
 
 %rename (GetFileMetadata) VSIGetFileMetadata;
-%apply (char **dict) { char ** };
+#if defined(SWIGPYTHON)
+%apply (char **dictAndCSLDestroy) { char ** };
+#else
+%apply (char **) { char ** };
+#endif
+%apply (char **options) { char ** options };
 char** VSIGetFileMetadata( const char *utf8_path, const char* domain,
                            char** options = NULL );
 %clear char **;
@@ -829,3 +896,9 @@ retStringAndCPLFree* VSINetworkStatsGetAsSerializedJSON( char** options = NULL )
 %rename (ParseCommandLine) CSLParseCommandLine;
 char **CSLParseCommandLine( const char * utf8_path );
 %clear char **;
+
+%rename (GetNumCPUs) CPLGetNumCPUs;
+int CPLGetNumCPUs();
+
+%rename (GetUsablePhysicalRAM) CPLGetUsablePhysicalRAM;
+GIntBig CPLGetUsablePhysicalRAM();

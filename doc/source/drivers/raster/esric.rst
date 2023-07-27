@@ -20,16 +20,29 @@ Driver capabilities
 Esri Compact Cache V2
 ---------------------
 
-A reader for `Esri
-Compact
-Cache
-V2 <https://github.com/Esri/raster-tiles-compactcache>`__.
+A reader for `Esri Compact Cache V2 <https://github.com/Esri/raster-tiles-compactcache>`__.
 The cache is stored in multiple files located in a specific folder
 structure. From the point of view of this driver the raster is
 represented by the file named conf.xml, which resides in the root
 folder of the cache.  The exact content of this XML file is not fully
 documented by Esri, and is subject to change. This driver uses only
 a few of the XML fields, as necessary to read the raster.
+
+Esri Tile Package (.tpkx)
+-------------------------
+
+Starting from GDAL 3.8, the driver supports reading the `Esri
+Tile Package Specification <https://github.com/Esri/tile-package-spec>`__.
+A tile package is a compressed file with ".tpkx" extension.
+It has a simplified structure, containing image tiles stored in
+Compact Cache V2 storage format and tiling scheme and other
+metadata stored in a JSON file.
+
+.. note::
+
+    Tile packages with ".tpk" extension, use compact storage V1
+    format for cache tiles. The spec for this package type is not
+    available and it is not supported by GDAL.
 
 Usage examples
 ______________
@@ -39,6 +52,10 @@ the normal Web Mercator tile grid, this command will copy the level 2
 content into a TIF file.
 
 ``gdal_translate -outsize 1024 1024 path/Layers/conf.xml output.tif``
+
+To convert a .tpkx file to a GeoTIFF:
+
+``gdal_translate -outsize 1024 1024 "/path/to/my.tpkx output.tif``
 
 Features and Limitations
 ________________________
@@ -53,7 +70,7 @@ ________________________
    **CacheInfo.TileCacheInfo.TileRows** and
    **CacheInfo.TileCacheInfo.TileCols** elements.
 
--  Tiles in the cache can be in different formats, including JPEG 
+-  Tiles in the cache can be in different formats, including JPEG
    and PNG. The most common are 8 bit color or grayscale JPEG and
    color PNG with or without opacity. These caches will have the
    value **JPEG**, **PNG** or **MIXED** in the
@@ -111,7 +128,11 @@ ________________________
    cache at a given resolution level, even if data does exist at
    other levels at the same location.
 
--  A cache can exceede the maximum size supported by GDAL, which
+-  Starting from GDAL 3.8, the driver can automatically expand
+   the paletted images to RGBA. The same cache may contain tiles with
+   different color representations.
+
+-  A cache can exceed the maximum size supported by GDAL, which
    is INT32_MAX, in either dimension. This driver will generate
    an error when opening such caches. Removing the
    **LODInfo** nodes with the highest **LevelID** from the conf.xml
@@ -120,4 +141,4 @@ ________________________
 
 See Also
 --------
--  Implemented as ``gdal/frmts/esric/esric_dataset.cpp``.
+-  Implemented as :source_file:`frmts/esric/esric_dataset.cpp`.

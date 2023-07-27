@@ -95,7 +95,7 @@ using namespace PCIDSK;
 /*                             CPCIDSKFile()                             */
 /************************************************************************/
 
-CPCIDSKFile::CPCIDSKFile( std::string filename )
+CPCIDSKFile::CPCIDSKFile( const std::string& filename )
 
 {
     io_handle = nullptr;
@@ -1763,7 +1763,7 @@ void CPCIDSKFile::MoveSegmentToEOF( int segment )
              method.
 */
 
-void CPCIDSKFile::CreateOverviews( int chan_count, int *chan_list,
+void CPCIDSKFile::CreateOverviews( int chan_count, const int *chan_list,
                                    int factor, std::string resampling )
 
 {

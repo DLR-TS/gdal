@@ -6,7 +6,7 @@ SENTINEL2 -- Sentinel-2 Products
 
 .. shortname:: SENTINEL2
 
-.. built_in_by_default::
+.. built_in_by_default:: This driver is built-in by default, but requires a JPEG2000 capable driver to read the imagery
 
 Driver for Sentinel-2 Level-1B, Level-1C and Level-2A products.
 Starting with GDAL 2.1.3, Level-1C with "Safe Compact" encoding
@@ -161,12 +161,12 @@ NONE resampling method ('-r none' as gdaladdo switch).
 
 When converting a subdataset to another format like tiled GeoTIFF, if
 using the JP2OpenJPEG driver, the recommended minimum value for the
-:decl_configoption:`GDAL_CACHEMAX` configuration option is (subdataset_width \* 2048 \* 2 ) /
+:config:`GDAL_CACHEMAX` configuration option is (subdataset_width \* 2048 \* 2 ) /
 10000000 if generating a INTERLEAVE=BAND GeoTIFF, or that value
 multiplied by the number of bands for the default INTERLEAVE=PIXEL
 configuration. The current versions of the OpenJPEG libraries can also
 consume a lot of memory to decode a JPEG2000 tile (up to 600MB), so you
-might want to specify the :decl_configoption:`GDAL_NUM_THREADS` configuration option to a
+might want to specify the :config:`GDAL_NUM_THREADS` configuration option to a
 reasonable number of threads if you are short of memory (the default
 value is the total number of virtual CPUs).
 
@@ -175,13 +175,17 @@ Open options
 
 The driver can be passed the following open options:
 
--  **ALPHA**\ =YES/NO: whether to expose an alpha band. Defaults to NO.
-   If set, an extra band is added after the Sentinel2 bands with an
-   alpha channel. Its value are:
+-  .. oo:: ALPHA
+      :choices: YES, NO
+      :default: NO
 
-   -  0 on areas with no tiles, or when the tile data is set to the
-      NODATA or SATURATED special values,
-   -  4095 on areas with valid data.
+      Whether to expose an alpha band.
+      If set, an extra band is added after the Sentinel2 bands with an
+      alpha channel. Its value are:
+
+      -  0 on areas with no tiles, or when the tile data is set to the
+         NODATA or SATURATED special values,
+      -  4095 on areas with valid data.
 
 Note: above open options can also be specified as configuration options,
 by prefixing the open option name with SENTINEL2\_ (e.g.
@@ -346,7 +350,7 @@ Examples
 
    ::
 
-      $ python -c "import sys; from osgeo import gdal; ds = gdal.Open(sys.argv[1]); open(sys.argv[2], 'wb').write(ds.GetMetadata('xml:VRT')[0].encode('utf-8'))" \
+      $ python3 -c "import sys; from osgeo import gdal; ds = gdal.Open(sys.argv[1]); open(sys.argv[2], 'wb').write(ds.GetMetadata('xml:VRT')[0].encode('utf-8'))" \
                SENTINEL2_L1C:S2A_OPER_MTD_SAFL1C_PDMC_20150818T101440_R022_V20150813T102406_20150813T102406.xml:10m:EPSG_32632 10m.vrt
 
 -  Opening the 10 meters resolution bands of a L1B subdataset:

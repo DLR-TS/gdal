@@ -29,16 +29,19 @@
 #include "memwatch.h"
 #endif
 
-#if __cplusplus >= 201500
-#  define CPL_FALLTHROUGH [[fallthrough]];
-#elif ((defined(__clang__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >=7))) || __GNUC__ >= 7)
+#if defined(__has_cpp_attribute)
+#if __has_cpp_attribute(fallthrough)
 /** Macro for fallthrough in a switch case construct */
-#  define CPL_FALLTHROUGH [[clang::fallthrough]];
-#else
-/** Macro for fallthrough in a switch case construct */
-#  define CPL_FALLTHROUGH
+#define CPL_FALLTHROUGH [[fallthrough]];
 #endif
-
+#elif defined(__clang__) || __GNUC__ >= 7
+/** Macro for fallthrough in a switch case construct */
+#define CPL_FALLTHROUGH [[clang::fallthrough]];
+#endif
+#ifndef CPL_FALLTHROUGH
+/** Macro for fallthrough in a switch case construct */
+#define CPL_FALLTHROUGH
+#endif
 
 
 /*****************************************************************************
@@ -178,7 +181,7 @@ static void AllocSprintf (char **Ptr, size_t *LenBuff, const char *fmt,
                switch (flag) {
                   case 'l':
                   case 'L':
-                     sprintf (bufpart, format, va_arg (ap, sInt4));
+                     snprintf (bufpart, sizeof(bufpart), format, va_arg (ap, sInt4));
                      break;
                      /*
                       * gcc warning for 'h': "..." promotes short int to
@@ -188,11 +191,11 @@ static void AllocSprintf (char **Ptr, size_t *LenBuff, const char *fmt,
                       */
 /*
               case 'h':
-                sprintf (bufpart, format, va_arg(ap, short int));
+                snprintf (bufpart, sizeof(bufpart), format, va_arg(ap, short int));
                 break;
 */
                   default:
-                     sprintf (bufpart, format, va_arg (ap, int));
+                     snprintf (bufpart, sizeof(bufpart), format, va_arg (ap, int));
                }
                slen = strlen (bufpart);
                lenBuff += slen;
@@ -201,7 +204,7 @@ static void AllocSprintf (char **Ptr, size_t *LenBuff, const char *fmt,
                ipos = lenBuff - 1;
                break;
             case 'f':
-               sprintf (bufpart, format, va_arg (ap, double));
+               snprintf (bufpart, sizeof(bufpart), format, va_arg (ap, double));
                slen = strlen (bufpart);
                lenBuff += slen;
                buffer = (char *) realloc ((void *) buffer, lenBuff);
@@ -209,7 +212,7 @@ static void AllocSprintf (char **Ptr, size_t *LenBuff, const char *fmt,
                ipos = lenBuff - 1;
                break;
             case 'e':
-               sprintf (bufpart, format, va_arg (ap, double));
+               snprintf (bufpart, sizeof(bufpart), format, va_arg (ap, double));
                slen = strlen (bufpart);
                lenBuff += slen;
                buffer = (char *) realloc ((void *) buffer, lenBuff);
@@ -217,7 +220,7 @@ static void AllocSprintf (char **Ptr, size_t *LenBuff, const char *fmt,
                ipos = lenBuff - 1;
                break;
             case 'g':
-               sprintf (bufpart, format, va_arg (ap, double));
+               snprintf (bufpart, sizeof(bufpart), format, va_arg (ap, double));
                slen = strlen (bufpart);
                lenBuff += slen;
                buffer = (char *) realloc ((void *) buffer, lenBuff);

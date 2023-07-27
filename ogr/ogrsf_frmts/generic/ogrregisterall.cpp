@@ -29,8 +29,6 @@
 
 #include "ogrsf_frmts.h"
 
-CPL_CVSID("$Id$")
-
 /************************************************************************/
 /*                           OGRRegisterAll()                           */
 /************************************************************************/
@@ -243,7 +241,7 @@ void OGRRegisterAllInternal()
 #endif
 #ifdef NGW_ENABLED
     RegisterOGRNGW();
-#endif // NGW_ENABLED
+#endif  // NGW_ENABLED
 #ifdef MAPML_ENABLED
     RegisterOGRMapML();
 #endif
@@ -255,6 +253,9 @@ void OGRRegisterAllInternal()
 #endif
 #ifdef ARROW_ENABLED
     RegisterOGRArrow();
+#endif
+#ifdef GTFS_ENABLED
+    RegisterOGRGTFS();
 #endif
 
     // NOTE: you need to generally insert your own driver before that line.
@@ -269,10 +270,6 @@ void OGRRegisterAllInternal()
 #ifdef AVC_ENABLED
     RegisterOGRAVCBin();
     RegisterOGRAVCE00();
-#endif
-
-#ifdef GULUS_ENABLED
-    RegisterOGRGULUS();
 #endif
 
 } /* OGRRegisterAll */

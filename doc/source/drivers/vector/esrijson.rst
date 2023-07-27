@@ -19,7 +19,7 @@ The driver can scroll through such result sets
 that are spread over multiple pages (for ArcGIS servers >= 10.3). This
 is automatically enabled if URL does not contain an explicit
 *resultOffset* parameter. If it contains this parameter and scrolling is
-still desired, the FEATURE_SERVER_PAGING open option must be set to YES.
+still desired, the :oo:`FEATURE_SERVER_PAGING` open option must be set to YES.
 The page size can be explicitly set with the *resultRecordCount*
 parameter (but is subject to a server limit). If it is not set, OGR will
 set it to the maximum value allowed by the server.
@@ -54,9 +54,12 @@ ESRIJSON: to avoid any ambiguity with other drivers.
 Open options
 ------------
 
--  **FEATURE_SERVER_PAGING** = YES/NO: Whether to automatically scroll
-   through results with a ArcGIS Feature Service endpoint. Has only effect
-   for ArcGIS servers >= 10.3 and layers with supportsPagination=true capability.
+-  .. oo:: FEATURE_SERVER_PAGING
+      :choices: YES, NO
+
+      Whether to automatically scroll
+      through results with a ArcGIS Feature Service endpoint. Has only effect
+      for ArcGIS servers >= 10.3 and layers with supportsPagination=true capability.
 
 Example
 -------
@@ -66,7 +69,7 @@ server (note that this server does not support paging):
 
 ::
 
-   ogrinfo -ro -al "http://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Hydrography/Watershed173811/FeatureServer/0/query?where=objectid+%3D+objectid&outfields=*&f=json"
+   ogrinfo -ro -al "https://sampleserver6.arcgisonline.com/arcgis/rest/services/PoolPermits/FeatureServer/0/query?resultRecordCount=10&f=pjson"
 
 See Also
 --------

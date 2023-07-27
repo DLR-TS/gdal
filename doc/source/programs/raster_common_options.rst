@@ -30,7 +30,7 @@ All GDAL command line programs support the following common options.
 
 .. option:: --config <key> <value>
 
-    Sets the named configuration keyword to the given value, as opposed to setting them as environment variables. Some common configuration keywords are GDAL_CACHEMAX (memory used internally for caching in megabytes) and :decl_configoption:`GDAL_DATA` (path of the GDAL "data" directory). Individual drivers may be influenced by other :ref:`configuration options <list_config_options>`.
+    Sets the named configuration keyword to the given value, as opposed to setting them as environment variables. Some common configuration keywords are :config:`GDAL_CACHEMAX` (memory used internally for caching in megabytes) and :config:`GDAL_DATA` (path of the GDAL "data" directory). Individual drivers may be influenced by other :ref:`configuration options <list_config_options>`.
 
 .. option:: --debug <value>
 
@@ -46,7 +46,7 @@ Creating new files
 Access an existing file to read it is generally quite simple.
 Just indicate the name of the file or dataset on the command line.
 However, creating a file is more complicated. It may be necessary to
-indicate the the format to create, various creation options affecting
+indicate the format to create, various creation options affecting
 how it will be created and perhaps a coordinate system to be assigned.
 Many of these options are handled similarly by different GDAL utilities,
 and are introduced here.

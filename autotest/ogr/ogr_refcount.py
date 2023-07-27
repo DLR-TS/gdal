@@ -27,9 +27,18 @@
 ###############################################################################
 
 
-
 import gdaltest
+import pytest
+
 from osgeo import ogr
+
+
+###############################################################################
+@pytest.fixture(autouse=True, scope="module")
+def module_disable_exceptions():
+    with gdaltest.disable_exceptions():
+        yield
+
 
 ###############################################################################
 # Open two datasets in shared mode.
@@ -40,43 +49,33 @@ def test_ogr_refcount_1():
     #    gdaltest.post_reason( 'Initial Open DS count is not zero!' )
     #    return 'failed'
 
-    gdaltest.ds_1 = ogr.OpenShared('data/idlink.dbf')
-    gdaltest.ds_2 = ogr.OpenShared('data/poly.shp')
+    gdaltest.ds_1 = ogr.OpenShared("data/idlink.dbf")
+    gdaltest.ds_2 = ogr.OpenShared("data/poly.shp")
 
     # if ogr.GetOpenDSCount() != 2:
     #    gdaltest.post_reason( 'Open DS count not 2 after shared opens.' )
     #    return 'failed'
 
-    if gdaltest.ds_1.GetRefCount() != 1 or gdaltest.ds_2.GetRefCount() != 1:
-        gdaltest.post_reason('Reference count not 1 on one of datasources.')
-        return 'failed'
+    assert gdaltest.ds_1.GetRefCount() == 1
+    assert gdaltest.ds_2.GetRefCount() == 1
 
-    
+
 ###############################################################################
 # Verify that reopening one of the datasets returns the existing shared handle.
 
 
 def test_ogr_refcount_2():
 
-    ds_3 = ogr.OpenShared('data/idlink.dbf')
+    ds_3 = ogr.OpenShared("data/idlink.dbf")
 
     # if ogr.GetOpenDSCount() != 2:
     #    gdaltest.post_reason( 'Open DS count not 2 after third open.' )
     #    return 'failed'
 
-    # This test only works with the old bindings.
-    try:
-        if ds_3._o != gdaltest.ds_1._o:
-            gdaltest.post_reason('We did not get the expected pointer.')
-            return 'failed'
-    except:
-        pass
-
-    if ds_3.GetRefCount() != 2:
-        gdaltest.post_reason('Refcount not 2 after reopened.')
-        return 'failed'
+    assert ds_3.GetRefCount() == 2, "Refcount not 2 after reopened."
 
     gdaltest.ds_3 = ds_3
+
 
 ###############################################################################
 # Verify that releasing the datasources has the expected behaviour.
@@ -86,11 +85,10 @@ def test_ogr_refcount_3():
 
     gdaltest.ds_3.Release()
 
-    if gdaltest.ds_1.GetRefCount() != 1:
-        gdaltest.post_reason('Refcount not decremented as expected.')
-        return 'failed'
+    assert gdaltest.ds_1.GetRefCount() == 1
 
     gdaltest.ds_1.Release()
+
 
 ###############################################################################
 # Verify that we can walk the open datasource list.
@@ -99,20 +97,11 @@ def test_ogr_refcount_3():
 def test_ogr_refcount_4():
 
     with gdaltest.error_handler():
-        ds = ogr.GetOpenDS(0)
-    try:
-        if ds._o != gdaltest.ds_2._o:
-            gdaltest.post_reason('failed to fetch expected datasource')
-            return 'failed'
-    except:
-        pass
+        ogr.GetOpenDS(0)
 
-    
+
 ###############################################################################
 
 
 def test_ogr_refcount_cleanup():
     gdaltest.ds_2.Release()
-
-
-

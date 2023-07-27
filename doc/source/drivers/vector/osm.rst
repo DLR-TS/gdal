@@ -37,10 +37,10 @@ Driver capabilities
 Configuration
 -------------
 
-In the *data* folder of the GDAL distribution, you can find a
-`osmconf.ini <https://github.com/OSGeo/gdal/blob/master/data/osmconf.ini>`__
+In the *data* folder of the GDAL distribution, you can find an
+:source_file:`data/osmconf.ini`
 file that can be customized to fit your needs. You can also define an
-alternate path with the :decl_configoption:`OSM_CONFIG_FILE` configuration option.
+alternate path with the :config:`OSM_CONFIG_FILE` configuration option.
 
 The customization is essentially which OSM attributes and keys should be
 translated into OGR layer fields.
@@ -56,12 +56,19 @@ When keys are not strictly identified in the *osmconf.ini* file, the
 key/value pair is appended in a "other_tags" field, with a syntax
 compatible with the PostgreSQL HSTORE type. See the *COLUMN_TYPES* layer
 creation option of the :ref:`PG driver <vector.pg>`.
+The ``hstore_get_value()`` function can be used with the :ref:`OGRSQL <ogr_sql_dialect>`
+or :ref:`SQLite <sql_sqlite_dialect>` SQL dialects to extract the value of a
+given key.
 
 For example :
 
 ::
 
    ogr2ogr -f PostgreSQL "PG:dbname=osm" test.pbf -lco COLUMN_TYPES=other_tags=hstore
+
+Starting with GDAL 3.7, it is possible to ask the format of this field to
+be JSON encoded, by using the TAGS_FORMAT=JSON open option, or the
+``tags_format=json`` setting in the *osmconf.ini* file.
 
 "all_tags" field
 ~~~~~~~~~~~~~~~~
@@ -72,34 +79,59 @@ identified to be reported as dedicated fields, as well as other keys.
 "all_tags" is disabled by default, and when enabled, it is exclusive
 with "other_tags".
 
-Internal working and performance tweaking
------------------------------------------
 
-The driver will use an internal SQLite database to resolve geometries.
-If that database remains under 100 MB it will reside in RAM. If it grows
-above, it will be written in a temporary file on disk. By default, this
-file will be written in the current directory, unless you define the
-:decl_configoption:`CPL_TMPDIR` configuration option. The 100 MB default threshold can be
-adjusted with the :decl_configoption:`OSM_MAX_TMPFILE_SIZE` configuration option (value in
-MB).
+Configuration options
+---------------------
 
-For indexation of nodes, a custom mechanism not relying on SQLite is
-used by default (indexation of ways to solve relations is still relying
-on SQLite). It can speed up operations significantly. However, in some
-situations (non increasing node ids, or node ids not in expected range),
-it might not work and the driver will output an error message suggesting
-to relaunch by defining the :decl_configoption:`OSM_USE_CUSTOM_INDEXING` configuration option
-to NO.
+The following :ref:`configuration options <configoptions>` are
+available:
 
-When custom indexing is used (default case), the :decl_configoption:`OSM_COMPRESS_NODES`
-configuration option can be set to YES (the default is NO). This option
-might be turned on to improve performances when I/O access is the
-limiting factor (typically the case of rotational disk), and will be
-mostly efficient for country-sized OSM extracts where compression rate
-can go up to a factor of 3 or 4, and help keep the node DB to a size
-that fit in the OS I/O caches. For whole planet file, the effect of this
-option will be less efficient. This option consumes additional 60 MB of
-RAM.
+-  .. config:: OSM_CONFIG_FILE
+      :choices: <filename>
+
+      Path to an OSM configuration file. See `Configuration`_.
+
+-  .. config:: OSM_MAX_TMPFILE_SIZE
+      :choices: <MB>
+      :default: 100
+
+      Size of the internal SQLite database used to resolve geometries.
+      If that database remains under the size specified by this option,
+      it will reside in RAM. If it grows
+      above, it will be written in a temporary file on disk. By default, this
+      file will be written in the current directory, unless you define the
+      :config:`CPL_TMPDIR` configuration option.
+
+-  .. config:: OSM_USE_CUSTOM_INDEXING
+      :choices: YES, NO
+      :default: YES
+
+      For indexation of nodes, a custom mechanism not relying on SQLite is
+      used by default (indexation of ways to solve relations is still relying
+      on SQLite). It can speed up operations significantly. However, in some
+      situations (non increasing node ids, or node ids not in expected range),
+      it might not work and the driver will output an error message suggesting
+      to relaunch by setting this configuration option to NO.
+
+-  .. config:: OSM_COMPRESS_NODES
+      :choices: YES, NO
+      :default: NO
+
+      When custom indexing is used (:config:`OSM_USE_CUSTOM_INDEXING=YES`, default case),
+      the :config:`OSM_COMPRESS_NODES`
+      configuration option can be set to YES. This option
+      might be turned on to improve performance when I/O access is the
+      limiting factor (typically the case of rotational disk), and will be
+      mostly efficient for country-sized OSM extracts where compression rate
+      can go up to a factor of 3 or 4, and help keep the node DB to a size
+      that fit in the OS I/O caches. For whole planet file, the effect of this
+      option will be less efficient. This option consumes additional 60 MB of
+      RAM.
+
+-  .. config:: OGR_INTERLEAVED_READING
+
+      See `Interleaved reading`_.
+
 
 Interleaved reading
 -------------------
@@ -114,7 +146,7 @@ Starting with GDAL 2.2, applications should use the
 they are produced.
 
 For earlier versions, for large files, applications should set the
-:decl_configoption:`OGR_INTERLEAVED_READING` =YES configuration option to turn on a special
+:config:`OGR_INTERLEAVED_READING=YES` configuration option to turn on a special
 reading mode where the following reading pattern must be used:
 
 ::
@@ -139,7 +171,7 @@ reading mode where the following reading pattern must be used:
        while( bHasLayersNonEmpty );
 
 Note : the ogr2ogr application has been modified to use that
-:decl_configoption:`OGR_INTERLEAVED_READING` mode without any 
+:config:`OGR_INTERLEAVED_READING` mode without any
 particular user action.
 
 Spatial filtering
@@ -186,17 +218,44 @@ And to combine the above steps :
 Open options
 ------------
 
--  **CONFIG_FILE=filename**: Configuration filename.
-   Defaults to {GDAL_DATA}/osmconf.ini.
--  **USE_CUSTOM_INDEXING=YES/NO**: Whether to enable custom
-   indexing. Defaults to YES.
--  **COMPRESS_NODES=YES/NO**: Whether to compress nodes in
-   temporary DB. Defaults to NO.
--  **MAX_TMPFILE_SIZE=int_val**: Maximum size in MB of
-   in-memory temporary file. If it exceeds that value, it will go to
-   disk. Defaults to 100.
--  **INTERLEAVED_READING=YES/NO**: Whether to enable
-   interleaved reading. Defaults to NO.
+-  .. oo:: CONFIG_FILE
+      :choices: <filename>
+      :default: {GDAL_DATA}/osmconf.ini
+
+      Configuration filename.
+
+-  .. oo:: USE_CUSTOM_INDEXING
+      :choices: YES, NO
+      :default: YES
+
+      Whether to enable custom indexing.
+
+-  .. oo:: COMPRESS_NODES
+      :choices: YES, NO
+      :default: NO
+
+      Whether to compress nodes in temporary DB.
+
+-  .. oo:: MAX_TMPFILE_SIZE
+      :choices: <MBytes>
+      :default: 100
+
+      Maximum size in MB of
+      in-memory temporary file. If it exceeds that value, it will go to
+      disk.
+
+-  .. oo:: INTERLEAVED_READING
+      :choices: YES, NO
+      :default: NO
+
+      Whether to enable interleaved reading.
+
+-  .. oo:: TAGS_FORMAT
+      :choices: HSTORE, JSON
+      :default: HSTORE
+      :since: 3.7
+
+      Format for all_tags/other_tags fields.
 
 See Also
 --------

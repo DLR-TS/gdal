@@ -53,7 +53,7 @@ namespace PCIDSK
             std::string access, const PCIDSKInterfaces *interfaces, int max_channel_count_allowed );
     public:
 
-        CPCIDSKFile( std::string filename );
+        CPCIDSKFile( const std::string& filename );
         virtual ~CPCIDSKFile();
 
         virtual PCIDSKInterfaces *GetInterfaces() override { return &interfaces; }
@@ -71,7 +71,7 @@ namespace PCIDSK
         int  CreateSegment( std::string name, std::string description,
             eSegType seg_type, int data_blocks ) override;
         void DeleteSegment( int segment ) override;
-        void CreateOverviews( int chan_count, int *chan_list,
+        void CreateOverviews( int chan_count, const int *chan_list,
             int factor, std::string resampling ) override;
 
         int       GetWidth() const override { return width; }

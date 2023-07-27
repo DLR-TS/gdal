@@ -32,17 +32,19 @@ import pytest
 
 from osgeo import gdal
 
+pytestmark = pytest.mark.require_driver("FIT")
 
-@pytest.mark.parametrize('filename', [
-    'byte', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64'
-])
+
+@pytest.mark.parametrize(
+    "filename", ["byte", "int16", "uint16", "int32", "uint32", "float32", "float64"]
+)
 def test_fit(filename):
-    fitDriver = gdal.GetDriverByName('FIT')
+    fitDriver = gdal.GetDriverByName("FIT")
 
-    ds = gdal.Open('../gcore/data/' + filename + '.tif')
-    fitDriver.CreateCopy('tmp/' + filename + '.fit', ds, options=['PAGESIZE=2,2'])
+    ds = gdal.Open("../gcore/data/" + filename + ".tif")
+    fitDriver.CreateCopy("tmp/" + filename + ".fit", ds, options=["PAGESIZE=2,2"])
 
-    ds2 = gdal.Open('tmp/' + filename + '.fit')
+    ds2 = gdal.Open("tmp/" + filename + ".fit")
     assert ds2.GetRasterBand(1).Checksum() == ds.GetRasterBand(1).Checksum()
 
     assert ds2.GetRasterBand(1).DataType == ds.GetRasterBand(1).DataType

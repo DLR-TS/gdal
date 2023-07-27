@@ -22,7 +22,11 @@ if (Python_Interpreter_FOUND)
   # Set TEST_ENV that goes into pytest.ini
 
   # Set GDAL_DATA
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/data" GDAL_DATA)
+  if(WIN32)
+      file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/data" GDAL_DATA)
+  else()
+      set(GDAL_DATA "${PROJECT_SOURCE_DIR}/data")
+  endif()
   set(_TEST_ENV GDAL_DATA=${GDAL_DATA})
 
   if (GDAL_DOWNLOAD_TEST_DATA)
@@ -41,43 +45,49 @@ if (Python_Interpreter_FOUND)
   string(REPLACE ";" "\n   " TEST_ENV "${_TEST_ENV}")
 
   set(AUTOTEST_LOG_FILE "${CMAKE_CURRENT_BINARY_DIR}/autotest.log")
-  if ("${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}" AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/pytest.ini)
-    # FIXME: remove this branch if we remove pytest.ini from source tree
-  else()
-    configure_file(${GDAL_CMAKE_TEMPLATE_PATH}/pytest.ini.in ${CMAKE_CURRENT_BINARY_DIR}/pytest.ini @ONLY)
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/conftest.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
+  set(PYTEST_INI_HEADER_MESSAGE "This file was generated from ${GDAL_CMAKE_TEMPLATE_PATH}/pytest.ini.in using ${CMAKE_CURRENT_LIST_FILE}")
+  configure_file(${GDAL_CMAKE_TEMPLATE_PATH}/pytest.ini.in ${CMAKE_CURRENT_BINARY_DIR}/pytest.ini @ONLY)
+  unset(PYTEST_INI_HEADER_MESSAGE)
 
-  function (symlink_or_copy source destination)
-
-    if (CMAKE_VERSION VERSION_GREATER 3.14)
-      file(
-        CREATE_LINK ${source} ${destination}
-        RESULT res
-        SYMBOLIC)
-      if (NOT res EQUAL 0)
-        message(STATUS "Copying content of ${source} to ${destination}")
+function (copy_file_or_dir source dest)
+    if (IS_DIRECTORY ${source})
+        message(STATUS "Copying contents of ${source} to ${destination}")
         execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${source} ${destination})
-      endif ()
-    else ()
+    else()
+        message(STATUS "Copying ${source} to ${destination}")
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${source} ${destination})
+    endif()
+endfunction()
+
+function (symlink_or_copy source destination)
+  if (CMAKE_VERSION VERSION_GREATER 3.14)
+    file(
+      CREATE_LINK ${source} ${destination}
+      RESULT res
+      SYMBOLIC)
+    if (NOT res EQUAL 0)
+      copy_file_or_dir(${source} ${destination})
+    endif ()
+  else ()
       if (NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
         execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${source} ${destination})
       else ()
-        message(STATUS "Copying content of ${source} to ${destination}")
-        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${source} ${destination})
+        copy_file_or_dir(${source} ${destination})
       endif ()
-    endif ()
+  endif ()
 
-  endfunction ()
+endfunction ()
 
-  # Needed for a autotest/osr test
+  symlink_or_copy(${CMAKE_CURRENT_SOURCE_DIR}/conftest.py ${CMAKE_CURRENT_BINARY_DIR}/conftest.py)
+
   if (NOT "${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
-      symlink_or_copy(${CMAKE_CURRENT_SOURCE_DIR}/cpp/data ${CMAKE_CURRENT_BINARY_DIR}/cpp/data)
-      if (SKIP_COPYING_AUTOTEST_SUBDIRS)
-        message(STATUS "Skipping copying ${CMAKE_CURRENT_SOURCE_DIR}/pymod")
-      else ()
-        symlink_or_copy(${CMAKE_CURRENT_SOURCE_DIR}/pymod ${CMAKE_CURRENT_BINARY_DIR}/pymod)
-      endif ()
+      foreach (subdir IN ITEMS pymod proj_grids cpp/data)
+          if (SKIP_COPYING_AUTOTEST_SUBDIRS)
+            message(STATUS "Skipping copying ${CMAKE_CURRENT_SOURCE_DIR}/${subdir}")
+          else ()
+            symlink_or_copy(${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${CMAKE_CURRENT_BINARY_DIR}/${subdir})
+          endif ()
+      endforeach ()
   endif()
 
   foreach (
@@ -135,21 +145,43 @@ int main(int argc, char **argv) {
         args.append(\"]\");
     }
     std::string pycode = \"import pytest\\npytest.main(\" + args + \")\\n\";
+#if PY_VERSION_HEX >= 0x03080000
+    PyConfig config;
+    PyConfig_InitPythonConfig(&config);
+    config.install_signal_handlers = 0;
+    PyStatus status;
+    status = PyConfig_SetBytesString(&config, &config.program_name, argv[0]);
+    if (PyStatus_Exception(status)) {
+        PyConfig_Clear(&config);
+        Py_ExitStatusException(status);
+        return 1;
+    }
+    status = Py_InitializeFromConfig(&config);
+    if (PyStatus_Exception(status)) {
+        PyConfig_Clear(&config);
+        Py_ExitStatusException(status);
+        return 1;
+    }
+    PyConfig_Clear(&config);
+#else
     wchar_t * program_name = Py_DecodeLocale(argv[0], NULL);
     Py_SetProgramName(program_name);
     Py_Initialize();
+#endif
     PyRun_SimpleString(&*pycode.begin());
     Py_Finalize();
     return 0;
 }")
+
     add_executable(pytest_runner ${CMAKE_CURRENT_BINARY_DIR}/pytest_runner.cpp)
     target_include_directories(pytest_runner PRIVATE ${Python_INCLUDE_DIRS})
     target_link_libraries(pytest_runner PRIVATE ${Python_LIBRARIES})
     add_custom_target(
       autotest_runner
-      COMMAND ${CMAKE_COMMAND} -E env ${PYTHON_RUN_ENV} $<TARGET_NAME:pytest_runner> -c
+      COMMAND ${CMAKE_COMMAND} -E env ${PYTHON_RUN_ENV} $<TARGET_FILE:pytest_runner> -c
               ${CMAKE_CURRENT_BINARY_DIR}/pytest.ini
       DEPENDS ${GDAL_LIB_TARGET_NAME} gdalapps python_binding pytest_runner
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif ()
+
 endif ()

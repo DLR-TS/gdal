@@ -52,7 +52,6 @@ set(CPL_SOURCES
     cplstring.cpp
     cpl_vsisimple.cpp
     cpl_vsil.cpp
-    cpl_vsi_mem.cpp
     cpl_http.cpp
     cpl_hash_set.cpp
     cplkeywordparser.cpp
@@ -66,6 +65,7 @@ set(CPL_SOURCES
     cpl_vsil_sparsefile.cpp
     cpl_vsil_abstract_archive.cpp
     cpl_vsil_tar.cpp
+    cpl_vsil_libarchive.cpp
     cpl_vsil_stdin.cpp
     cpl_vsil_buffered_reader.cpp
     cpl_vsil_plugin.cpp
@@ -132,10 +132,39 @@ if(CMAKE_INSTALL_FULL_SYSCONFDIR)
     target_compile_definitions(cpl PRIVATE SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}")
 endif()
 
+# To enable conditional use of std::shared_mutex in cpl_vsi_mem.cpp
+add_library(cpl_vsi_mem OBJECT cpl_vsi_mem.cpp)
+target_sources(${GDAL_LIB_TARGET_NAME} PRIVATE $<TARGET_OBJECTS:cpl_vsi_mem>)
+target_compile_options(cpl_vsi_mem PRIVATE ${GDAL_CXX_WARNING_FLAGS} ${WFLAG_OLD_STYLE_CAST} ${WFLAG_EFFCXX})
+set_property(TARGET cpl_vsi_mem PROPERTY POSITION_INDEPENDENT_CODE ${GDAL_OBJECT_LIBRARIES_POSITION_INDEPENDENT_CODE})
+target_include_directories(cpl_vsi_mem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
+if(COMPILER_SUPPORTS_CXX17)
+    target_compile_features(cpl_vsi_mem PRIVATE cxx_std_17)
+endif()
+
 if (WIN32)
   target_sources(cpl PRIVATE cpl_vsil_win32.cpp)
 else ()
   target_sources(cpl PRIVATE cpl_vsil_unix_stdio_64.cpp)
+  if ("${CMAKE_SYSTEM}" MATCHES "Linux")
+      check_include_file("linux/fs.h" HAVE_LINUX_FS_H)
+      if (NOT HAVE_LINUX_FS_H)
+          set(ACCEPT_MISSING_LINUX_FS_HEADER OFF CACHE BOOL "Build despite missing linux/fs.h header.")
+          mark_as_advanced(ACCEPT_MISSING_LINUX_FS_HEADER)
+          if (NOT ACCEPT_MISSING_LINUX_FS_HEADER)
+              message(FATAL_ERROR "linux/fs.h header not found. Impact will be lack of sparse file detection. Define the ACCEPT_MISSING_LINUX_FS_HEADER:BOOL=ON CMake variable if you want to build despite this limitation.")
+          endif()
+          target_compile_definitions(cpl PRIVATE -DMISSING_LINUX_FS_H)
+      endif()
+  endif()
+  if(HAVE_PREAD64)
+      target_compile_definitions(cpl PRIVATE -DHAVE_PREAD64)
+  elseif(HAVE_PREAD_BSD)
+      target_compile_definitions(cpl PRIVATE -DHAVE_PREAD_BSD -DSIZEOF_OFF_T=${SIZEOF_OFF_T})
+  endif()
   set(BUILD_WITHOUT_64BIT_OFFSET OFF CACHE BOOL "Build GDAL without > 4GB file support. If file API does not seem to support 64-bit offset.")
   mark_as_advanced(BUILD_WITHOUT_64BIT_OFFSET)
   if(BUILD_WITHOUT_64BIT_OFFSET)
@@ -166,6 +195,10 @@ target_sources(cpl PRIVATE cpl_vsil_gzip.cpp cpl_minizip_ioapi.cpp cpl_minizip_u
 if (GDAL_USE_ZLIB_INTERNAL)
   gdal_add_vendored_lib(cpl libz)
 endif ()
+if (ENABLE_DEFLATE64)
+  gdal_add_vendored_lib(cpl infback9)
+  target_compile_definitions(cpl PRIVATE -DENABLE_DEFLATE64)
+endif ()
 
 # Now external libraries
 if (NOT GDAL_USE_JSONC_INTERNAL)
@@ -174,10 +207,15 @@ endif ()
 
 if (NOT GDAL_USE_ZLIB_INTERNAL)
   target_compile_definitions(cpl PRIVATE -DHAVE_ZLIB_H -DHAVE_ZLIB)
-  if (MSVC)
+  if (MSVC AND NOT ZLIB_IS_STATIC)
     target_compile_definitions(cpl PRIVATE -DZLIB_DLL)
-  endif (MSVC)
+  endif ()
   gdal_target_link_libraries(cpl PRIVATE ZLIB::ZLIB)
+endif ()
+
+if (GDAL_USE_ARCHIVE)
+  target_compile_definitions(cpl PRIVATE -DHAVE_LIBARCHIVE)
+  gdal_target_link_libraries(cpl PRIVATE ARCHIVE::ARCHIVE)
 endif ()
 
 if (GDAL_USE_CURL)
@@ -193,7 +231,7 @@ if (GDAL_USE_ICONV)
   add_library(cpl_iconv OBJECT cpl_recode_iconv.cpp)
   target_sources(${GDAL_LIB_TARGET_NAME} PRIVATE $<TARGET_OBJECTS:cpl_iconv>)
   target_compile_options(cpl_iconv PRIVATE ${GDAL_CXX_WARNING_FLAGS} ${WFLAG_OLD_STYLE_CAST} ${WFLAG_EFFCXX})
-  set_property(TARGET cpl_iconv PROPERTY POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
+  set_property(TARGET cpl_iconv PROPERTY POSITION_INDEPENDENT_CODE ${GDAL_OBJECT_LIBRARIES_POSITION_INDEPENDENT_CODE})
   target_compile_definitions(cpl_iconv PRIVATE -DHAVE_ICONV)
   # include path to generated cpl_config.h
   target_include_directories(cpl_iconv PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -233,11 +271,6 @@ endif ()
 
 if (HAVE_USERFAULTFD_H)
   target_compile_definitions(cpl PRIVATE -DENABLE_UFFD)
-endif ()
-
-option(HDFS_ENABLED "Include HDFS support" OFF)
-if (HDFS_ENABLED)
-  target_compile_definitions(cpl PRIVATE -DHDFS_ENABLED)
 endif ()
 
 # for plugin DLFCN: for win32 https://github.com/dlfcn-win32/dlfcn-win32/archive/v1.1.1.tar.gz if(WIN32)
@@ -289,8 +322,18 @@ if (GDAL_USE_LZ4)
 endif ()
 
 if (GDAL_USE_BLOSC)
-  target_compile_definitions(cpl PRIVATE -DHAVE_BLOSC)
-  gdal_target_link_libraries(cpl PRIVATE Blosc::Blosc)
+  include(CheckSymbolExists)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_INCLUDES ${BLOSC_INCLUDE_DIRS})
+  set(CMAKE_REQUIRED_LIBRARIES ${BLOSC_LIBRARIES})
+  check_symbol_exists(blosc_cbuffer_validate blosc.h BLOSC_HAS_BLOSC_CBUFFER_VALIDATE)
+  cmake_pop_check_state()
+  if (BLOSC_HAS_BLOSC_CBUFFER_VALIDATE)
+    target_compile_definitions(cpl PRIVATE -DHAVE_BLOSC)
+    gdal_target_link_libraries(cpl PRIVATE Blosc::Blosc)
+  else()
+    message(STATUS "libblosc cannot be used as it lacks blosc_cbuffer_validate()")
+  endif()
 endif ()
 
 if (GDAL_USE_HDFS)
@@ -304,4 +347,45 @@ endif ()
 if (MSVC)
   # needed for cpl_aws_win32
   gdal_target_link_libraries(cpl PRIVATE wbemuuid)
+endif ()
+
+if (NOT CMAKE_CROSSCOMPILING AND BUILD_VSIPRELOAD AND "${CMAKE_SYSTEM}" MATCHES "Linux" AND ${BUILD_SHARED_LIBS})
+  option(BUILD_VSIPRELOAD "Build vsipreload.so" ON)
+  mark_as_advanced(BUILD_VSIPRELOAD)
+  if(BUILD_VSIPRELOAD)
+    add_library(vsipreload MODULE vsipreload.cpp)
+    set_target_properties(vsipreload PROPERTIES PREFIX "")
+    target_link_libraries(vsipreload PRIVATE $<TARGET_NAME:${GDAL_LIB_TARGET_NAME}> ${CMAKE_DL_LIBS})
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.16)
+      set_property(SOURCE vsipreload.cpp PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
+    endif ()
+
+    # For musl / Alpine
+    foreach(_header IN ITEMS stdio.h fcntl.h unistd.h dirent.h sys/stat.h)
+      if(EXISTS "/usr/include/${_header}")
+        file(READ "/usr/include/${_header}" _content)
+        if("${_content}" MATCHES "#define fopen64 fopen")
+          target_compile_definitions(vsipreload PRIVATE FOPEN64_ALIAS_OF_FOPEN)
+        endif()
+        if("${_content}" MATCHES "#define fseeko64 fseeko")
+          target_compile_definitions(vsipreload PRIVATE FSEEKO64_ALIAS_OF_FSEEKO)
+        endif()
+        if("${_content}" MATCHES "#define ftello64 ftello")
+          target_compile_definitions(vsipreload PRIVATE FTELLO64_ALIAS_OF_FTELLO)
+        endif()
+        if("${_content}" MATCHES "#define open64 open")
+          target_compile_definitions(vsipreload PRIVATE OPEN64_ALIAS_OF_OPEN)
+        endif()
+        if("${_content}" MATCHES "#define lseek64 lseek")
+          target_compile_definitions(vsipreload PRIVATE LSEEK64_ALIAS_OF_LSEEK)
+        endif()
+        if("${_content}" MATCHES "#define dirent64 dirent")
+          target_compile_definitions(vsipreload PRIVATE DIRENT64_ALIAS_OF_DIRENT)
+        endif()
+        if("${_content}" MATCHES "#define lstat64 lstat")
+          target_compile_definitions(vsipreload PRIVATE LSTAT64_ALIAS_OF_LSTAT)
+        endif()
+      endif()
+    endforeach()
+  endif ()
 endif ()

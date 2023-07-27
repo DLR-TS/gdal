@@ -47,12 +47,11 @@ an **OGRVRTLayer** (or **OGRVRTWarpedLayer** or **OGRVRTUnionLayer**) child for
 each layer in the virtual
 datasource, and a **Metadata** element.
 
-A `XML schema of the OGR VRT
-format <https://github.com/OSGeo/gdal/blob/master/data/ogrvrt.xsd>`__ is
-available. When GDAL is configured with libXML2
+An XML schema of the OGR VRT format is provided in :source_file:`data/ogrvrt.xsd`.
+When GDAL is configured with libXML2
 support, that schema will be used to validate the VRT documents.
 Non-conformities will be reported only as warnings. That validation can
-be disabled by setting the :decl_configoption:`GDAL_XML_VALIDATION` 
+be disabled by setting the :config:`GDAL_XML_VALIDATION`
 configuration option to "NO".
 
 Metadata element
@@ -101,7 +100,7 @@ layer name, and may have the following subelements:
   derived layers. An optional **dialect**
   attribute can be specified on the SrcSQL element to specify which SQL
   "dialect" should be used : possible values are currently
-  :ref:`OGR SQL <ogr_sql_dialect>` or :ref:`SQLITE
+  :ref:`OGRSQL <ogr_sql_dialect>` or :ref:`SQLITE
   <sql_sqlite_dialect>`. If *dialect* is not specified, the default
   dialect of the datasource will be used.
 
@@ -173,7 +172,7 @@ layer name, and may have the following subelements:
 
   If the encoding is "WKT" or "WKB" then the **field** attribute will
   have the name of the field containing the WKT or WKB geometry.
-  
+
   If the encoding is "PointFromColumns" then the **x**, **y**, **z** and
   **m** attributes will have the names of the columns to be used for the
   X, Y, Z and M coordinates. The **z** and **m** attributes are optional
@@ -244,6 +243,8 @@ layer name, and may have the following subelements:
      is nullable. It defaults to "true".
   *  **unique** can be used to specify whether the field
      has a unique constraint. It defaults to "false". (GDAL >= 3.2)
+  *  **alternativeName**: the field alternative name. (GDAL >= 3.7)
+  *  **comment**: the field comment. (GDAL >= 3.7)
 
 - **FeatureCount** (optional) : This element is used to
   define the feature count of the layer (when no spatial or attribute

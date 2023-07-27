@@ -4,7 +4,7 @@
 # $Id$
 #
 # Project:  GDAL/OGR Test Suite
-# Purpose:  Test read/write functionality for NITF driver.
+# Purpose:  Test read/write functionality for GXF driver.
 # Author:   Even Rouault <even dot rouault at spatialys.com>
 #
 ###############################################################################
@@ -30,12 +30,12 @@
 ###############################################################################
 
 
+import gdaltest
 import pytest
 
 from osgeo import gdal
 
-
-import gdaltest
+pytestmark = pytest.mark.require_driver("GXF")
 
 ###############################################################################
 # Test a small GXF sample
@@ -43,9 +43,10 @@ import gdaltest
 
 def test_gxf_1():
 
-    tst = gdaltest.GDALTest('GXF', 'gxf/small.gxf', 1, 90)
+    tst = gdaltest.GDALTest("GXF", "gxf/small.gxf", 1, 90)
 
     return tst.testOpen()
+
 
 ###############################################################################
 # Test an other GXF sample (with continuous line)
@@ -53,7 +54,7 @@ def test_gxf_1():
 
 def test_gxf_2():
 
-    tst = gdaltest.GDALTest('GXF', 'gxf/small2.gxf', 1, 65042)
+    tst = gdaltest.GDALTest("GXF", "gxf/small2.gxf", 1, 65042)
     wkt = """PROJCS["NAD27 / Ohio North",
     GEOGCS["NAD27",
         DATUM["NAD27",
@@ -72,28 +73,25 @@ def test_gxf_2():
 
 
 gxf_list = [
-    ('http://download.osgeo.org/gdal/data/gxf', 'SAMPLE.GXF', 24068, -1),
-    ('http://download.osgeo.org/gdal/data/gxf', 'gxf_compressed.gxf', 20120, -1),
-    ('http://download.osgeo.org/gdal/data/gxf', 'gxf_text.gxf', 20265, -1),
-    ('http://download.osgeo.org/gdal/data/gxf', 'gxf_ul_r.gxf', 19930, -1),
-    ('http://download.osgeo.org/gdal/data/gxf', 'latlong.gxf', 12243, -1),
-    ('http://download.osgeo.org/gdal/data/gxf', 'spif83.gxf', 28752, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "SAMPLE.GXF", 24068, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "gxf_compressed.gxf", 20120, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "gxf_text.gxf", 20265, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "gxf_ul_r.gxf", 19930, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "latlong.gxf", 12243, -1),
+    ("http://download.osgeo.org/gdal/data/gxf", "spif83.gxf", 28752, -1),
 ]
 
 
 @pytest.mark.parametrize(
-    'downloadURL,fileName,checksum,download_size',
+    "downloadURL,fileName,checksum,download_size",
     gxf_list,
     ids=[tup[1] for tup in gxf_list],
 )
 def test_gxf(downloadURL, fileName, checksum, download_size):
-    if not gdaltest.download_file(downloadURL + '/' + fileName, fileName, download_size):
-        pytest.skip()
+    gdaltest.download_or_skip(downloadURL + "/" + fileName, fileName, download_size)
 
-    ds = gdal.Open('tmp/cache/' + fileName)
+    ds = gdal.Open("tmp/cache/" + fileName)
 
-    assert ds.GetRasterBand(1).Checksum() == checksum, 'Bad checksum. Expected %d, got %d' % (checksum, ds.GetRasterBand(1).Checksum())
-
-
-
-
+    assert (
+        ds.GetRasterBand(1).Checksum() == checksum
+    ), "Bad checksum. Expected %d, got %d" % (checksum, ds.GetRasterBand(1).Checksum())

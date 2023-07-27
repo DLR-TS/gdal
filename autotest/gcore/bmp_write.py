@@ -27,10 +27,10 @@
 # Boston, MA 02111-1307, USA.
 ###############################################################################
 
-
+import gdaltest
 import pytest
 
-import gdaltest
+from osgeo import gdal
 
 ###############################################################################
 # Test creating an in memory copy.
@@ -38,7 +38,7 @@ import gdaltest
 
 def test_bmp_vsimem():
 
-    tst = gdaltest.GDALTest('BMP', 'byte.tif', 1, 4672)
+    tst = gdaltest.GDALTest("BMP", "byte.tif", 1, 4672)
 
     return tst.testCreateCopy(vsimem=1)
 
@@ -47,27 +47,41 @@ def test_bmp_vsimem():
 # When imported build a list of units based on the files available.
 
 
-
 init_list = [
-    ('byte.tif', 4672),
-    ('utmsmall.tif', 50054),
-    ('8bit_pal.bmp', 4672), ]
+    ("byte.tif", 4672),
+    ("utmsmall.tif", 50054),
+    ("8bit_pal.bmp", 4672),
+]
 
 
 @pytest.mark.parametrize(
-    'filename,checksum',
+    "filename,checksum",
     init_list,
-    ids=[tup[0].split('.')[0] for tup in init_list],
+    ids=[tup[0].split(".")[0] for tup in init_list],
 )
 @pytest.mark.parametrize(
-    'testfunction', [
-        'testCreateCopy',
-        'testCreate',
-    ]
+    "testfunction",
+    [
+        "testCreateCopy",
+        "testCreate",
+    ],
 )
-@pytest.mark.require_driver('BMP')
+@pytest.mark.require_driver("BMP")
 def test_bmp_create(filename, checksum, testfunction):
-    ut = gdaltest.GDALTest('BMP', filename, 1, checksum)
+    ut = gdaltest.GDALTest("BMP", filename, 1, checksum)
     getattr(ut, testfunction)()
 
 
+###############################################################################
+# Test Create() and closing afterwards (https://github.com/OSGeo/gdal/issues/7025)
+
+
+@pytest.mark.require_driver("BMP")
+def test_bmp_create_empty():
+    filename = "/vsimem/test.bmp"
+    assert gdal.GetDriverByName("BMP").Create(filename, 10, 10)
+    ds = gdal.Open(filename)
+    assert ds
+    assert ds.GetRasterBand(1).Checksum() == 0
+    ds = None
+    gdal.Unlink(filename)

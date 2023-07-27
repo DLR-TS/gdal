@@ -53,7 +53,7 @@ function (gdal_check_target_is_valid target res_var)
     # geotiff-config.cmake of GeoTIFF 1.7.0 doesn't define a INTERFACE_INCLUDE_DIRECTORIES
     # property, but a GeoTIFF_INCLUDE_DIRS variable.
     set_target_properties(${target} PROPERTIES
-                          INTERFACE_INCLUDE_DIRECTORIES ${GeoTIFF_INCLUDE_DIRS})
+                          INTERFACE_INCLUDE_DIRECTORIES "${GeoTIFF_INCLUDE_DIRS}")
   else()
      message(WARNING "Target ${target} has no INTERFACE_INCLUDE_DIRECTORIES property. Ignoring that target.")
      set(${res_var} FALSE PARENT_SCOPE)
@@ -103,14 +103,15 @@ endfunction()
 # the GDAL_IMPORT_DEPENDENCIES string.
 macro (gdal_check_package name purpose)
   set(_options CONFIG CAN_DISABLE RECOMMENDED DISABLED_BY_DEFAULT ALWAYS_ON_WHEN_FOUND)
-  set(_oneValueArgs VERSION NAMES)
+  set(_oneValueArgs VERSION NAMES MINIMUM_VERSION)
   set(_multiValueArgs COMPONENTS TARGETS PATHS)
   cmake_parse_arguments(_GCP "${_options}" "${_oneValueArgs}" "${_multiValueArgs}" ${ARGN})
   string(TOUPPER ${name} key)
   set(_find_dependency "")
   set(_find_dependency_args "")
-  find_package2(${name} QUIET OUT_DEPENDENCY _find_dependency)
-  if (NOT DEFINED ${key}_FOUND)
+  if(FIND_PACKAGE2_${name}_ENABLED)
+    find_package2(${name} QUIET OUT_DEPENDENCY _find_dependency)
+  else()
     set(_find_package_args)
     if (_GCP_VERSION)
       list(APPEND _find_package_args ${_GCP_VERSION})
@@ -154,7 +155,30 @@ macro (gdal_check_package name purpose)
     endif ()
   endif ()
   if (${key}_FOUND OR ${name}_FOUND)
-    set(HAVE_${key} ON)
+    if(_GCP_MINIMUM_VERSION)
+
+      if( "${name}" STREQUAL "TileDB" AND NOT DEFINED TileDB_VERSION)
+        get_property(_dirs TARGET TileDB::tiledb_shared PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+        foreach(_dir IN LISTS _dirs)
+          set(TILEDB_VERSION_FILENAME "${_dir}/tiledb/tiledb_version.h")
+          if(EXISTS ${TILEDB_VERSION_FILENAME})
+            file(READ ${TILEDB_VERSION_FILENAME} _tiledb_version_contents)
+            string(REGEX REPLACE "^.*TILEDB_VERSION_MAJOR +([0-9]+).*$" "\\1" TILEDB_VERSION_MAJOR "${_tiledb_version_contents}")
+            string(REGEX REPLACE "^.*TILEDB_VERSION_MINOR +([0-9]+).*$" "\\1" TILEDB_VERSION_MINOR "${_tiledb_version_contents}")
+            set(TileDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}")
+          endif()
+        endforeach()
+      endif()
+
+      if( ${name}_VERSION VERSION_LESS ${_GCP_MINIMUM_VERSION})
+          message(WARNING "Ignoring ${name} because it is at version ${${name}_VERSION}, whereas the minimum version required is ${_GCP_MINIMUM_VERSION}")
+        set(HAVE_${key} OFF)
+      else()
+        set(HAVE_${key} ON)
+      endif()
+    else()
+      set(HAVE_${key} ON)
+    endif()
   else ()
     set(HAVE_${key} OFF)
   endif ()
@@ -246,7 +270,6 @@ endfunction ()
 # Custom find_package definitions
 
 define_find_package2(Crnlib crunch/crnlib.h crunch)
-define_find_package2(RASDAMAN rasdaman.hh raslib)
 
 if (WIN32)
   gdal_check_package(ODBC "Enable DB support through ODBC" CAN_DISABLE)
@@ -260,7 +283,7 @@ gdal_check_package(MSSQL_ODBC "MSSQL ODBC driver to enable bulk copy" CAN_DISABL
 gdal_check_package(MySQL "MySQL" CAN_DISABLE)
 
 # basic libraries
-gdal_check_package(CURL "Enable drivers to use web API" CAN_DISABLE)
+gdal_check_package(CURL "Enable drivers to use web API" CAN_DISABLE RECOMMENDED)
 
 gdal_check_package(Iconv "Character set recoding (used in GDAL portability library)" CAN_DISABLE)
 if (Iconv_FOUND)
@@ -285,6 +308,30 @@ if (Iconv_FOUND)
   else ()
     set(ICONV_CPP_CONST "const")
   endif ()
+
+  if (NOT CMAKE_CROSSCOMPILING)
+      include(CheckCXXSourceRuns)
+      set(ICONV_HAS_EXTRA_CHARSETS_CODE
+"#include <stdlib.h>
+#include <iconv.h>
+int main(){
+    iconv_t conv = iconv_open(\"UTF-8\", \"CP1251\");
+    if( conv != (iconv_t)-1 )
+    {
+        iconv_close(conv);
+        return 0;
+    }
+    return 1;
+}")
+      check_cxx_source_runs("${ICONV_HAS_EXTRA_CHARSETS_CODE}" ICONV_HAS_EXTRA_CHARSETS)
+      if (NOT ICONV_HAS_EXTRA_CHARSETS)
+          message(WARNING "ICONV is available but some character sets used by "
+                          "some drivers are not available. "
+                          "You may need to install an extra package "
+                          "(e.g. 'glibc-gconv-extra' on Fedora)")
+      endif()
+  endif()
+
   unset(ICONV_CONST_TEST_CODE)
   unset(_ICONV_SECOND_ARGUMENT_IS_NOT_CONST)
   unset(CMAKE_REQUIRED_INCLUDES)
@@ -369,6 +416,38 @@ if (GDAL_USE_JPEG AND (JPEG_LIBRARY MATCHES ".*turbojpeg\.(so|lib)"))
       "JPEG_LIBRARY should point to a library with libjpeg ABI, not TurboJPEG. See https://libjpeg-turbo.org/About/TurboJPEG for the difference"
     )
 endif ()
+if (TARGET JPEG::JPEG)
+  set(EXPECTED_JPEG_LIB_VERSION "" CACHE STRING "Expected libjpeg version number")
+  mark_as_advanced(GDAL_CHECK_PACKAGE_${name}_NAMES)
+  if (EXPECTED_JPEG_LIB_VERSION)
+    get_property(_jpeg_old_icd TARGET JPEG::JPEG PROPERTY INTERFACE_COMPILE_DEFINITIONS)
+    set_property(TARGET JPEG::JPEG PROPERTY
+                 INTERFACE_COMPILE_DEFINITIONS "${_jpeg_old_icd};EXPECTED_JPEG_LIB_VERSION=${EXPECTED_JPEG_LIB_VERSION}")
+  endif()
+
+  # Check for jpeg12_read_scanlines() which has been added in libjpeg-turbo 2.2
+  # for dual 8/12 bit mode.
+  include(CheckCSourceCompiles)
+  include(CMakePushCheckState)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_INCLUDES "${JPEG_INCLUDE_DIRS}")
+  set(CMAKE_REQUIRED_LIBRARIES "${JPEG_LIBRARIES}")
+  check_c_source_compiles(
+      "
+      #include <stddef.h>
+      #include <stdio.h>
+      #include \"jpeglib.h\"
+      int main()
+      {
+          jpeg_read_scanlines(0,0,0);
+          jpeg12_read_scanlines(0,0,0);
+          return 0;
+      }
+      "
+      HAVE_JPEGTURBO_DUAL_MODE_8_12)
+  cmake_pop_check_state()
+
+endif()
 gdal_internal_library(JPEG)
 
 gdal_check_package(GIF "GIF compression library (external)" CAN_DISABLE)
@@ -407,12 +486,14 @@ gdal_internal_library(QHULL)
 set(GDAL_USE_LIBCSF_INTERNAL ON)
 
 # Compression used by GTiff and MRF
-gdal_check_package(LERC "Enable LERC (external)" CAN_DISABLE RECOMMENDED)
-gdal_internal_library(LERC)
+if( NOT WORDS_BIGENDIAN )
+  gdal_check_package(LERC "Enable LERC (external)" CAN_DISABLE RECOMMENDED)
+  gdal_internal_library(LERC)
+endif()
 
-gdal_check_package(BRUNSLI "Enable BRUNSLI for JPEG packing in MRF" CAN_DISABLE RECOMMENDED)
+gdal_check_package(BRUNSLI "Enable BRUNSLI for JPEG packing in MRF" CAN_DISABLE)
 
-gdal_check_package(libQB3 "Enable QB3 compression in MRF" CONFIG CAN_DISABLE RECOMMENDED)
+gdal_check_package(libQB3 "Enable QB3 compression in MRF" CONFIG CAN_DISABLE)
 
 # Disable by default the use of external shapelib, as currently the SAOffset member that holds file offsets in it is a
 # 'unsigned long', hence 32 bit on 32 bit platforms, whereas we can handle DBFs file > 4 GB. Internal shapelib has not
@@ -449,6 +530,24 @@ if (SQLite3_FOUND)
   if (NOT DEFINED SQLite3_HAS_COLUMN_METADATA)
     message(FATAL_ERROR "missing SQLite3_HAS_COLUMN_METADATA")
   endif ()
+  if (NOT DEFINED SQLite3_HAS_MUTEX_ALLOC)
+    message(FATAL_ERROR "missing SQLite3_HAS_MUTEX_ALLOC")
+  endif ()
+  if (GDAL_USE_SQLITE3 AND NOT SQLite3_HAS_MUTEX_ALLOC)
+    if (NOT ACCEPT_MISSING_SQLITE3_MUTEX_ALLOC)
+      message(
+        FATAL_ERROR
+          "${SQLite3_LIBRARIES} lacks mutex support! Access to SQLite3 databases from multiple threads will be unsafe. Define the ACCEPT_MISSING_SQLITE3_MUTEX_ALLOC:BOOL=ON CMake variable if you want to build despite this limitation."
+        )
+    else ()
+      message(WARNING "${SQLite3_LIBRARIES} lacks the mutex extension! Access to SQLite3 databases from multiple threads will be unsafe")
+    endif ()
+  endif ()
+endif ()
+
+# Checks that SQLite3 has RTree support
+# Called by ogr/ogrsf_frmts/sqlite/CMakeLists.txt and ogr/ogrsf_frmts/gpkg/CMakeLists.txt
+function (check_sqlite3_rtree driver_name)
   if (NOT DEFINED SQLite3_HAS_RTREE)
     message(FATAL_ERROR "missing SQLite3_HAS_RTREE")
   endif ()
@@ -456,33 +555,16 @@ if (SQLite3_FOUND)
     if (NOT ACCEPT_MISSING_SQLITE3_RTREE)
       message(
         FATAL_ERROR
-          "${SQLite3_LIBRARIES} lacks the RTree extension! Spatialite and GPKG will not behave properly. Define ACCEPT_MISSING_SQLITE3_RTREE:BOOL=ON option if you want to build despite this limitation."
+          "${SQLite3_LIBRARIES} lacks the RTree extension! ${driver_name} will not behave properly. Define the ACCEPT_MISSING_SQLITE3_RTREE:BOOL=ON CMake variable if you want to build despite this limitation."
         )
     else ()
-      message(WARNING "${SQLite3_LIBRARIES} lacks the RTree extension! Spatialite and GPKG will not behave properly.")
+      message(WARNING "${SQLite3_LIBRARIES} lacks the RTree extension! ${driver_name} will not behave properly.")
     endif ()
   endif ()
-endif ()
+endfunction()
 
-gdal_check_package(SPATIALITE "Enable spatialite support for sqlite3" CAN_DISABLE)
-gdal_check_package(RASTERLITE2 "Enable RasterLite2 support for sqlite3" CAN_DISABLE)
-
-set(HAVE_RASTERLITE2 ${RASTERLITE2_FOUND})
-if (RASTERLITE2_FOUND AND NOT RASTERLITE2_VERSION_STRING STREQUAL "unknown")
-  if (NOT RASTERLITE2_VERSION_STRING VERSION_GREATER_EQUAL 1.1.0)
-    message(STATUS "Rasterlite2 requires version 1.1.0 and later, detected: ${RASTERLITE2_VERSION_STRING}")
-    message(STATUS "Turn off rasterlite2 support")
-    set(HAVE_RASTERLITE2
-        OFF
-        CACHE INTERNAL "HAVE_RASTERLITE2")
-  endif ()
-endif ()
-if (GDAL_USE_RASTERLITE2)
-  if (NOT HAVE_RASTERLITE2)
-    message(FATAL_ERROR "Configured to use GDAL_USE_RASTERLITE2, but not found")
-  endif ()
-endif ()
-cmake_dependent_option(GDAL_USE_RASTERLITE2 "Set ON to use Rasterlite2" ON HAVE_RASTERLITE2 OFF)
+gdal_check_package(SPATIALITE "Enable spatialite support for sqlite3" VERSION 4.1.2 CAN_DISABLE)
+gdal_check_package(RASTERLITE2 "Enable RasterLite2 support for sqlite3" VERSION 1.1.0 CAN_DISABLE)
 
 find_package(LibKML COMPONENTS DOM ENGINE)
 if (GDAL_USE_LIBKML)
@@ -495,8 +577,15 @@ if (GDAL_USE_LIBKML)
   string(APPEND GDAL_IMPORT_DEPENDENCIES "find_dependency(LibKML COMPONENTS DOM ENGINE)\n")
 endif ()
 
-# CXX is only needed for KEA driver
-gdal_check_package(HDF5 "Enable HDF5" COMPONENTS "C" "CXX" CAN_DISABLE)
+define_find_package2(KEA libkea/KEACommon.h kea;libkea)
+gdal_check_package(KEA "Enable KEA driver" CAN_DISABLE)
+
+if(HAVE_KEA)
+    # CXX is only needed for KEA driver
+    gdal_check_package(HDF5 "Enable HDF5" COMPONENTS "C" "CXX" CAN_DISABLE)
+else()
+    gdal_check_package(HDF5 "Enable HDF5" COMPONENTS "C" CAN_DISABLE)
+endif()
 
 gdal_check_package(WebP "WebP compression" CAN_DISABLE)
 gdal_check_package(FreeXL "Enable XLS driver" CAN_DISABLE)
@@ -505,6 +594,8 @@ define_find_package2(GTA gta/gta.h gta PKGCONFIG_NAME gta)
 gdal_check_package(GTA "Enable GTA driver" CAN_DISABLE)
 
 gdal_check_package(MRSID "MrSID raster SDK" CAN_DISABLE)
+
+set(GDAL_USE_ARMADILLO_OLD ${GDAL_USE_ARMADILLO})
 gdal_check_package(Armadillo "C++ library for linear algebra (used for TPS transformation)" CAN_DISABLE)
 if (ARMADILLO_FOUND)
   # On Conda, the armadillo package has no dependency on lapack, but the later is required for successful linking. So
@@ -551,16 +642,43 @@ if (ARMADILLO_FOUND)
       cmake_pop_check_state()
     endif ()
   endif ()
-  if (NOT ARMADILLO_TEST_PROGRAM_WITHOUT_LAPACK_COMPILES AND NOT ARMADILLO_TEST_PROGRAM_WITH_LAPACK_COMPILES)
-    message(WARNING "Armadillo found, but test program does not build. Disabling it.")
+
+  if (GDAL_USE_ARMADILLO AND
+      NOT ARMADILLO_TEST_PROGRAM_WITHOUT_LAPACK_COMPILES AND
+      NOT ARMADILLO_TEST_PROGRAM_WITH_LAPACK_COMPILES)
     if (DEFINED ENV{CONDA_PREFIX})
-      message(
-        WARNING
-          "To enable Armadillo, you may need to install the following Conda-Forge packages: blas blas-devel libblas libcblas liblapack liblapacke"
-        )
+        if (GDAL_USE_ARMADILLO_OLD)
+          message(FATAL_ERROR
+              "Armadillo found, but test program does not build. To enable Armadillo, you may need to install the following Conda-Forge packages: blas blas-devel libblas libcblas liblapack liblapacke")
+        else()
+          message(WARNING
+              "Armadillo found, but test program does not build. Disabling it. To enable Armadillo, you may need to install the following Conda-Forge packages: blas blas-devel libblas libcblas liblapack liblapacke")
+        endif()
+    else ()
+        if (GDAL_USE_ARMADILLO_OLD)
+          message(FATAL_ERROR "Armadillo found, but test program does not build.")
+        else()
+          message(WARNING
+              "Armadillo found, but test program does not build. Disabling it.")
+        endif()
     endif ()
-    set(GDAL_USE_ARMADILLO CACHE BOOL OFF FORCE)
+    unset(GDAL_USE_ARMADILLO CACHE)
+    unset(GDAL_USE_ARMADILLO)
   endif ()
+
+  # LAPACK support required for arma::solve()
+  if (GDAL_USE_ARMADILLO AND EXISTS "${ARMADILLO_INCLUDE_DIRS}/armadillo_bits/config.hpp")
+      file(READ "${ARMADILLO_INCLUDE_DIRS}/armadillo_bits/config.hpp" armadillo_config)
+      if ("${armadillo_config}" MATCHES "/\\* #undef ARMA_USE_LAPACK")
+          if (GDAL_USE_ARMADILLO_OLD)
+              message(FATAL_ERROR "Armadillo build lacks LAPACK support")
+          else()
+              message(WARNING "Armadillo build lacks LAPACK support. Disabling it as it cannot be used by GDAL")
+          endif()
+          unset(GDAL_USE_ARMADILLO CACHE)
+          unset(GDAL_USE_ARMADILLO)
+      endif()
+  endif()
 
 endif ()
 
@@ -573,16 +691,12 @@ gdal_check_package(GEOS "Geometry Engine - Open Source (GDAL core dependency)" R
 )
 gdal_check_package(HDF4 "Enable HDF4 driver" CAN_DISABLE)
 
-define_find_package2(KEA libkea/KEACommon.h kea;libkea)
-gdal_check_package(KEA "Enable KEA driver" CAN_DISABLE)
-
 gdal_check_package(ECW "Enable ECW driver" CAN_DISABLE)
 gdal_check_package(NetCDF "Enable netCDF driver" CAN_DISABLE
   NAMES netCDF
   TARGETS netCDF::netcdf NETCDF::netCDF)
 gdal_check_package(OGDI "Enable ogr_OGDI driver" CAN_DISABLE)
-# OpenCL warping gives different results than the ones expected by autotest, so disable it by default even if found.
-gdal_check_package(OpenCL "Enable OpenCL (may be used for warping)" DISABLED_BY_DEFAULT)
+gdal_check_package(OpenCL "Enable OpenCL (may be used for warping)" CAN_DISABLE)
 
 set(PostgreSQL_ADDITIONAL_VERSIONS "14" CACHE STRING "Additional PostgreSQL versions to check")
 gdal_check_package(PostgreSQL "" CAN_DISABLE)
@@ -596,6 +710,9 @@ gdal_check_package(LibLZMA "LZMA compression" CAN_DISABLE)
 gdal_check_package(LZ4 "LZ4 compression" CAN_DISABLE)
 gdal_check_package(Blosc "Blosc compression" CAN_DISABLE)
 
+define_find_package2(ARCHIVE archive.h archive)
+gdal_check_package(ARCHIVE "Multi-format archive and compression library library (used for /vsi7z/" CAN_DISABLE)
+
 define_find_package2(JXL jxl/decode.h jxl PKGCONFIG_NAME libjxl)
 gdal_check_package(JXL "JPEG-XL compression" CAN_DISABLE)
 
@@ -604,12 +721,11 @@ gdal_check_package(JXL_THREADS "JPEG-XL threading" CAN_DISABLE)
 
 # unused for now gdal_check_package(OpenMP "")
 gdal_check_package(Crnlib "enable gdal_DDS driver" CAN_DISABLE)
+gdal_check_package(basisu "Enable BASISU driver" CONFIG CAN_DISABLE)
 gdal_check_package(IDB "enable ogr_IDB driver" CAN_DISABLE)
-gdal_check_package(OpenDrive "enable ogr_OpenDrive driver" CAN_DISABLE)
-# TODO: implement FindRASDAMAN libs: -lrasodmg -lclientcomm -lcompression -lnetwork -lraslib
-gdal_check_package(RASDAMAN "enable rasdaman driver" CAN_DISABLE)
 gdal_check_package(rdb "enable RIEGL RDB library" CONFIG CAN_DISABLE)
-gdal_check_package(TileDB "enable TileDB driver" CONFIG CAN_DISABLE)
+gdal_check_package(TileDB "enable TileDB driver" CONFIG CAN_DISABLE MINIMUM_VERSION "2.7")
+
 gdal_check_package(OpenEXR "OpenEXR >=2.2" CAN_DISABLE)
 gdal_check_package(MONGOCXX "Enable MongoDBV3 driver" CAN_DISABLE)
 
@@ -658,21 +774,13 @@ if (Arrow_FOUND)
     if (Parquet_FOUND AND NOT ArrowDataset_FOUND)
         message(WARNING "Parquet library found, but not ArrowDataset: partitioned datasets will not be supported")
     endif()
+    option(ARROW_USE_STATIC_LIBRARIES "Use statically built Arrow libraries" OFF)
+    mark_as_advanced(ARROW_USE_STATIC_LIBRARIES)
 endif()
 
 # bindings
-gdal_check_package(SWIG "Enable language bindings" ALWAYS_ON_WHEN_FOUND)
-set_package_properties(
-  SWIG PROPERTIES
-  DESCRIPTION
-    "software development tool that connects programs written in C and C++ with a variety of high-level programming languages."
-  URL "http://swig.org/"
-  TYPE RECOMMENDED)
 
 # finding python in top of project because of common for autotest and bindings
-
-find_package(Perl)
-set_package_properties(Perl PROPERTIES PURPOSE "SWIG_PERL: Perl binding")
 
 find_package(JNI)
 find_package(Java COMPONENTS Runtime Development)

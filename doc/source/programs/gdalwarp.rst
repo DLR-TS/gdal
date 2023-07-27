@@ -16,12 +16,14 @@ Synopsis
 .. code-block::
 
     gdalwarp [--help-general] [--formats]
-        [-s_srs srs_def] [-t_srs srs_def] [-ct string] [-to "NAME=VALUE"]* [-vshift | -novshift]
+        [-b|-srcband n]* [-dstband n]*
+        [-s_srs srs_def] [-t_srs srs_def] [-ct string]
+        [-to "NAME=VALUE"]* [-vshift | -novshift]
         [[-s_coord_epoch epoch] | [-t_coord_epoch epoch]]
         [-order n | -tps | -rpc | -geoloc] [-et err_threshold]
         [-refine_gcps tolerance [minimum_gcps]]
         [-te xmin ymin xmax ymax] [-te_srs srs_def]
-        [-tr xres yres] [-tap] [-ts width height]
+        [-tr xres yres]|[-tr square] [-tap] [-ts width height]
         [-ovr level|AUTO|AUTO-n|NONE] [-wo "NAME=VALUE"] [-ot Byte/Int16/...] [-wt Byte/Int16]
         [-srcnodata "value [value...]"] [-dstnodata "value [value...]"]
         [-srcalpha|-nosrcalpha] [-dstalpha]
@@ -42,6 +44,62 @@ and can also apply GCPs stored with the image if the image is "raw"
 with control information.
 
 .. program:: gdalwarp
+
+.. option:: -b <n>
+
+.. option:: -srcband <n>
+
+    .. versionadded:: 3.7
+
+    Specify an input band number to warp (between 1 and the number of bands
+    of the source dataset).
+
+    This option is used to warp a subset of the input bands. All input bands
+    are used when it is not specified.
+
+    This option may be repeated multiple times to select several input bands.
+    The order in which bands are specified will be the order in which they
+    appear in the output dataset (unless :option:`-dstband` is specified).
+
+    The alpha band should not be specified in the list, as it will be
+    automatically retrieved (unless :option:`-nosrcalpha` is specified).
+
+    The following invocation will warp an input datasets with bands ordered as
+    Blue, Green, Red, NearInfraRed in an output dataset with bands ordered as
+    Red, Green, Blue.
+
+    ::
+
+        gdalwarp in_bgrn.tif out_rgb.tif -b 3 -b 2 -b 1 -overwrite
+
+
+.. option:: -dstband <n>
+
+    .. versionadded:: 3.7
+
+    Specify the output band number in which to warp. In practice, this option
+    is only useful when updating an existing dataset, e.g to warp one band at
+    at time.
+
+    ::
+
+        gdal_create -if in_red.tif -bands 3 out_rgb.tif
+        gdalwarp in_red.tif out_rgb.tif -srcband 1 -dstband 1
+        gdalwarp in_green.tif out_rgb.tif -srcband 1 -dstband 2
+        gdalwarp in_blue.tif out_rgb.tif -srcband 1 -dstband 3
+
+
+    If :option:`-srcband` is specified, there must be as many occurrences of
+    :option:`-dstband` as there are of :option:`-srcband`.
+
+    The output alpha band should not be specified, as it will be automatically
+    created if the input dataset has an alpha band, or if :option:`-dstalpha`
+    is specified.
+
+    If :option:`-dstband` is not specified, then
+    ``-dstband 1 -dstband 2 ... -dstband N`` is assumed where N is the number
+    of input bands (specified explicitly either with :option:`-srcband` or
+    implicitly)
 
 .. option:: -s_srs <srs def>
 
@@ -162,19 +220,27 @@ with control information.
     dataset. :option:`-te_srs` is a convenience e.g. when knowing the output coordinates in a
     geodetic long/lat SRS, but still wanting a result in a projected coordinate system.
 
-.. option:: -tr <xres> <yres>
+.. option:: -tr <xres> <yres> | -tr square
 
     Set output file resolution (in target georeferenced units).
 
-    If not specified (or not deduced from -te and -ts), gdalwarp will generate
-    an output raster with xres=yres, and that even when using gdalwarp in scenarios
-    not involving reprojection.
+    If not specified (or not deduced from -te and -ts), gdalwarp will, in the
+    general case, generate an output raster with xres=yres.
+
+    Starting with GDAL 3.7, if neither :option:`-tr` nor :option:`-ts` are specified,
+    that no reprojection is involved (including taking into account geolocation arrays
+    or RPC), the resolution of the source file(s) will be preserved (in previous
+    version, an output raster with xres=yres was always generated).
+    It is possible to ask square pixels to still be generated, by specifying
+    ``square`` as the value for :option:`-tr`.
 
 .. option:: -tap
 
     (target aligned pixels) align the coordinates of the extent of the output
     file to the values of the :option:`-tr`, such that the aligned extent
-    includes the minimum extent. Alignment means that xmin / resx, ymin / resy,
+    includes the minimum extent (edges lines/columns that are detected as
+    blank, before actual warping, will be removed starting with GDAL 3.8).
+    Alignment means that xmin / resx, ymin / resy,
     xmax / resx and ymax / resy are integer values.
 
 .. option:: -ts <width> <height>
@@ -238,12 +304,25 @@ with control information.
 
     ``sum``: compute the weighted sum of all non-NODATA contributing pixels (since GDAL 3.1)
 
+    .. note::
+
+        When downsampling is performed (use of :option:`-tr` or :option:`-ts`), existing
+        overviews (either internal/implicit or external ones) on the source image
+        will be used by default by selecting the closest overview to the desired output
+        resolution.
+        The resampling method used to create those overviews is generally not the one you
+        specify through the :option:`-r` option. Some formats, like JPEG2000, can contain
+        significant outliers due to wavelet compression works. It might thus be useful in
+        those situations to use the :option:`-ovr` ``NONE`` option to prevent existing overviews to
+        be used.
+
 .. option:: -srcnodata <value [value...]>
 
     Set nodata masking values for input bands (different values can be supplied
     for each band). If more than one value is supplied all values should be quoted
     to keep them together as a single operating system argument.
-    Masked values will not be used in interpolation.
+    Masked values will not be used in interpolation (details given in :ref:`gdalwarp_nodata`)
+
     Use a value of ``None`` to ignore intrinsic nodata settings on the source dataset.
 
     When this option is set to a non-``None`` value, it causes the ``UNIFIED_SRC_NODATA``
@@ -286,6 +365,15 @@ with control information.
     warp API is allowed to use for caching. The value is interpreted as being
     in megabytes if the value is less than 10000. For values >=10000, this is
     interpreted as bytes.
+
+    The warper will total up the memory required to hold the input and output
+    image arrays and any auxiliary masking arrays and if they are larger than
+    the "warp memory" allowed it will subdivide the chunk into smaller chunks
+    and try again.
+
+    If the -wm value is very small there is some extra overhead in doing many
+    small chunks so setting it larger is better but it is a matter of
+    diminishing returns.
 
 .. option:: -multi
 
@@ -387,6 +475,167 @@ Starting with GDAL 3.1, it is possible to use as output format a driver that
 only supports the CreateCopy operation. This may internally imply creation of
 a temporary file.
 
+.. _gdalwarp_nodata:
+
+Nodata / source validity mask handling
+--------------------------------------
+
+Invalid values in source pixels, either identified through a nodata value
+metadata set on the source band, a mask band, an alpha band or the use of
+:option:`-srcnodata` will not be used in interpolation.
+The details of how it is taken into account depends on the resampling kernel:
+
+- for nearest resampling, for each target pixel, the coordinate of its center
+  is projected back to source coordinates and the source pixel containing that
+  coordinate is identified. If this source pixel is invalid, the target pixel
+  is considered as nodata.
+
+- for bilinear, cubic, cubicspline and lanczos, for each target pixel, the
+  coordinate of its center is projected back to source coordinates and a
+  corresponding source pixel is identified. If this source pixel is invalid, the
+  target pixel is considered as nodata.
+  Given that those resampling kernels have a non-null kernel radius, this source
+  pixel is just one among other several source pixels, and it might be possible
+  that there are invalid values in those other contributing source pixels.
+  The weights used to take into account those invalid values will be set to zero
+  to ignore them.
+
+- for the other resampling methods, source pixels contributing to the target pixel
+  are ignored if invalid. Only the valid ones are taken into account. If there are
+  none, the target pixel is considered as nodata.
+
+If using :option:`-srcnodata` for multiple images with different invalid
+values, you need to either (a) pre-process them to have the same to-be-ignored
+value, or (b) set the nodata flag for each file. Use (b) if you need to preserve
+the original values for some reason, for example:
+
+.. code-block:: bash
+
+   # for this image we want to ignore black (0)
+   gdalwarp -srcnodata 0 -dstnodata 0 orig-ignore-black.tif black-nodata.tif
+
+   # and now we want to ignore white (0)
+   gdalwarp -srcnodata 255 -dstnodata 255 orig-ignore-white.tif white-nodata.tif
+
+   # and finally ignore a particular blue-grey (RGB 125 125 150)
+   gdalwarp -srcnodata "125 125 150" -dstnodata "125 125 150" orig-ignore-grey.tif grey-nodata.tif
+
+   # now we can mosaic them all and not worry about nodata parameters
+   gdalwarp black-nodata.tif grey-nodata.tif white-nodata.tif final-mosaic.tif
+
+
+Approximate transformation
+--------------------------
+
+By default :program:`gdalwarp` uses a linear approximator for the
+transformations with a permitted error of 0.125 pixels. The approximator
+basically transforms three points on a scanline: the start, end and middle.
+Then it compares the linear approximation of the center based on the end points
+to the real thing and checks the error. If the error is less than the error
+threshold then the remaining points are approximated (in two chunks utilizing
+the center point). If the error exceeds the threshold, the scanline is split
+into two sections, and the approximator is recursively applied to each section
+until the error is less than the threshold or all points have been exactly
+computed.
+
+The error threshold (in pixels) can be controlled with the gdalwarp
+:option:`-et` switch. If you want to compare a true pixel-by-pixel reprojection
+use :option:`-et 0` which disables this approximator entirely.
+
+
+Memory usage
+------------
+
+Adding RAM will almost certainly increase the speed of :program:`gdalwarp`.
+That's not at all the same as saying that it is worth it, or that the speed
+increase will be significant. Disks are the slowest part of the process.  By
+default :program:`gdalwarp` won't take much advantage of RAM. Using the flag
+:option:`-wm 500` will operate on 500MB chunks at a time which is better than
+the default. The warp memory specified by :option:`-wm` is shared among all
+threads, so it is especially beneficial to increase this value when running
+:program:`gdalwarp` with :option:`-wo NUM_THREADS` (or its equivalent
+:config:`GDAL_NUM_THREADS`) greater than 1.
+
+Increasing the I/O block cache size may also help. This can be done by
+setting the :config:`GDAL_CACHEMAX` configuration like:
+
+.. code-block:: bash
+
+   gdalwarp --config GDAL_CACHEMAX 500 -wm 500 ...
+
+This uses 500MB of RAM for read/write caching, and 500MB of RAM for working
+buffers during the warp. Beyond that it is doubtful more memory will make a
+substantial difference.
+
+Check CPU usage while :program:`gdalwarp` is running. If it is substantially
+less than 100% then you know things are IO bound. Otherwise they are CPU bound.
+The ``--debug`` option may also provide useful information. For instance, after
+running the following:
+
+.. code-block::
+
+   gdalwarp --debug on abc.tif def.tif
+
+a message like the following will be output:
+
+::
+
+  GDAL: 224 block reads on 32 block band 1 of utm.tif
+
+In this case it is saying that band 1 of :file:`utm.tif` has 32 blocks, but
+that 224 block reads were done, implying that lots of data was having to be
+re-read, presumably because of a limited IO cache. You will also see messages
+like:
+
+::
+
+   GDAL: GDALWarpKernel()::GWKNearestNoMasksByte()
+   Src=0,0,512x512 Dst=0,0,512x512
+
+The Src/Dst windows show you the "chunk size" being used. In this case my whole
+image which is very small. If you find things are being broken into a lot of
+chunks increasing :option:`-wm` may help somewhat.
+
+But far more important than memory are ensuring you are going through an
+optimized path in the warper. If you ever see it reporting
+``GDALWarpKernel()::GWKGeneralCase()`` you know things will be relatively slow.
+Basically, the fastest situations are nearest neighbour resampling on 8bit data
+without nodata or alpha masking in effect.
+
+
+Compressed output
+-----------------
+
+In some cases, the output of :program:`gdalwarp` may be much larger than the
+original, even if the same compression algorithm is used. By default,
+:program:`gdalwarp` operates on chunks that are not necessarily aligned with
+the boundaries of the blocks/tiles/strips of the output format, so this might
+cause repeated compression/decompression of partial blocks, leading to lost
+space in the output format.
+
+The situation can be improved by using the ``OPTIMIZE_SIZE`` warping option
+(:option:`-wo OPTIMIZE_SIZE=YES`), but note that depending on the source and
+target projections, it might also significantly slow down the warping process.
+
+Another possibility is to use :program:`gdalwarp` without compression and then
+follow up with :program:`gdal_translate` with compression:
+
+.. code-block:: bash
+
+   gdalwarp infile tempfile.tif ...options...
+   gdal_translate tempfile.tif outfile.tif -co compress=lzw ...etc.
+
+Alternatively, you can use a VRT file as the output format of :program:`gdalwarp`. The
+VRT file is just an XML file that will be created immediately. The
+:program:`gdal_translate` operations will be of course a bit slower as it will do the
+real warping operation.
+
+.. code-block:: bash
+
+   gdalwarp -of VRT infile tempfile.vrt ...options...
+   gdal_translate tempfile.vrt outfile.tif -co compress=lzw ...etc.
+
+
 Examples
 --------
 
@@ -435,6 +684,12 @@ where cutline.csv content is like:
 ::
 
     gdalwarp -overwrite in_dem.tif out_dem.tif -s_srs EPSG:4326+5773 -t_srs EPSG:4979
+
+
+C API
+-----
+
+This utility is also callable from C with :cpp:func:`GDALWarp`.
 
 
 See also

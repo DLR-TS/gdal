@@ -1,14 +1,15 @@
 .. _vector.openfilegdb:
 
-ESRI File Geodatabase (OpenFileGDB)
-===================================
+ESRI File Geodatabase vector (OpenFileGDB)
+==========================================
 
 .. shortname:: OpenFileGDB
 
 .. built_in_by_default::
 
 The OpenFileGDB driver provides read, write and update access to vector layers of File
-Geodatabases (.gdb directories) created by ArcGIS 9 and above. The
+Geodatabases (.gdb directories) created by ArcGIS 10 and above (it has also
+read-only support for ArcGIS 9.x geodatabases). The
 dataset name must be the directory/folder name, and it must end with the
 .gdb extension.
 
@@ -21,6 +22,8 @@ directly.
 Curve in geometries are supported with GDAL >= 2.2.
 
 Write and update capabilities are supported since GDAL >= 3.6
+
+The driver also supports :ref:`raster layers<raster.openfilegdb>` since GDAL 3.7
 
 Driver capabilities
 -------------------
@@ -45,7 +48,7 @@ default, it also builds on the fly a in-memory spatial index during
 the first sequential read of a layer. Following spatial filtering
 operations on that layer will then benefit from that spatial index. The
 building of this in-memory spatial index can be disabled by setting the
-:decl_configoption:`OPENFILEGDB_IN_MEMORY_SPI` configuration option to NO.
+:config:`OPENFILEGDB_IN_MEMORY_SPI` configuration option to NO.
 
 SQL support
 -----------
@@ -64,7 +67,7 @@ Geodatabases created with ArcGIS 10 or above)
 
 The "CREATE INDEX idx_name ON layer_name(field_name)" SQL request can be
 used to create an attribute index. idx_name must have 16 characters or less,
-start with a letter and contain only alpha-numeric characters or underscore.
+start with a letter and contain only alphanumeric characters or underscore.
 
 The "RECOMPUTE EXTENT ON layer_name" SQL request can be used to trigger
 an update of the layer extent in layer metadata. This is useful when updating
@@ -76,11 +79,28 @@ compact the whole database or a given layer. This is useful when doing editions
 command causes the .gdbtable to be rewritten without holes. Note that compaction
 does not involve extent recomputation.
 
+Configuration options
+---------------------
+
+The following :ref:`configuration options <configoptions>` are
+available:
+
+-  .. config:: OPENFILEGDB_IN_MEMORY_SPI
+      :choices: YES, NO
+
+      If ``YES``, an in-memory spatial index will be built instead of
+      using the native spatial index. See `Spatial filtering`_.
+
+
 Dataset open options
 --------------------
 
--  **LIST_ALL_TABLES**\ =YES/NO: This may be "YES" to force all tables,
-   including system and internal tables (such as the GDB_* tables) to be listed (since GDAL 3.4)
+-  .. dsco:: LIST_ALL_TABLES
+      :choices: YES, NO
+      :since: 3.4
+
+      This may be "YES" to force all tables,
+      including system and internal tables (such as the GDB_* tables) to be listed
 
 Dataset Creation Options
 ------------------------
@@ -90,16 +110,35 @@ None.
 Layer Creation Options
 ----------------------
 
--  **FEATURE_DATASET**\=string: When this option is set, the new layer will be
-   created inside the named FeatureDataset folder. If the folder does
-   not already exist, it will be created.
--  **LAYER_ALIAS**\=string: Set layer name alias.
--  **GEOMETRY_NAME**\=string: Set name of geometry column in new layer. Defaults
-   to "SHAPE".
--  **GEOMETRY_NULLABLE**\=YES/NO: Whether the values of the
-   geometry column can be NULL. Can be set to NO so that geometry is
-   required. Default to "YES"
--  **FID**: Name of the OID column to create. Defaults to "OBJECTID".
+-  .. lco:: FEATURE_DATASET
+      :choices: <string>
+
+      When this option is set, the new layer will be
+      created inside the named FeatureDataset folder. If the folder does
+      not already exist, it will be created.
+
+-  .. lco:: LAYER_ALIAS
+
+      Set layer name alias.
+
+-  .. lco:: GEOMETRY_NAME
+      :default: SHAPE
+
+      Set name of geometry column in new layer.
+
+-  .. lco:: GEOMETRY_NULLABLE
+      :choices: YES, NO
+      :default: YES
+
+      Whether the values of the
+      geometry column can be NULL. Can be set to NO so that geometry is
+      required.
+
+-  .. lco:: FID
+      :default: OBJECTID
+
+      Name of the OID column to create.
+
 -  **XYTOLERANCE, ZTOLERANCE, MTOLERANCE**\=value: These parameters control the snapping
    tolerance used for advanced ArcGIS features like network and topology
    rules. They won't effect any OGR operations, but they will by used by
@@ -139,24 +178,34 @@ Layer Creation Options
    -  ZORIGIN and MORIGIN: -100000
    -  ZSCALE and MSCALE: 10000
 
--  **COLUMN_TYPES**\=string. A list of strings of format field_name=fgdb_filed_type
-   (separated by comma) to force the FileGDB column type of fields to be created.
+-  .. lco:: COLUMN_TYPES
 
--  **DOCUMENTATION**\=string. XML documentation for the layer.
+      A list of strings of format field_name=fgdb_field_type
+      (separated by comma) to force the FileGDB column type of fields to be created.
 
--  **CONFIGURATION_KEYWORD**\=DEFAULTS/MAX_FILE_SIZE_4GB/MAX_FILE_SIZE_256TB:
-   Customize how data is stored. By default text in UTF-8 and data up to 1TB
+-  .. lco:: DOCUMENTATION
+      :choices: <string>
 
--  **CREATE_SHAPE_AREA_AND_LENGTH_FIELDS**\=YES/NO.
-   Defaults to NO (through CreateLayer() API). When this option is set,
-   a Shape_Area and Shape_Length special fields will be created for polygonal
-   layers (Shape_Length only for linear layers). These fields will automatically
-   be populated with the feature's area or length whenever a new feature is
-   added to the dataset or an existing feature is amended.
-   When using ogr2ogr with a source layer that has Shape_Area/Shape_Length
-   special fields, and this option is not explicitly specified, it will be
-   automatically set, so that the resulting FileGeodatabase has those fields
-   properly tagged.
+      XML documentation for the layer.
+
+-  .. lco:: CONFIGURATION_KEYWORD
+      :choices: DEFAULTS, MAX_FILE_SIZE_4GB, MAX_FILE_SIZE_256TB
+
+      Customize how data is stored. By default text in UTF-8 and data up to 1TB
+
+-  .. lco:: CREATE_SHAPE_AREA_AND_LENGTH_FIELDS
+      :choices: YES, NO
+      :default: NO
+
+      When this option is set,
+      a Shape_Area and Shape_Length special fields will be created for polygonal
+      layers (Shape_Length only for linear layers). These fields will automatically
+      be populated with the feature's area or length whenever a new feature is
+      added to the dataset or an existing feature is amended.
+      When using ogr2ogr with a source layer that has Shape_Area/Shape_Length
+      special fields, and this option is not explicitly specified, it will be
+      automatically set, so that the resulting FileGeodatabase has those fields
+      properly tagged.
 
 Field domains
 -------------
@@ -165,12 +214,19 @@ Field domains
 
 Coded and range field domains are supported.
 
+Relationships
+-------------
+
+.. versionadded:: 3.6
+
+Relationship retrieval, creation, deletion and updating is supported.
+
 Hiearchical organization
 ------------------------
 
 .. versionadded:: 3.4
 
-The hiearchical organization of tables and feature classes as top-level
+The hierarchical organization of tables and feature classes as top-level
 element or within a feature dataset can be explored using the methods
 :cpp:func:`GDALDataset::GetRootGroup`,
 :cpp:func:`GDALGroup::GetGroupNames`, :cpp:func:`GDALGroup::OpenGroup`,
@@ -235,6 +291,7 @@ Examples
 Links
 -----
 
+-  :ref:`OpenFileGDB raster <raster.openfilegdb>` documentation page
 -  :ref:`FileGDB driver <vector.filegdb>`, relying on the FileGDB API SDK
 -  Reverse-engineered specification of the `FileGDB
    format <https://github.com/rouault/dump_gdbtable/wiki/FGDB-Spec>`__

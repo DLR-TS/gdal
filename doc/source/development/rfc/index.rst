@@ -93,3 +93,11 @@ RFC list
     rfc84_cmake
     rfc85_policy_code_additions
     rfc86_column_oriented_api
+    rfc87_signed_int8
+    rfc88_googletest
+    rfc89_sql_logging_callback
+    rfc90_read_compressed_data
+    rfc91_dataset_close
+    rfc92_wkb_only_geometries
+    rfc93_update_feature
+    rfc94_field_precision_width_metadata

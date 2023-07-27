@@ -13,14 +13,60 @@ Download
 Current Release
 ------------------------------------------------------------------------------
 
+* **2023-05-10** `gdal-3.7.0.tar.gz`_ `3.7.0 Release Notes`_ (`3.7.0 md5`_)
+
+.. _`3.7.0 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.7.0/NEWS.md
+.. _`gdal-3.7.0.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.7.0/gdal-3.7.0.tar.gz
+.. _`3.7.0 md5`: https://github.com/OSGeo/gdal/releases/download/v3.7.0/gdal-3.7.0.tar.gz.md5
+
+Past Releases
+------------------------------------------------------------------------------
+
+* **2023-04-21** `gdal-3.6.4.tar.gz`_ `3.6.4 Release Notes`_ (`3.6.4 md5`_)
+
+.. _`3.6.4 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.6.4/NEWS.md
+.. _`gdal-3.6.4.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.6.4/gdal-3.6.4.tar.gz
+.. _`3.6.4 md5`: https://github.com/OSGeo/gdal/releases/download/v3.6.4/gdal-3.6.4.tar.gz.md5
+
+* **2023-03-13** `gdal-3.6.3.tar.gz`_ `3.6.3 Release Notes`_ (`3.6.3 md5`_)
+
+.. _`3.6.3 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.6.3/NEWS.md
+.. _`gdal-3.6.3.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.6.3/gdal-3.6.3.tar.gz
+.. _`3.6.3 md5`: https://github.com/OSGeo/gdal/releases/download/v3.6.3/gdal-3.6.3.tar.gz.md5
+
+* **2023-01-05** `gdal-3.6.2.tar.gz`_ `3.6.2 Release Notes`_ (`3.6.2 md5`_)
+
+.. _`3.6.2 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.6.2/NEWS.md
+.. _`gdal-3.6.2.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.6.2/gdal-3.6.2.tar.gz
+.. _`3.6.2 md5`: https://github.com/OSGeo/gdal/releases/download/v3.6.2/gdal-3.6.2.tar.gz.md5
+
+* **2022-12-11** `gdal-3.6.1.tar.gz`_ `3.6.1 Release Notes`_ (`3.6.1 md5`_)
+
+.. _`3.6.1 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.6.1/NEWS.md
+.. _`gdal-3.6.1.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.6.1/gdal-3.6.1.tar.gz
+.. _`3.6.1 md5`: https://github.com/OSGeo/gdal/releases/download/v3.6.1/gdal-3.6.1.tar.gz.md5
+
+* **2022-11-06** `3.6.0 Release Notes`_ *Warning*: this version has been official retracted and superseded per 3.6.1
+
+.. _`3.6.0 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.6.0/NEWS.md
+
+* **2022-10-21** `gdal-3.5.3.tar.gz`_ `3.5.3 Release Notes`_ (`3.5.3 md5`_)
+
+.. _`3.5.3 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.5.3/NEWS.md
+.. _`gdal-3.5.3.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.5.3/gdal-3.5.3.tar.gz
+.. _`3.5.3 md5`: https://github.com/OSGeo/gdal/releases/download/v3.5.3/gdal-3.5.3.tar.gz.md5
+
+* **2022-09-12** `gdal-3.5.2.tar.gz`_ `3.5.2 Release Notes`_ (`3.5.2 md5`_)
+
+.. _`3.5.2 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.5.2/NEWS.md
+.. _`gdal-3.5.2.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.5.2/gdal-3.5.2.tar.gz
+.. _`3.5.2 md5`: https://github.com/OSGeo/gdal/releases/download/v3.5.2/gdal-3.5.2.tar.gz.md5
+
 * **2022-07-06** `gdal-3.5.1.tar.gz`_ `3.5.1 Release Notes`_ (`3.5.1 md5`_)
 
 .. _`3.5.1 Release Notes`: https://github.com/OSGeo/gdal/blob/v3.5.1/NEWS.md
 .. _`gdal-3.5.1.tar.gz`: https://github.com/OSGeo/gdal/releases/download/v3.5.1/gdal-3.5.1.tar.gz
 .. _`3.5.1 md5`: https://github.com/OSGeo/gdal/releases/download/v3.5.1/gdal-3.5.1.tar.gz.md5
-
-Past Releases
-------------------------------------------------------------------------------
 
 * **2022-05-13** `gdal-3.5.0.tar.gz`_ `3.5.0 Release Notes`_ (`3.5.0 md5`_)
 
@@ -180,7 +226,7 @@ Past Releases
 Development Source
 ------------------------------------------------------------------------------
 
-The main repository for GDAL is located on github at
+The main repository for GDAL is located on GitHub at
 https://github.com/OSGeo/GDAL.
 
 You can obtain a copy of the active source code by issuing the following
@@ -191,30 +237,17 @@ command
     git clone https://github.com/OSGeo/GDAL.git
 
 
-Build requirements
-..................
-
-To build GDAL 3 or later, you need *at a minimum* a C++11 compatible compiler, and
-`PROJ 6 or later <https://proj.org>`_.
-This will only give you a minimum build which will lack a lot of drivers.
-Consult :ref:`raster_drivers` and :ref:`vector_drivers` pages for additional optional
-dependencies.
-
-
-Build instructions
-..................
-
-See https://trac.osgeo.org/gdal/wiki/BuildHints for hints for existing
-autoconf and nmake build systems.
-
-From GDAL 3.5, an *experimental* :ref:`CMake-based build <build_hints>` is available.
-
+Additional information is available about :ref:`build_requirements` and :ref:`building_from_source`.
 
 Binaries
 ------------------------------------------------------------------------------
 
 In this section we list a number of the binary distributions of GDAL
 all of which should have fully reproducible open source build recipes.
+
+Note that the maintainers of those distributions are generally not the maintainers
+of the GDAL sources, so please report any issue specific to those builds through
+their own support channels.
 
 Windows
 ................................................................................
@@ -257,16 +290,85 @@ available at https://anaconda.org/conda-forge/gdal.
     conda install -c conda-forge gdal
 
 
+To install the Arrow and Parquet drivers as plugins:
+
+::
+
+    conda install -c conda-forge libgdal-arrow-parquet
+
+
+GDAL master Conda builds
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+GDAL master builds are available in the `gdal-master <https://anaconda.org/gdal-master/gdal>`__
+channel. They are based on dependencies from the ``conda-forge`` channel.
+
+First create a dedicated ``gdal_master_env`` environment, activate it and install
+the ``mamba`` package manager.
+
+::
+
+    conda update -n base -c conda-forge conda
+    conda create --name gdal_master_env
+    conda activate gdal_master_env
+    conda install -c conda-forge mamba
+
+Then install GDAL from the ``gdal-master`` channel:
+
+::
+
+    mamba install -c gdal-master gdal
+    mamba install -c gdal-master libgdal-arrow-parquet # if you need the Arrow and Parquet drivers
+
+
+Vcpkg
+................................................................................
+
+The gdal port in vcpkg is kept up to date by Microsoft team members and community contributors.
+The url of vcpkg is: https://github.com/Microsoft/vcpkg .
+You can download and install gdal using the vcpkg dependency manager:
+
+::
+
+    git clone https://github.com/Microsoft/vcpkg.git
+    cd vcpkg
+    ./bootstrap-vcpkg.sh  # ./bootstrap-vcpkg.bat for Windows
+    ./vcpkg integrate install
+    ./vcpkg install gdal
+
+If the version is out of date, please `create an issue or pull request <https://github.com/Microsoft/vcpkg>`__ on the vcpkg repository.
+
+Spack
+................................................................................
+
+Spack is a package management tool designed to support multiple versions and
+configurations of software on a wide variety of platforms and environments.
+It was designed for large supercomputing centers. Spack builds packages from
+sources, and allows tweaking their configurations.
+
+You can find information about GDAL in Spack at
+https://spack.readthedocs.io/en/latest/package_list.html#gdal
+
+For the default GDAL build with a reduced number of drivers:
+
+::
+
+    git clone -c feature.manyFiles=true https://github.com/spack/spack.git
+    cd spack/bin
+    ./spack install gdal
+
+For a build with netcdf driver enabled:
+
+::
+
+    ./spack install gdal +netcdf
+
+
 Linux Docker images
 ................................................................................
 
 Images with nightly builds of GDAL master and tagged releases are available at
-`Docker Hub <https://hub.docker.com/r/osgeo/gdal/tags>`_
+`GitHub Container registry <https://github.com/OSGeo/gdal/pkgs/container/gdal>`_
 
 Information on the content of the different configurations can be found at
 `https://github.com/OSGeo/gdal/tree/master/docker <https://github.com/OSGeo/gdal/tree/master/docker>`_
-
-.. toctree::
-   :maxdepth: 0
-
-   build_hints

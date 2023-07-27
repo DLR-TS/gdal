@@ -34,6 +34,8 @@ The coordinate system returned by :cpp:func:`GDALDataset::GetProjectionRef` desc
 
 Note that a returned coordinate system strings of "" indicates nothing is known about the georeferencing coordinate system.
 
+.. _raster_data_model_geotransform:
+
 Affine GeoTransform
 -------------------
 
@@ -146,7 +148,11 @@ Currently the following items are defined by :ref:`rfc-14` as having specific se
 - COMPRESSION: The compression type used for this dataset or band. There is no fixed catalog of compression type names, but where a given format includes a COMPRESSION creation option, the same list of values should be used here as there.
 - NBITS: The actual number of bits used for this band, or the bands of this dataset. Normally only present when the number of bits is non-standard for the datatype, such as when a 1 bit TIFF is represented through GDAL as GDT_Byte.
 - INTERLEAVE: This only applies on datasets, and the value should be one of PIXEL, LINE or BAND. It can be used as a data access hint.
-- PIXELTYPE: This may appear on a GDT_Byte band (or the corresponding dataset) and have the value SIGNEDBYTE to indicate the unsigned byte values between 128 and 255 should be interpreted as being values between -128 and -1 for applications that recognise the SIGNEDBYTE type.
+- PIXELTYPE: This may appear on a GDT_Byte band (or the corresponding dataset)
+  and have the value SIGNEDBYTE to indicate the unsigned byte values between
+  128 and 255 should be interpreted as being values between -128 and -1 for
+  applications that recognise the SIGNEDBYTE type.
+  Starting with GDAL 3.7, this metadata item is no longer used, as the Int8 data type is used for signed bytes.
 
 RPC Domain
 ++++++++++
@@ -196,10 +202,12 @@ A raster band is represented in GDAL with the :cpp:class:`GDALRasterBand` class.
 A raster band has the following properties:
 
 - A width and height in pixels and lines. This is the same as that defined for the dataset, if this is a full resolution band.
-- A datatype (GDALDataType). One of Byte, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, and the complex types CInt16, CInt32, CFloat32, and CFloat64.
+- A datatype (GDALDataType). One of Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, and the complex types CInt16, CInt32, CFloat32, and CFloat64.
 
   UInt64 and Int64 data types have been added in GDAL 3.5. Beyond reading and write pixel values, their support is limited.  Some algorithms might use 64-bit floating-point internally (warping), as well as some methods returning only double values (GetMinimum(), GetMaximum(), etc.), or even 32-bit floating point (overview, RasterIO resampling). Hence the range where exact values are preserved can be [0, 2^53] (or less if 32-bit floating-point is used).
 
+ Int8 data type has been added in GDAL 3.7. 
+ 
 - A block size. This is a preferred (efficient) access chunk size. For tiled images this will be one tile. For scanline oriented images this will normally be one scanline.
 - A list of name/value pair metadata in the same format as the dataset, but of information that is potentially specific to this band.
 - An optional description string.

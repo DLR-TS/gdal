@@ -72,10 +72,10 @@ other content before the ``<GDAL_WMS>`` element.
 <Type>file</Type>                                                          Cache type. Now supported only 'file' type. In 'file' cache type files are stored in file system folders. (optional, defaults to 'file')
 <Expires>604800</Expires>                                                  Time in seconds cached files will stay valid. If cached file expires it is deleted when maximum size of cache is reached. Also expired file can be overwritten by the new one from web. Default value is 7 days (604800s).
 <MaxSize>67108864</MaxSize>                                                The cache maximum size in bytes. If cache reached maximum size, expired cached files will be deleted. Default value is 64 Mb (67108864 bytes).
-<CleanTimeout>120</CleanTimeout>                                           Clean Thread Run Timeout in seconds. How often to run the clean thread, which finds and deletes expired cached files. Default value is 120s. Use value of 0 to disable the Clean Thread (effectively unlimited cache size). If you intend to use very large cache size you might want to disable the cache clean or to use a much longer timeout as the time that takes to scan the cache files for expired cache files might be long. ("disabled" was the only option for GDAL <= 2.2; "120s" was the only option for 2.3 <= GDAL <= 3.1). 
+<CleanTimeout>120</CleanTimeout>                                           Clean Thread Run Timeout in seconds. How often to run the clean thread, which finds and deletes expired cached files. Default value is 120s. Use value of 0 to disable the Clean Thread (effectively unlimited cache size). If you intend to use very large cache size you might want to disable the cache clean or to use a much longer timeout as the time that takes to scan the cache files for expired cache files might be long. ("disabled" was the only option for GDAL <= 2.2; "120s" was the only option for 2.3 <= GDAL <= 3.1).
 <Unique>True</Unique>                                                      If set to true the path will appended with md5 hash of ServerURL. Default value is true.
 </Cache>
-<MaxConnections>2</MaxConnections>                                         Maximum number of simultaneous connections. (optional, defaults to 2). Can also be set with the :decl_configoption:`GDAL_MAX_CONNECTIONS` configuration option (GDAL >= 3.2)
+<MaxConnections>2</MaxConnections>                                         Maximum number of simultaneous connections. (optional, defaults to 2). Can also be set with the :config:`GDAL_MAX_CONNECTIONS` configuration option (GDAL >= 3.2)
 <Timeout>300</Timeout>                                                     Connection timeout in seconds. (optional, defaults to 300)
 <OfflineMode>true</OfflineMode>                                            Do not download any new images, use only what is in cache. Useful only with cache enabled. (optional, defaults to false)
 <AdviseRead>true</AdviseRead>                                              Enable AdviseRead API call - download images into cache. (optional, defaults to false)
@@ -227,7 +227,7 @@ The OnEarth Tiled WMS minidriver supports the Tiled WMS specification
 implemented for the JPL OnEarth driver per the specification at
 http://web.archive.org/web/20130511182803/http://onearth.jpl.nasa.gov/tiled.html.
 
-Only the ServerUrl and the TiledGroupName are required, most of the required information 
+Only the ServerUrl and the TiledGroupName are required, most of the required information
 is automatically fetched from the remote server using the GetTileService method at open time.
 
 A typical OnEarth Tiled WMS configuration file might look like:
@@ -244,15 +244,15 @@ A typical OnEarth Tiled WMS configuration file might look like:
 
 The TiledWMS minidriver can use the following open options :
 
--  TiledGroupName -- The value is a string that identifies one of the tiled services 
+-  TiledGroupName -- The value is a string that identifies one of the tiled services
    available on the server
--  Change -- A <Key>:<Value> pair, which will be passed to the server. The key has to 
+-  Change -- A <Key>:<Value> pair, which will be passed to the server. The key has to
    match a change key that the server declares for the respective tiled group.
    This option can be used multiple times, for different keys.
    Example:
    -  Change=time:2020-02-02
 
-These open options are only accepted if the corresponding XML element is not present in the 
+These open options are only accepted if the corresponding XML element is not present in the
 configuration file.
 
 VirtualEarth
@@ -310,8 +310,27 @@ the full resolution dimension and the number of resolutions.
 The XML definition can then be generated with "gdal_translate
 IIP:http://foo.com/FIF=image_name out.xml -of WMS"
 
+Configuration options
+---------------------
+
+The following :ref:`configuration options <configoptions>` are
+available:
+
+- .. config:: GDAL_MAX_CONNECTIONS
+     :choices: <integer>
+     :default: 2
+     :since: 3.2
+
+     Set the maximum number of simultaneous connections.
+
 Examples
 --------
+
+.. warning::
+
+    The below examples rely on external servers that might go down over
+    time. They are just here to demonstrate how to use the various services.
+
 
 -  | `onearth_global_mosaic.xml <https://github.com/OSGeo/gdal/blob/master/frmts/wms/frmt_wms_onearth_global_mosaic.xml>`__
      - Landsat mosaic from a `OnEarth <http://onearth.jpl.nasa.gov/>`__
@@ -334,35 +353,11 @@ Examples
    size of the cache. The following example is a sample set up for a
    19-level "Global Profile" WMS-C cache.
 
-   ::
-
-      gdal_translate -of PNG -outsize 500 250 metacarta_wmsc.xml metacarta_wmsc.png
-
-   .. only:: html
-
-        .. image:: http://sydney.freeearthfoundation.com/gdalwms/metacarta_wmsc.png
-
 -  | `tileservice_bmng.xml <https://github.com/OSGeo/gdal/blob/master/frmts/wms/frmt_wms_tileservice_bmng.xml>`__ -
-     TileService, Blue Marble NG (January)
-
-   ::
-
-      gdal_translate -of JPEG -outsize 500 250 tileservice_bmng.xml tileservice_bmng.jpg
-
-   .. only:: html
-
-        .. image:: http://sydney.freeearthfoundation.com/gdalwms/tileservice_bmng.jpg
+     - TileService, Blue Marble NG (January)
 
 -  | `tileservice_nysdop2004.xml <https://github.com/OSGeo/gdal/blob/master/frmts/wms/frmt_wms_tileservice_nysdop2004.xml>`__
      - TileService, NYSDOP 2004
-
-   ::
-
-      gdal_translate -of JPEG -projwin -73.687030 41.262680 -73.686359 41.262345 -outsize 500 250 tileservice_nysdop2004.xml tileservice_nysdop2004.jpg
-
-   .. only:: html
-
-        .. image:: http://sydney.freeearthfoundation.com/gdalwms/tileservice_nysdop2004.jpg
 
 -  | `OpenStreetMap TMS Service
      Example <https://github.com/OSGeo/gdal/blob/master/frmts/wms/frmt_wms_openstreetmap_tms.xml>`__: Connect to

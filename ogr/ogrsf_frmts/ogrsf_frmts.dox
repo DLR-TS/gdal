@@ -1571,7 +1571,7 @@ by the OGRSFDriverManager.
 
  \fn OGRErr OGRLayer::SetFeature( OGRFeature * poFeature );
 
- \brief Rewrite an existing feature.
+ \brief Rewrite/replace an existing feature.
 
  This method will write a feature to the layer, based on the feature id
  within the OGRFeature.
@@ -1579,15 +1579,34 @@ by the OGRSFDriverManager.
  Use OGRLayer::TestCapability(OLCRandomWrite) to establish if this layer
  supports random access writing via SetFeature().
 
+ The way unset fields in the provided poFeature are processed is driver dependent:
+ <ul>
+ <li>
+ SQL based drivers which implement SetFeature() through SQL UPDATE will skip
+ unset fields, and thus the content of the existing feature will be preserved.
+ </li>
+ <li>
+ The shapefile driver will write a NULL value in the DBF file.
+ </li>
+ <li>
+ The GeoJSON driver will take into account unset fields to remove the corresponding
+ JSON member.
+ </li>
+ </ul>
+
  Starting with GDAL 2.0, drivers should specialize the ISetFeature() method,
  since SetFeature() is no longer virtual.
 
  This method is the same as the C function OGR_L_SetFeature().
 
+ To set a feature, but create it if it doesn't exist see OGRLayer::UpsertFeature().
+
  @param poFeature the feature to write.
 
  @return OGRERR_NONE if the operation works, otherwise an appropriate error
  code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
+
+ @see UpdateFeature(), CreateFeature(), UpsertFeature()
 
 */
 
@@ -1595,7 +1614,7 @@ by the OGRSFDriverManager.
 
  \fn OGRErr OGRLayer::ISetFeature( OGRFeature * poFeature );
 
- \brief Rewrite an existing feature.
+ \brief Rewrite/replace an existing feature.
 
  This method is implemented by drivers and not called directly. User code should
  use SetFeature() instead.
@@ -1609,13 +1628,14 @@ by the OGRSFDriverManager.
  code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
  @since GDAL 2.0
 
+ @see SetFeature()
 */
 
 /**
 
  \fn OGRErr OGR_L_SetFeature( OGRLayerH hLayer, OGRFeatureH hFeat );
 
- \brief Rewrite an existing feature.
+ \brief Rewrite/replace an existing feature.
 
  This function will write a feature to the layer, based on the feature id
  within the OGRFeature.
@@ -1623,13 +1643,32 @@ by the OGRSFDriverManager.
  Use OGR_L_TestCapability(OLCRandomWrite) to establish if this layer
  supports random access writing via OGR_L_SetFeature().
 
+ The way unset fields in the provided poFeature are processed is driver dependent:
+ <ul>
+ <li>
+ SQL based drivers which implement SetFeature() through SQL UPDATE will skip
+ unset fields, and thus the content of the existing feature will be preserved.
+ </li>
+ <li>
+ The shapefile driver will write a NULL value in the DBF file.
+ </li>
+ <li>
+ The GeoJSON driver will take into account unset fields to remove the corresponding
+ JSON member.
+ </li>
+ </ul>
+
  This function is the same as the C++ method OGRLayer::SetFeature().
+
+ To set a feature, but create it if it doesn't exist see OGR_L_UpsertFeature().
 
  @param hLayer handle to the layer to write the feature.
  @param hFeat the feature to write.
 
  @return OGRERR_NONE if the operation works, otherwise an appropriate error
  code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
+
+ @see OGR_L_UpdateFeature(), OGR_L_CreateFeature(), OGR_L_UpsertFeature()
 
 */
 
@@ -1650,9 +1689,13 @@ by the OGRSFDriverManager.
 
  This method is the same as the C function OGR_L_CreateFeature().
 
+ To create a feature, but set it if it exists see OGRLayer::UpsertFeature().
+
  @param poFeature the feature to write to disk.
 
  @return OGRERR_NONE on success.
+
+ @see SetFeature(), UpdateFeature(), UpsertFeature()
 
 */
 
@@ -1676,6 +1719,7 @@ by the OGRSFDriverManager.
  @return OGRERR_NONE on success.
  @since GDAL 2.0
 
+ @see CreateFeature()
 */
 
 /**
@@ -1692,11 +1736,270 @@ by the OGRSFDriverManager.
 
  This function is the same as the C++ method OGRLayer::CreateFeature().
 
+ To create a feature, but set it if it exists see OGR_L_UpsertFeature().
+
  @param hLayer handle to the layer to write the feature to.
  @param hFeat the handle of the feature to write to disk.
 
  @return OGRERR_NONE on success.
 
+ @see OGR_L_SetFeature(), OGR_L_UpdateFeature(), OGR_L_UpsertFeature()
+
+*/
+
+/**
+
+ \fn OGRErr OGRLayer::UpsertFeature( OGRFeature * poFeature );
+
+ \brief Rewrite/replace an existing feature or create a new feature within a layer.
+
+ This function will write a feature to the layer, based on the feature id
+ within the OGRFeature.  If the feature id doesn't exist a new feature will be
+ written.  Otherwise, the existing feature will be rewritten.
+
+ Use OGRLayer::TestCapability(OLCUpsertFeature) to establish if this layer
+ supports upsert writing.
+
+ This method is the same as the C function OGR_L_UpsertFeature().
+
+ @param poFeature the feature to write to disk.
+
+ @return OGRERR_NONE on success.
+ @since GDAL 3.6.0
+
+ @see SetFeature(), CreateFeature(), UpdateFeature()
+
+*/
+
+/**
+
+ \fn OGRErr OGRLayer::IUpsertFeature( OGRFeature * poFeature );
+
+ \brief Rewrite/replace an existing feature or create a new feature within a layer.
+
+ This method is implemented by drivers and not called directly. User code should
+ use UpsertFeature() instead.
+
+ This function will write a feature to the layer, based on the feature id
+ within the OGRFeature.  If the feature id doesn't exist a new feature will be
+ written.  Otherwise, the existing feature will be rewritten.
+
+ @param poFeature the feature to write to disk.
+
+ @return OGRERR_NONE on success.
+ @since GDAL 3.6.0
+
+ @see UpsertFeature()
+*/
+
+/**
+
+ \fn OGRErr OGR_L_UpsertFeature( OGRLayerH hLayer, OGRFeatureH hFeat );
+
+ \brief Rewrite/replace an existing feature or create a new feature within a layer.
+
+ This function will write a feature to the layer, based on the feature id
+ within the OGRFeature.  If the feature id doesn't exist a new feature will be
+ written.  Otherwise, the existing feature will be rewritten.
+
+ Use OGR_L_TestCapability(OLCUpsertFeature) to establish if this layer
+ supports upsert writing.
+
+ This function is the same as the C++ method OGRLayer::UpsertFeature().
+
+ @param hLayer handle to the layer to write the feature to.
+ @param hFeat the handle of the feature to write to disk.
+
+ @return OGRERR_NONE on success.
+ @since GDAL 3.6.0
+
+ @see OGR_L_SetFeature(), OGR_L_CreateFeature(), OGR_L_UpdateFeature()
+*/
+
+/**
+
+ \fn OGRErr OGRLayer::UpdateFeature( OGRFeature * poFeature,
+                                     int nUpdatedFieldsCount,
+                                     const int *panUpdatedFieldsIdx,
+                                     int nUpdatedGeomFieldsCount,
+                                     const int *panUpdatedGeomFieldsIdx,
+                                     bool bUpdateStyleString );
+
+ \brief Update (part of) an existing feature.
+
+ This method will update the specified attribute and geometry fields of a
+ feature to the layer, based on the feature id within the OGRFeature.
+
+ Use OGRLayer::TestCapability(OLCRandomWrite) to establish if this layer
+ supports random access writing via UpdateFeature(). And to know if the
+ driver supports a dedicated/efficient UpdateFeature() method, test for the
+ OLCUpdateFeature capability.
+
+ The way unset fields in the provided poFeature are processed is driver dependent:
+ <ul>
+ <li>
+ SQL based drivers which implement SetFeature() through SQL UPDATE will skip
+ unset fields, and thus the content of the existing feature will be preserved.
+ </li>
+ <li>
+ The shapefile driver will write a NULL value in the DBF file.
+ </li>
+ <li>
+ The GeoJSON driver will take into account unset fields to remove the corresponding
+ JSON member.
+ </li>
+ </ul>
+
+ This method is the same as the C function OGR_L_UpdateFeature().
+
+ To fully replace a feature, see OGRLayer::SetFeature().
+
+ Note that after this call the content of hFeat might have changed, and will
+ *not* reflect the content you would get with GetFeature().
+ In particular for performance reasons, passed geometries might have been "stolen",
+ in particular for the default implementation of UpdateFeature() which relies
+ on GetFeature() + SetFeature().
+
+ @param poFeature the feature to update.
+
+ @param nUpdatedFieldsCount number of attribute fields to update. May be 0
+
+ @param panUpdatedFieldsIdx array of nUpdatedFieldsCount values, each between
+                            0 and GetLayerDefn()->GetFieldCount() - 1, indicating
+                            which fields of poFeature must be updated in the
+                            layer.
+
+ @param nUpdatedGeomFieldsCount number of geometry fields to update. May be 0
+
+ @param panUpdatedGeomFieldsIdx array of nUpdatedGeomFieldsCount values, each between
+                                0 and GetLayerDefn()->GetGeomFieldCount() - 1, indicating
+                                which geometry fields of poFeature must be updated in the
+                                layer.
+
+ @param bUpdateStyleString whether the feature style string in the layer should
+                           be updated with the one of poFeature.
+
+ @return OGRERR_NONE if the operation works, otherwise an appropriate error
+ code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
+
+ @since GDAL 3.7
+
+ @see UpdateFeature(), CreateFeature(), UpsertFeature()
+
+*/
+
+/**
+
+ \fn OGRErr OGRLayer::IUpdateFeature( OGRFeature * poFeature,
+                                      int nUpdatedFieldsCount,
+                                      const int *panUpdatedFieldsIdx,
+                                      int nUpdatedGeomFieldsCount,
+                                      const int *panUpdatedGeomFieldsIdx,
+                                      bool bUpdateStyleString );
+
+ \brief Update (part of) an existing feature.
+
+ This method is implemented by drivers and not called directly. User code should
+ use UpdateFeature() instead.
+
+ @param poFeature the feature to update.
+
+ @param nUpdatedFieldsCount number of attribute fields to update. May be 0
+
+ @param panUpdatedFieldsIdx array of nUpdatedFieldsCount values, each between
+                            0 and GetLayerDefn()->GetFieldCount() - 1, indicating
+                            which fields of poFeature must be updated in the
+                            layer.
+
+ @param nUpdatedGeomFieldsCount number of geometry fields to update. May be 0
+
+ @param panUpdatedGeomFieldsIdx array of nUpdatedGeomFieldsCount values, each between
+                                0 and GetLayerDefn()->GetGeomFieldCount() - 1, indicating
+                                which geometry fields of poFeature must be updated in the
+                                layer.
+
+ @param bUpdateStyleString whether the feature style string in the layer should
+                           be updated with the one of poFeature.
+
+ @return OGRERR_NONE if the operation works, otherwise an appropriate error
+ code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
+
+ @since GDAL 3.7
+
+ @see UpdateFeature()
+*/
+
+/**
+
+ \fn OGRErr OGR_L_UpdateFeature( OGRLayerH hLayer, OGRFeatureH hFeat,
+                                 int nUpdatedFieldsCount,
+                                 const int *panUpdatedFieldsIdx,
+                                 int nUpdatedGeomFieldsCount,
+                                 const int *panUpdatedGeomFieldsIdx,
+                                 bool bUpdateStyleString );
+
+ \brief Update (part of) an existing feature.
+
+ This function will update the specified attribute and geometry fields of a
+ feature to the layer, based on the feature id within the OGRFeature.
+
+ Use OGR_L_TestCapability(OLCRandomWrite) to establish if this layer
+ supports random access writing via UpdateFeature(). And to know if the
+ driver supports a dedicated/efficient UpdateFeature() method, test for the
+ OLCUpdateFeature capability.
+
+ The way unset fields in the provided poFeature are processed is driver dependent:
+ <ul>
+ <li>
+ SQL based drivers which implement SetFeature() through SQL UPDATE will skip
+ unset fields, and thus the content of the existing feature will be preserved.
+ </li>
+ <li>
+ The shapefile driver will write a NULL value in the DBF file.
+ </li>
+ <li>
+ The GeoJSON driver will take into account unset fields to remove the corresponding
+ JSON member.
+ </li>
+ </ul>
+
+ This method is the same as the C++ method OGRLayer::UpdateFeature().
+
+ To fully replace a feature, see OGR_L_SetFeature()
+
+ Note that after this call the content of hFeat might have changed, and will
+ *not* reflect the content you would get with OGR_L_GetFeature().
+ In particular for performance reasons, passed geometries might have been "stolen",
+ in particular for the default implementation of UpdateFeature() which relies
+ on GetFeature() + SetFeature().
+
+ @param hLayer handle to the layer to write the feature.
+
+ @param hFeat the feature to update.
+
+ @param nUpdatedFieldsCount number of attribute fields to update. May be 0
+
+ @param panUpdatedFieldsIdx array of nUpdatedFieldsCount values, each between
+                            0 and GetLayerDefn()->GetFieldCount() - 1, indicating
+                            which fields of hFeat must be updated in the
+                            layer.
+
+ @param nUpdatedGeomFieldsCount number of geometry fields to update. May be 0
+
+ @param panUpdatedGeomFieldsIdx array of nUpdatedGeomFieldsCount values, each between
+                                0 and GetLayerDefn()->GetGeomFieldCount() - 1, indicating
+                                which geometry fields of hFeat must be updated in the
+                                layer.
+
+ @param bUpdateStyleString whether the feature style string in the layer should
+                           be updated with the one of hFeat.
+
+ @return OGRERR_NONE if the operation works, otherwise an appropriate error
+ code (e.g OGRERR_NON_EXISTING_FEATURE if the feature does not exist).
+
+ @since GDAL 3.7
+
+ @see OGR_L_UpdateFeature(), OGR_L_CreateFeature(), OGR_L_UpsertFeature()
 */
 
 /**
@@ -1763,12 +2066,17 @@ feature id.<p>
 
  <li> <b>OLCSequentialWrite</b> / "SequentialWrite": TRUE if the
 CreateFeature() method works for this layer.  Note this means that this
-particular layer is writable.  The same OGRLayer class  may returned FALSE
+particular layer is writable.  The same OGRLayer class may return FALSE
 for other layer instances that are effectively read-only.<p>
 
  <li> <b>OLCRandomWrite</b> / "RandomWrite": TRUE if the SetFeature() method
-is operational on this layer.   Note this means that this
-particular layer is writable.  The same OGRLayer class  may returned FALSE
+is operational on this layer.  Note this means that this
+particular layer is writable.  The same OGRLayer class may return FALSE
+for other layer instances that are effectively read-only.<p>
+
+ <li> <b>OLCUpsertFeature</b> / "UpsertFeature": TRUE if the UpsertFeature()
+method is operational on this layer.  Note this means that this
+particular layer is writable.  The same OGRLayer class may return FALSE
 for other layer instances that are effectively read-only.<p>
 
  <li> <b>OLCFastSpatialFilter</b> / "FastSpatialFilter": TRUE if this layer
@@ -1862,12 +2170,17 @@ feature id.<p>
 
  <li> <b>OLCSequentialWrite</b> / "SequentialWrite": TRUE if the
 CreateFeature() method works for this layer.  Note this means that this
-particular layer is writable.  The same OGRLayer class  may returned FALSE
+particular layer is writable.  The same OGRLayer class may return FALSE
 for other layer instances that are effectively read-only.<p>
 
  <li> <b>OLCRandomWrite</b> / "RandomWrite": TRUE if the SetFeature() method
-is operational on this layer.   Note this means that this
-particular layer is writable.  The same OGRLayer class  may returned FALSE
+is operational on this layer.  Note this means that this
+particular layer is writable.  The same OGRLayer class may return FALSE
+for other layer instances that are effectively read-only.<p>
+
+ <li> <b>OLCUpsertFeature</b> / "UpsertFeature": TRUE if the UpsertFeature()
+method is operational on this layer.  Note this means that this
+particular layer is writable.  The same OGRLayer class may return FALSE
 for other layer instances that are effectively read-only.<p>
 
  <li> <b>OLCFastSpatialFilter</b> / "FastSpatialFilter": TRUE if this layer

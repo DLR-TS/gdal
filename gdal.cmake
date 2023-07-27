@@ -1,5 +1,14 @@
 # CMake4GDAL project is distributed under MIT license. See accompanying file LICENSE.txt.
 
+# Increment the below number each time an ABI incompatible change is done,
+# e.g removing a public function/method, changing its prototype (including
+# adding a default value to a parameter of a C++ method), adding
+# a new member or virtual function in a public C++ class, etc.
+# This will typically happen for each GDAL feature release (change of X or Y in
+# a X.Y.Z numbering scheme), but should not happen for a bugfix release (change of Z)
+# Previous value: 33 for GDAL 3.7
+set(GDAL_SOVERSION 33)
+
 # Switches to control build targets(cached)
 option(ENABLE_GNM "Build GNM (Geography Network Model) component" ON)
 option(ENABLE_PAM "Set ON to enable Persistent Auxiliary Metadata (.aux.xml)" ON)
@@ -208,8 +217,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM" OR CMAKE_CXX_COMPILER_ID STREQUAL
     }")
   check_cxx_source_compiles("${TEST_LINK_STDCPP_SOURCE_CODE}" _TEST_LINK_STDCPP)
   if( NOT _TEST_LINK_STDCPP )
-      message(WARNING "Cannot link code using standard C++ library. Automatically adding -lstdc++ to CMAKE_EXE_LINKER_FLAGS")
+      message(WARNING "Cannot link code using standard C++ library. Automatically adding -lstdc++ to CMAKE_EXE_LINKER_FLAGS, CMAKE_SHARED_LINKER_FLAGS and CMAKE_MODULE_LINKER_FLAGS")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lstdc++")
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lstdc++")
+      set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -lstdc++")
 
       check_cxx_source_compiles("${TEST_LINK_STDCPP_SOURCE_CODE}" _TEST_LINK_STDCPP_AGAIN)
       if( NOT _TEST_LINK_STDCPP_AGAIN )
@@ -269,7 +280,7 @@ endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   include(CheckLinkerFlag)
   check_linker_flag(C "-Wl,--no-undefined" HAS_NO_UNDEFINED)
-  if (HAS_NO_UNDEFINED AND NOT CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+  if (HAS_NO_UNDEFINED AND (NOT "${CMAKE_CXX_FLAGS}" MATCHES "-fsanitize") AND NOT CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,--no-undefined")
     string(APPEND CMAKE_MODULE_LINKER_FLAGS " -Wl,--no-undefined")
   endif ()
@@ -308,7 +319,8 @@ macro(set_alternate_linker linker)
   endif()
 endmacro()
 
-if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
+# CMake >= 3.13 needed for add_link_options()
+if( (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13) AND ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") )
   set(USE_ALTERNATE_LINKER "" CACHE STRING "Use alternate linker. Leave empty for system default; potential alternatives are 'gold', 'lld', 'bfd', 'mold'")
   if(NOT "${USE_ALTERNATE_LINKER}" STREQUAL "")
     set_alternate_linker(${USE_ALTERNATE_LINKER})
@@ -319,7 +331,7 @@ if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" ST
 endif()
 
 # Default definitions during build
-add_definitions(-DGDAL_COMPILATION -DGDAL_CMAKE_BUILD)
+add_definitions(-DGDAL_COMPILATION)
 
 if (ENABLE_IPO)
   if (POLICY CMP0069)
@@ -377,11 +389,6 @@ if (MSVC)
 endif ()
 if (MINGW AND BUILD_SHARED_LIBS)
     set_target_properties(${GDAL_LIB_TARGET_NAME} PROPERTIES SUFFIX "-${GDAL_SOVERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-endif ()
-
-
-if (MSVC AND NOT BUILD_SHARED_LIBS)
-  target_compile_definitions(${GDAL_LIB_TARGET_NAME} PUBLIC CPL_DISABLE_DLL=)
 endif ()
 
 if (MINGW)
@@ -453,6 +460,9 @@ else ()
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}
       )
+      if( NOT "${CMAKE_INSTALL_RPATH}" STREQUAL "" )
+          message(WARNING "CMAKE_INSTALL_RPATH=${CMAKE_INSTALL_RPATH} will be ignored and replaced with ${base};${base}/${relDir} due to GDAL_SET_INSTALL_RELATIVE_RPATH being set")
+      endif()
       set(CMAKE_INSTALL_RPATH ${base} ${base}/${relDir})
   endif()
 endif ()
@@ -470,6 +480,12 @@ if (GDAL_USE_JSONC_INTERNAL)
   add_subdirectory(ogr/ogrsf_frmts/geojson/libjson)
 endif ()
 
+option(ENABLE_DEFLATE64 "Enable Deflate64 decompression" ON)
+mark_as_advanced(ENABLE_DEFLATE64)
+if(ENABLE_DEFLATE64)
+    add_subdirectory(frmts/zlib/contrib/infback9)
+endif()
+
 # Internal zlib and jsonc must be declared before
 add_subdirectory(port)
 
@@ -479,7 +495,11 @@ if (GDAL_USE_JPEG_INTERNAL)
   mark_as_advanced(RENAME_INTERNAL_JPEG_SYMBOLS)
   add_subdirectory(frmts/jpeg/libjpeg)
 endif ()
-option(GDAL_USE_JPEG12_INTERNAL "Set ON to use internal libjpeg12 support" ON)
+if (NOT HAVE_JPEGTURBO_DUAL_MODE_8_12)
+    option(GDAL_USE_JPEG12_INTERNAL "Set ON to use internal libjpeg12 support" ON)
+else()
+    option(GDAL_USE_JPEG12_INTERNAL "Set ON to use internal libjpeg12 support" OFF)
+endif()
 if (GDAL_USE_JPEG12_INTERNAL)
   add_subdirectory(frmts/jpeg/libjpeg12)
 endif ()
@@ -528,10 +548,13 @@ set(GDAL_VECTOR_FORMAT_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ogr/ogrsf_frmts")
 
 # We need to forward declare a few OGR drivers because raster formats need them
 option(OGR_ENABLE_DRIVER_AVC "Set ON to build OGR AVC driver" ${OGR_BUILD_OPTIONAL_DRIVERS})
+option(OGR_ENABLE_DRIVER_GML "Set ON to build OGR GML driver" ${OGR_BUILD_OPTIONAL_DRIVERS})
 cmake_dependent_option(OGR_ENABLE_DRIVER_SQLITE "Set ON to build OGR SQLite driver" ${OGR_BUILD_OPTIONAL_DRIVERS}
                        "GDAL_USE_SQLITE3" OFF)
 cmake_dependent_option(OGR_ENABLE_DRIVER_GPKG "Set ON to build OGR GPKG driver" ${OGR_BUILD_OPTIONAL_DRIVERS}
                        "GDAL_USE_SQLITE3;OGR_ENABLE_DRIVER_SQLITE" OFF)
+cmake_dependent_option(OGR_ENABLE_DRIVER_MVT "Set ON to build OGR MVT driver" ${OGR_BUILD_OPTIONAL_DRIVERS}
+                       "GDAL_USE_SQLITE3" OFF)
 
 # Build frmts/iso8211 conditionally to drivers requiring it
 if ((GDAL_BUILD_OPTIONAL_DRIVERS AND NOT DEFINED GDAL_ENABLE_DRIVER_ADRG AND NOT DEFINED GDAL_ENABLE_DRIVER_SDTS) OR
@@ -636,9 +659,12 @@ set(GDAL_DATA_FILES
     data/epsg.wkt
     data/esri_StatePlane_extra.wkt
     data/gdalicon.png
+    data/gdalinfo_output.schema.json
     data/gdalmdiminfo_output.schema.json
     data/gdalvrt.xsd
+    data/gfs.xsd
     data/gml_registry.xml
+    data/gml_registry.xsd
     data/gmlasconf.xml
     data/gmlasconf.xsd
     data/grib2_table_versions.csv
@@ -657,6 +683,7 @@ set(GDAL_DATA_FILES
     data/grib2_table_4_2_0_19.csv
     data/grib2_table_4_2_0_1.csv
     data/grib2_table_4_2_0_20.csv
+    data/grib2_table_4_2_0_21.csv
     data/grib2_table_4_2_0_2.csv
     data/grib2_table_4_2_0_3.csv
     data/grib2_table_4_2_0_4.csv
@@ -679,6 +706,7 @@ set(GDAL_DATA_FILES
     data/grib2_table_4_2_2_3.csv
     data/grib2_table_4_2_2_4.csv
     data/grib2_table_4_2_2_5.csv
+    data/grib2_table_4_2_2_6.csv
     data/grib2_table_4_2_3_0.csv
     data/grib2_table_4_2_3_1.csv
     data/grib2_table_4_2_3_2.csv
@@ -743,6 +771,7 @@ set(GDAL_DATA_FILES
     data/nitf_spec.xsd
     data/ogrvrt.xsd
     data/osmconf.ini
+    data/ogrinfo_output.schema.json
     data/ozi_datum.csv
     data/ozi_ellips.csv
     data/pci_datum.txt
@@ -954,7 +983,7 @@ endif ()
 
 if (NOT GDAL_CMAKE_QUIET AND
     "${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
-  message(WARNING "In-tree builds, that is running cmake from the top of the source tree are not recommended. You are advised instead to 'mkdir build; cd build; cmake ..'. Using 'make' with the Makefile generator will not work, as it will try the GNUmakefile of autoconf builds. Use 'make -f Makefile' instead.")
+  message(WARNING "In-tree builds, that is running cmake from the top of the source tree are not recommended. You are advised instead to 'mkdir build; cd build; cmake ..'.")
 endif()
 
 if (NOT GDAL_CMAKE_QUIET

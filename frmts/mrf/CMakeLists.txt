@@ -32,6 +32,9 @@ if ((GDAL_USE_JPEG OR GDAL_USE_JPEG_INTERNAL) AND GDAL_USE_JPEG12_INTERNAL)
   target_sources(gdal_MRF PRIVATE JPEG12_band.cpp)
   target_compile_definitions(gdal_MRF PRIVATE -DJPEG12_SUPPORTED)
   target_include_directories(gdal_MRF PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+elseif (NOT GDAL_USE_JPEG_INTERNAL AND HAVE_JPEGTURBO_DUAL_MODE_8_12)
+  target_sources(gdal_MRF PRIVATE JPEG12_band.cpp)
+  target_compile_definitions(gdal_MRF PRIVATE JPEG12_SUPPORTED HAVE_JPEGTURBO_DUAL_MODE_8_12)
 endif ()
 
 if (GDAL_USE_JPEG_INTERNAL)
@@ -59,6 +62,9 @@ endif ()
 
 # Now external libs
 
+# Include libjpeg first so that if we want to use jpeg-turbo on homebrew
+# /usr/local/opt/jpeg-turbo gets included first, before /usr/local/opt
+# triggered by libtiff, that contains libjpeg 9e
 if (GDAL_USE_JPEG AND NOT GDAL_USE_JPEG_INTERNAL)
   gdal_target_link_libraries(gdal_MRF PRIVATE JPEG::JPEG)
 endif ()

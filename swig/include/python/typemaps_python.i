@@ -25,7 +25,7 @@
 %typemap(out) VSI_RETVAL
 {
   /* %typemap(out) VSI_RETVAL */
-  if ( result != 0 && bUseExceptions) {
+  if ( result != 0 && GetUseExceptions()) {
     const char* pszMessage = CPLGetLastErrorMsg();
     if( pszMessage[0] != '\0' )
         PyErr_SetString( PyExc_RuntimeError, pszMessage );
@@ -141,49 +141,39 @@
 }
 
 
-
-%typemap(in,numinputs=0) (double argout[6], int* isvalid) ( double argout[6], int isvalid )
+%define TYPEMAP_IN_ARGOUT_ARRAY_IS_VALID(num_values)
+%typemap(in,numinputs=0) (double argout[num_values], int* isvalid) ( double argout[num_values], int isvalid )
 {
-  /* %typemap(in,numinputs=0) (double argout[6], int* isvalid) */
+  /* %typemap(in,numinputs=0) (double argout[num_values], int* isvalid) */
   $1 = argout;
   $2 = &isvalid;
 }
+%enddef
 
-%typemap(argout) (double argout[6], int* isvalid)
+%define TYPEMAP_ARGOUT_ARGOUT_ARRAY_IS_VALID(num_values)
+%typemap(argout) (double argout[num_values], int* isvalid)
 {
-   /* %typemap(argout) (double argout[6], int* isvalid)  */
+   /* %typemap(argout) (double argout[num_values], int* isvalid)  */
   PyObject *r;
   if ( !*$2 ) {
     Py_INCREF(Py_None);
     r = Py_None;
   }
   else {
-    r = CreateTupleFromDoubleArray($1, 6);
+    r = CreateTupleFromDoubleArray($1, num_values);
   }
   $result = t_output_helper($result,r);
 }
+%enddef
 
+TYPEMAP_IN_ARGOUT_ARRAY_IS_VALID(2)
+TYPEMAP_ARGOUT_ARGOUT_ARRAY_IS_VALID(2)
 
-%typemap(in,numinputs=0) (double argout[4], int* isvalid) ( double argout[6], int isvalid )
-{
-  /* %typemap(in) (double argout[4], int* isvalid) */
-  $1 = argout;
-  $2 = &isvalid;
-}
+TYPEMAP_IN_ARGOUT_ARRAY_IS_VALID(4)
+TYPEMAP_ARGOUT_ARGOUT_ARRAY_IS_VALID(4)
 
-%typemap(argout) (double argout[4], int* isvalid)
-{
-   /* %typemap(argout) (double argout[4], int* isvalid)  */
-  PyObject *r;
-  if ( !*$2 ) {
-    Py_INCREF(Py_None);
-    r = Py_None;
-  }
-  else {
-    r = CreateTupleFromDoubleArray($1, 4);
-  }
-  $result = t_output_helper($result,r);
-}
+TYPEMAP_IN_ARGOUT_ARRAY_IS_VALID(6)
+TYPEMAP_ARGOUT_ARGOUT_ARRAY_IS_VALID(6)
 
 
 /*
@@ -228,7 +218,7 @@
 %typemap(out,fragment="OGRErrMessages") OGRErr
 {
   /* %typemap(out) OGRErr */
-  if ( result != 0 && bUseExceptions) {
+  if ( result != 0 && GetUseExceptions()) {
     const char* pszMessage = CPLGetLastErrorMsg();
     if( pszMessage[0] != '\0' )
         PyErr_SetString( PyExc_RuntimeError, pszMessage );
@@ -539,9 +529,7 @@ CreateTupleFromDoubleArray( int *first, unsigned int size ) {
 %typemap(freearg) (int *nLen, char **pBuf )
 {
   /* %typemap(freearg) (int *nLen, char **pBuf ) */
-  if( *$1 ) {
-    VSIFree( *$2 );
-  }
+  VSIFree( *$2 );
 }
 
 %typemap(in,numinputs=0) (size_t *nLen, char **pBuf ) ( size_t nLen = 0, char *pBuf = 0 )
@@ -565,9 +553,7 @@ CreateTupleFromDoubleArray( int *first, unsigned int size ) {
 %typemap(freearg) (size_t *nLen, char **pBuf )
 {
   /* %typemap(freearg) (size_t *nLen, char **pBuf ) */
-  if( *$1 ) {
-    VSIFree( *$2 );
-  }
+  VSIFree( *$2 );
 }
 
 
@@ -957,6 +943,36 @@ CreateTupleFromDoubleArray( int *first, unsigned int size ) {
       stringarray++;
     }
   }
+}
+
+/*
+ * Typemap char ** -> dict and CSLDestroy()
+ */
+%typemap(out) char **dictAndCSLDestroy
+{
+  /* %typemap(out) char **dict */
+  char **stringarray = $1;
+  $result = PyDict_New();
+  if ( stringarray != NULL ) {
+    while (*stringarray != NULL ) {
+      char const *valptr;
+      char *keyptr;
+      const char* pszSep = strchr( *stringarray, '=' );
+      if ( pszSep != NULL) {
+        keyptr = CPLStrdup(*stringarray);
+        keyptr[pszSep - *stringarray] = '\0';
+        valptr = pszSep + 1;
+        PyObject *nm = GDALPythonObjectFromCStr( keyptr );
+        PyObject *val = GDALPythonObjectFromCStr( valptr );
+        PyDict_SetItem($result, nm, val );
+        Py_DECREF(nm);
+        Py_DECREF(val);
+        CPLFree( keyptr );
+      }
+      stringarray++;
+    }
+  }
+  CSLDestroy($1);
 }
 
 /*
@@ -1681,9 +1697,7 @@ OBJECT_LIST_INPUT(GDALDatasetShadow);
 %typemap(freearg)  (int buckets, GUIntBig* panHistogram)
 {
   /* %typemap(freearg) (int buckets, GUIntBig* panHistogram)*/
-  if ( $2 ) {
-    VSIFree( $2 );
-  }
+  VSIFree( $2 );
 }
 
 %typemap(argout) (int buckets, GUIntBig* panHistogram)
@@ -2173,6 +2187,31 @@ DecomposeSequenceOf4DCoordinates( PyObject *seq, int nCount, double *x, double *
 {
     /* %typemap(freearg) (const char *utf8_path) */
     GDALPythonFreeCStr($1, bToFree$argnum);
+}
+
+%typemap(in) (const char *utf8_path_or_none) (int bToFree = 0)
+{
+    /* %typemap(in) (const char *utf8_path_or_none) */
+    if( $input == Py_None )
+    {
+        $1 = NULL;
+    }
+    else
+    {
+        $1 = GDALPythonObjectToCStr( $input, &bToFree );
+        if ($1 == NULL)
+        {
+            PyErr_SetString( PyExc_RuntimeError, "not a string" );
+            SWIG_fail;
+        }
+        }
+}
+
+%typemap(freearg)(const char *utf8_path_or_none)
+{
+    /* %typemap(freearg) (const char *utf8_path_or_none) */
+    if( $1 != NULL )
+        GDALPythonFreeCStr($1, bToFree$argnum);
 }
 
 /*
@@ -2864,4 +2903,81 @@ OBJECT_LIST_INPUT(GDALEDTComponentHS)
     val = reinterpret_cast< OSRSpatialReferenceShadow * >(argp);
     $1 = &val;
   }
+}
+
+/***************************************************
+ * Typemaps for Layer.GetGeometryTypes()
+ ***************************************************/
+%typemap(in,numinputs=0) (OGRGeometryTypeCounter** ppRet, int* pnEntryCount) ( OGRGeometryTypeCounter* pRet = NULL, int nEntryCount = 0 )
+{
+  /* %typemap(in,numinputs=0) (OGRGeometryTypeCounter** ppRet, int* pnEntryCount) */
+  $1 = &pRet;
+  $2 = &nEntryCount;
+}
+
+%typemap(argout)  (OGRGeometryTypeCounter** ppRet, int* pnEntryCount)
+{
+  /* %typemap(argout)  (OGRGeometryTypeCounter** ppRet, int* pnEntryCount) */
+  Py_DECREF($result);
+  int nEntryCount = *($2);
+  OGRGeometryTypeCounter* pRet = *($1);
+  if( pRet == NULL )
+  {
+      PyErr_SetString( PyExc_RuntimeError, CPLGetLastErrorMsg() );
+      SWIG_fail;
+  }
+  $result = PyDict_New();
+  for(int i = 0; i < nEntryCount; ++ i)
+  {
+      PyObject *key = PyInt_FromLong( (int)(pRet[i].eGeomType) );
+      PyObject *val = PyLong_FromLongLong( pRet[i].nCount );
+      PyDict_SetItem($result, key, val );
+      Py_DECREF(key);
+      Py_DECREF(val);
+  }
+}
+
+%typemap(freearg)  (OGRGeometryTypeCounter** ppRet, int* pnEntryCount)
+{
+    /* %typemap(freearg)  (OGRGeometryTypeCounter** ppRet, int* pnEntryCount) */
+    VSIFree(*$1);
+}
+
+/***************************************************
+ * Typemaps for Layer.GetSupportedSRSList()
+ ***************************************************/
+%typemap(in,numinputs=0) (OGRSpatialReferenceH** ppRet, int* pnEntryCount) ( OGRSpatialReferenceH* pRet = NULL, int nEntryCount = 0 )
+{
+  /* %typemap(in,numinputs=0) (OGRSpatialReferenceH** ppRet, int* pnEntryCount) */
+  $1 = &pRet;
+  $2 = &nEntryCount;
+}
+
+%typemap(argout)  (OGRSpatialReferenceH** ppRet, int* pnEntryCount)
+{
+  /* %typemap(argout)  (OGRSpatialReferenceH** ppRet, int* pnEntryCount) */
+  Py_DECREF($result);
+  int nEntryCount = *($2);
+  OGRSpatialReferenceH* pRet = *($1);
+  if( nEntryCount == 0)
+  {
+    Py_INCREF(Py_None);
+    $result = Py_None;
+  }
+  else
+  {
+    $result = PyList_New(nEntryCount);
+    for(int i = 0; i < nEntryCount; ++ i)
+    {
+      OSRReference(pRet[i]);
+      PyList_SetItem($result, i, SWIG_NewPointerObj(
+          SWIG_as_voidptr(pRet[i]),SWIGTYPE_p_OSRSpatialReferenceShadow, SWIG_POINTER_OWN) );
+    }
+  }
+}
+
+%typemap(freearg)  (OGRSpatialReferenceH** ppRet, int* pnEntryCount)
+{
+    /* %typemap(freearg)  (OGRSpatialReferenceH** ppRet, int* pnEntryCount) */
+    OSRFreeSRSArray(*$1);
 }

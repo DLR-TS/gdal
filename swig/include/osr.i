@@ -187,7 +187,7 @@ OGRErr GetWellKnownGeogCSAsWKT( const char *name, char **argout ) {
   OGRErr rcode = OSRSetWellKnownGeogCS( srs, name );
   if( rcode == OGRERR_NONE )
       rcode = OSRExportToWkt ( srs, argout );
-  OSRDestroySpatialReference( srs );
+  OSRRelease( srs );
   return rcode;
 }
 %}
@@ -201,7 +201,7 @@ OGRErr GetUserInputAsWKT( const char *name, char **argout ) {
   OGRErr rcode = OSRSetFromUserInput( srs, name );
   if( rcode == OGRERR_NONE )
       rcode = OSRExportToWkt ( srs, argout );
-  OSRDestroySpatialReference( srs );
+  OSRRelease( srs );
   return rcode;
 }
 %}
@@ -310,9 +310,7 @@ public:
   }
 
   ~OSRSpatialReferenceShadow() {
-    if (OSRDereference( self ) == 0 ) {
-      OSRDestroySpatialReference( self );
-    }
+    OSRRelease( self );
   }
 
 /* FIXME : all bindings should avoid using the #else case */
@@ -1090,6 +1088,17 @@ public:
 %clear (long*);
 %clear (double *params[15]);
 
+%apply (char **argout) { (char **) };
+  OGRErr ExportToERM( char **proj, char** datum, char **units ) {
+    char szProj[32] = {0}, szDatum[32] = {0}, szUnits[32] = {0};
+    OGRErr ret = OSRExportToERM( self, szProj, szDatum, szUnits );
+    *proj = CPLStrdup(szProj);
+    *datum = CPLStrdup(szDatum);
+    *units = CPLStrdup(szUnits);
+    return ret;
+  }
+%clear (char **);
+
   OGRErr ExportToXML( char **argout, const char *dialect = "" ) {
     return OSRExportToXML( self, argout, dialect );
   }
@@ -1173,8 +1182,8 @@ public:
         eastLongitudeDeg, northLatitudeDeg);
   }
 
-  bool SetOperation(const char* operation) {
-    return OCTCoordinateTransformationOptionsSetOperation(self, operation, false);
+  bool SetOperation(const char* operation, bool inverseCT = false) {
+    return OCTCoordinateTransformationOptionsSetOperation(self, operation, inverseCT);
   }
 
   bool SetDesiredAccuracy(double accuracy) {
@@ -1183,6 +1192,10 @@ public:
 
   bool SetBallparkAllowed(bool allowBallpark) {
     return OCTCoordinateTransformationOptionsSetBallparkAllowed(self, allowBallpark);
+  }
+
+  bool SetOnlyBest(bool onlyBest) {
+    return OCTCoordinateTransformationOptionsSetOnlyBest(self, onlyBest);
   }
 } /*extend */
 };
@@ -1209,6 +1222,11 @@ public:
 
   ~OSRCoordinateTransformationShadow() {
     OCTDestroyCoordinateTransformation( self );
+  }
+
+  %newobject GetInverse;
+  OSRCoordinateTransformationShadow* GetInverse() {
+    return OCTGetInverse(self);
   }
 
 // Need to apply argin typemap second so the numinputs=1 version gets applied

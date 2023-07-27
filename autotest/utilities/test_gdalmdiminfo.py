@@ -30,18 +30,44 @@
 ###############################################################################
 
 import gdaltest
-import test_cli_utilities
 import pytest
+import test_cli_utilities
+
+pytestmark = pytest.mark.skipif(
+    test_cli_utilities.get_gdalmdiminfo_path() is None,
+    reason="gdalmdiminfo not available",
+)
+
+
+@pytest.fixture()
+def gdalmdiminfo_path():
+    return test_cli_utilities.get_gdalmdiminfo_path()
+
 
 ###############################################################################
 # Simple test
 
 
-def test_gdalmdiminfo_1():
+def test_gdalmdiminfo_1(gdalmdiminfo_path):
 
-    if test_cli_utilities.get_gdalmdiminfo_path() is None:
-        pytest.skip()
-
-    (ret, err) = gdaltest.runexternal_out_and_err(test_cli_utilities.get_gdalmdiminfo_path() + ' data/mdim.vrt')
-    assert (err is None or err == ''), 'got error/warning'
+    (ret, err) = gdaltest.runexternal_out_and_err(gdalmdiminfo_path + " data/mdim.vrt")
+    assert err is None or err == "", "got error/warning"
     assert '"type": "group"' in ret
+
+
+###############################################################################
+# Test -if option
+
+
+def test_gdalmdiminfo_if_option(gdalmdiminfo_path):
+
+    (ret, err) = gdaltest.runexternal_out_and_err(
+        gdalmdiminfo_path + " -if VRT data/mdim.vrt"
+    )
+    assert err is None or err == "", "got error/warning"
+    assert '"type": "group"' in ret
+
+    _, err = gdaltest.runexternal_out_and_err(
+        gdalmdiminfo_path + " -if i_do_not_exist data/mdim.vrt"
+    )
+    assert "i_do_not_exist is not a recognized driver" in err

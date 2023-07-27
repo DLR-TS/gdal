@@ -20,7 +20,7 @@ Synopsis
                   [-e] [-a nodata] [-v] [-q] [-h] [-k] [-n] [-u url]
                   [-w webviewer] [-t title] [-c copyright]
                   [--processes=NB_PROCESSES] [--mpi] [--xyz]
-                  --tilesize=PIXELS
+                  [--tilesize=PIXELS] [--tmscompatible]
                   [-g googlekey] [-b bingkey] input_file [output_dir] [COMMON_OPTIONS]
 
 Description
@@ -76,6 +76,11 @@ can publish a picture without proper georeferencing too.
 
   .. versionadded:: 3.1
 
+.. option:: -d, --tmscompatible
+
+  When using the geodetic profile, specifies the base resolution as 0.703125
+  or 2 tiles at zoom level 0.
+
 .. option:: -z <ZOOM>, --zoom=<ZOOM>
 
   Zoom levels to render (format:'2-5', '10-' or '10').
@@ -92,6 +97,9 @@ can publish a picture without proper georeferencing too.
 .. option:: -v, --verbose
 
   Generate verbose output of tile generation.
+
+  Starting with GDAL 3.7, that verbose output is emitted through the
+  ``logging.getLogger("gdal2tiles")`` object.
 
 .. option:: -x, --exclude
 

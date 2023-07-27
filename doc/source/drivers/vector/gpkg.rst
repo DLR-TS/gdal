@@ -29,7 +29,7 @@ The driver also supports reading and writing the
 following non-linear geometry types: CIRCULARSTRING, COMPOUNDCURVE,
 CURVEPOLYGON, MULTICURVE and MULTISURFACE
 
-GeoPackage raster/tiles are supported. See the 
+GeoPackage raster/tiles are supported. See the
 :ref:`GeoPackage raster <raster.gpkg>` documentation page.
 
 Driver capabilities
@@ -123,6 +123,16 @@ Spatialite, are also available :
    to the SRS of specified srs_id. If no SRS with that given srs_id is not found
    in gpkg_spatial_ref_sys, starting with GDAL 3.2, it will be interpreted as
    a EPSG code.
+-  ST_EnvIntersects(geom *Geometry*, minx *Double*, miny *Double*, maxx *Double*, maxy *Double*):
+   (GDAL >= 3.7) Returns 1 if the minimum bounding box of geom intersects the
+   bounding box defined by (minx,miny)-(maxx,maxy), or 0 otherwise.
+-  ST_EnvIntersects(geom1 *Geometry*, geom2 *Geometry*):
+   (GDAL >= 3.7) Returns 1 if the minimum bounding box of geom1 intersects the
+   one of geom2, or 0 otherwise. (Note: this function, as all others, does not
+   automatically uses spatial indices)
+
+The raster SQL functions mentioned at :ref:`raster.gpkg.raster`
+are also available.
 
 Link with Spatialite
 ~~~~~~~~~~~~~~~~~~~~
@@ -143,41 +153,80 @@ Transaction support
 
 The driver implements transactions at the database level, per :ref:`rfc-54`
 
+Relationships
+-------------
+
+.. versionadded:: 3.6
+
+Relationship retrieval is supported, respecting the OGC GeoPackage Related Tables Extension.
+If the Related Tables Extension is not in use then relationships will be reported for tables
+which utilize FOREIGN KEY constraints.
+
+Relationship creation, deletion and updating is supported since GDAL 3.7. Relationships can
+only be updated to change their base or related table fields, or the relationship related
+table type. It is not permissible to change the base or related table itself, or the mapping
+table details. If this is desired then a new relationship should be created instead.
+
 Dataset open options
 --------------------
 
 The following open options are available:
 
--  **LIST_ALL_TABLES**\ =AUTO/YES/NO: (GDAL >=2.2) Whether all tables,
-   including those not listed in gpkg_contents, should be listed.
-   Defaults to AUTO. If AUTO, all tables including those not listed in
-   gpkg_contents will be listed, except if the aspatial extension is
-   found or a table is registered as 'attributes' in gpkg_contents. If
-   YES, all tables including those not listed in gpkg_contents will be
-   listed, in all cases. If NO, only tables registered as 'features',
-   'attributes' or 'aspatial' will be listed.
--  **PRELUDE_STATEMENTS**\ =string (GDAL >= 3.2). SQL statement(s) to
-   send on the SQLite3 connection before any other ones. In
-   case of several statements, they must be separated with the
-   semi-column (;) sign. This option may be useful to
-   `attach another database <https://www.sqlite.org/lang_attach.html>`__
-   to the current one and issue cross-database requests.
+-  .. oo:: LIST_ALL_TABLES
+      :choices: AUTO, YES, NO
+      :default: AUTO
+      :since: 2.2
 
-   .. note::
-        The attached database must be a GeoPackage one too, so
-        that its geometry blobs are properly recognized (so typically not a Spatialite one)
+      Whether all tables,
+      including those not listed in gpkg_contents, should be listed.
+      If AUTO, all tables including those not listed in
+      gpkg_contents will be listed, except if the aspatial extension is
+      found or a table is registered as 'attributes' in gpkg_contents. If
+      YES, all tables including those not listed in gpkg_contents will be
+      listed, in all cases. If NO, only tables registered as 'features',
+      'attributes' or 'aspatial' will be listed.
 
--  **NOLOCK**\= YES/NO (GDAL >= 3.4.2). Defaults is NO.
-   Whether the database should be used without doing any file locking. Setting
-   it to YES will only be honoured when opening in read-only mode and if the
-   journal mode is not WAL.
-   This corresponds to the nolock=1 query parameter described at
-   https://www.sqlite.org/uri.html
+-  .. oo:: PRELUDE_STATEMENTS
+      :since: 3.2
+
+      SQL statement(s) to
+      send on the SQLite3 connection before any other ones. In
+      case of several statements, they must be separated with the
+      semi-column (;) sign. This option may be useful to
+      `attach another database <https://www.sqlite.org/lang_attach.html>`__
+      to the current one and issue cross-database requests.
+
+      .. note::
+           The attached database must be a GeoPackage one too, so
+           that its geometry blobs are properly recognized (so typically not a Spatialite one)
+
+-  .. oo:: NOLOCK
+      :choices: YES, NO
+      :default: NO
+      :since: 3.4.2
+
+      Whether the database should be used without doing any file locking. Setting
+      it to YES will only be honoured when opening in read-only mode and if the
+      journal mode is not WAL.
+      This corresponds to the nolock=1 query parameter described at
+      https://www.sqlite.org/uri.html
+
+-  .. oo:: IMMUTABLE
+      :choices: YES, NO
+      :since: 3.5.3
+
+      Whether the database should be opened by assuming that the file cannot be
+      modified by another process. This will skip any checks for change detection.
+      This can be useful for WAL enabled files on read-only storage.
+      GDAL will automatically try to turn it on when not being able to open
+      in read-only mode a WAL enabled file.
+      This corresponds to the immutable=1 query parameter described at
+      https://www.sqlite.org/uri.html
 
 Note: open options are typically specified with "-oo name=value" syntax
 in most OGR utilities, or with the ``GDALOpenEx()`` API call.
 
-Note: configuration option :decl_configoption:`OGR_SQLITE_JOURNAL` can
+Note: configuration option :config:`OGR_SQLITE_JOURNAL` can
 be used to set the journal mode of the GeoPackage (and thus SQLite)
 file, see also https://www.sqlite.org/pragma.html#pragma_journal_mode.
 
@@ -192,7 +241,7 @@ with whatever it is given.
 The driver updates the GeoPackage ``last_change`` timestamp when the file is
 created or modified. If consistent binary output is required for
 reproducibility, the timestamp can be forced to a specific value by setting the
-:decl_configoption:`OGR_CURRENT_DATE` global configuration option.
+:config:`OGR_CURRENT_DATE` global configuration option.
 When setting the option, take care to meet the specific time format
 requirement of the GeoPackage standard,
 e.g. `for version 1.2 <https://www.geopackage.org/spec120/#r15>`__.
@@ -203,19 +252,36 @@ Dataset creation options
 The following creation options (specific to vector, or common with
 raster) are available:
 
--  **VERSION**\ =AUTO/1.0/1.1/1.2/1.3: (GDAL >= 2.2) Set GeoPackage version
-   (for application_id and user_version fields). In AUTO mode, this will
-   be equivalent to 1.2 starting with GDAL 2.3.
-   1.3 is available starting with GDAL 3.3
--  **ADD_GPKG_OGR_CONTENTS**\ =YES/NO: (GDAL >= 2.2) Defines whether to
-   add a gpkg_ogr_contents table to keep feature count, and associated
-   triggers. Defaults to YES.
--  **DATETIME_FORMAT**\ =WITH_TZ/UTC: (GDAL >= 3.2) Defines whether to keep the
-   DateTime values in the time zones as used in the data source (WITH_TZ),
-   or to convert the date and time expressions to UTC (Coordinated Universal Time).
-   Defaults to WITH_TZ. Pedantically, non-UTC time zones are not currently supported
-   by GeoPackage v1.3 (see https://github.com/opengeospatial/geopackage/issues/530).
-   When using UTC format, with a unspecified timezone, UTC will be assumed.
+-  .. dsco:: VERSION
+      :choices: AUTO, 1.0, 1.1, 1.2, 1.3, 1.4
+      :Since: 2.2
+
+      Set GeoPackage version
+      (for application_id and user_version fields). In AUTO mode, this will
+      be equivalent to 1.2 starting with GDAL 2.3.
+      1.3 is available starting with GDAL 3.3
+      1.4 is available starting with GDAL 3.7.1
+
+-  .. dsco:: ADD_GPKG_OGR_CONTENTS
+      :choices: YES, NO
+      :default: YES
+      :since: 2.2
+
+      Defines whether to
+      add a gpkg_ogr_contents table to keep feature count, and associated
+      triggers.
+
+-  .. dsco:: DATETIME_FORMAT
+      :choices: WITH_TZ, UTC
+      :default: WITH_TZ
+      :since: 3.2
+
+      Defines whether to keep the
+      DateTime values in the time zones as used in the data source (WITH_TZ),
+      or to convert the date and time expressions to UTC (Coordinated Universal Time).
+      Pedantically, non-UTC time zones are not currently supported
+      by GeoPackage v1.3 (see https://github.com/opengeospatial/geopackage/issues/530).
+      When using UTC format, with a unspecified timezone, UTC will be assumed.
 
 Other options are available for raster. See the :ref:`GeoPackage raster <raster.gpkg>`
 documentation page.
@@ -225,93 +291,117 @@ Layer creation options
 
 The following layer creation options are available:
 
--  **GEOMETRY_NAME**: Column to use for the geometry column. Default to
-   "geom". Note: This option was called GEOMETRY_COLUMN in releases before
-   GDAL 2
--  **GEOMETRY_NULLABLE**: Whether the values of the
-   geometry column can be NULL. Can be set to NO so that geometry is
-   required. Default to "YES"
--  **FID**: Column name to use for the OGR FID (primary key in the
-   SQLite database). Default to "fid"
--  **OVERWRITE**: If set to "YES" will delete any existing layers that
-   have the same name as the layer being created. Default to NO
--  **SPATIAL_INDEX**: If set to "YES" will create a spatial
-   index for this layer. Default to YES
--  **PRECISION**: This may be "YES" to force new fields
-   created on this layer to try and represent the width of text fields
-   (in terms of UTF-8 characters, not bytes), if available using
-   TEXT(width) types. If "NO" then the type TEXT will be used instead.
-   The default is "YES".
--  **TRUNCATE_FIELDS**: This may be "YES" to force
-   truncated of field values that exceed the maximum allowed width of
-   text fields, and also to "fix" the passed string if needed to make it
-   a valid UTF-8 string. If "NO" then the value is not truncated nor
-   modified. The default is "NO".
--  **IDENTIFIER**\ =string: Identifier of the layer, as put
-   in the contents table.
--  **DESCRIPTION**\ =string: Description of the layer, as
-   put in the contents table.
--  **ASPATIAL_VARIANT**\ =GPKG_ATTRIBUTES/NOT_REGISTERED:
-   (GDAL >=2.2) How to register non spatial tables. Defaults to
-   GPKG_ATTRIBUTES in GDAL 2.2 or later (behavior in previous version
-   was equivalent to OGR_ASPATIAL). Starting with GeoPackage 1.2, non
-   spatial tables are part of the specification. They are recorded with
-   data_type="attributes" in the gpkg_contents table. This is only
-   compatible of GDAL 2.2 or later.
-   It is also possible to use the NOT_REGISTERED
-   option, in which case the non spatial table is not registered at all
-   in any GeoPackage system tables.
-   Priorly, in OGR 2.0 and 2.1, the "aspatial" extension had been developed for
-   similar purposes, so if selecting OGR_ASPATIAL, non spatial tables will be
-   recorded with data_type="aspatial" and the "aspatial" extension was declared in the
-   gpkg_extensions table. Starting with GDAL 3.3, OGR_ASPATIAL is no longer
-   available on creation.
+-  .. lco:: GEOMETRY_NAME
+      :default: geom
+
+      Column to use for the geometry column. Default to
+      "geom". Note: This option was called GEOMETRY_COLUMN in releases before
+      GDAL 2
+
+-  .. lco:: GEOMETRY_NULLABLE
+      :choices: YES, NO
+      :default: YES
+
+      Whether the values of the
+      geometry column can be NULL. Can be set to NO so that geometry is
+      required.
+
+-  .. lco:: FID
+      :default: fid
+
+      Column name to use for the OGR FID (primary key in the
+      SQLite database).
+
+-  .. lco:: OVERWRITE
+      :choices: YES, NO
+      :default: NO
+
+      If set to "YES" will delete any existing layers that
+      have the same name as the layer being created.
+
+-  .. lco:: SPATIAL_INDEX
+      :choices: YES, NO
+      :default: YES
+
+      If set to "YES" will create a spatial
+      index for this layer.
+
+-  .. lco:: PRECISION
+      :choices: YES, NO
+      :default: YES
+
+      This may be "YES" to force new fields
+      created on this layer to try and represent the width of text fields
+      (in terms of UTF-8 characters, not bytes), if available using
+      TEXT(width) types. If "NO" then the type TEXT will be used instead.
+
+-  .. lco:: TRUNCATE_FIELDS
+      :choices: YES, NO
+      :default: NO
+
+      This may be "YES" to force
+      truncated of field values that exceed the maximum allowed width of
+      text fields, and also to "fix" the passed string if needed to make it
+      a valid UTF-8 string. If "NO" then the value is not truncated nor
+      modified.
+
+-  .. lco:: IDENTIFIER
+
+      Identifier of the layer, as put
+      in the contents table.
+
+-  .. lco:: DESCRIPTION
+
+      Description of the layer, as
+      put in the contents table.
+
+-  .. lco:: ASPATIAL_VARIANT
+      :choices: GPKG_ATTRIBUTES, NOT_REGISTERED
+      :default: GPKG_ATTRIBUTES
+      :since: 2.2
+
+      How to register non spatial tables. Defaults to
+      GPKG_ATTRIBUTES in GDAL 2.2 or later (behavior in previous version
+      was equivalent to OGR_ASPATIAL). Starting with GeoPackage 1.2, non
+      spatial tables are part of the specification. They are recorded with
+      data_type="attributes" in the gpkg_contents table. This is only
+      compatible of GDAL 2.2 or later.
+      It is also possible to use the NOT_REGISTERED
+      option, in which case the non spatial table is not registered at all
+      in any GeoPackage system tables.
+      Priorly, in OGR 2.0 and 2.1, the "aspatial" extension had been developed for
+      similar purposes, so if selecting OGR_ASPATIAL, non spatial tables will be
+      recorded with data_type="aspatial" and the "aspatial" extension was declared in the
+      gpkg_extensions table. Starting with GDAL 3.3, OGR_ASPATIAL is no longer
+      available on creation.
 
 Configuration options
 ---------------------
 
-The following :ref:`configuration options <configoptions>` are 
+The following :ref:`configuration options <configoptions>` are
 available:
 
-- :decl_configoption:`OGR_SQLITE_JOURNAL` can be used to set the journal mode 
-  of the GeoPackage (and thus SQLite) file, see also 
-  https://www.sqlite.org/pragma.html#pragma_journal_mode.
+- :copy-config:`OGR_SQLITE_JOURNAL`
 
-- :decl_configoption:`OGR_SQLITE_CACHE`: see 
-  :ref:`Performance hints <target_drivers_vector_gpkg_performance_hints>`.
-  
-- :decl_configoption:`OGR_SQLITE_SYNCHRONOUS`: see 
-  :ref:`Performance hints <target_drivers_vector_gpkg_performance_hints>`.
+- :copy-config:`OGR_SQLITE_CACHE`
 
-- :decl_configoption:`OGR_SQLITE_LOAD_EXTENSIONS` =extension1,...,extensionN,ENABLE_SQL_LOAD_EXTENSION:
-  (GDAL >= 3.5.0). Comma separated list of names of shared libraries containing
-  extensions to load at database opening.
-  If a file cannot be loaded directly, attempts are made to load with various
-  operating-system specific extensions added. So
-  for example, if "samplelib" cannot be loaded, then names like "samplelib.so"
-  or "samplelib.dylib" or "samplelib.dll" might be tried also.
-  The special value ``ENABLE_SQL_LOAD_EXTENSION`` can be used to enable the use of
-  the SQL ``load_extension()`` function, which is normally disabled in standard
-  builds of sqlite3.
-  Loading extensions as a potential security impact if they are untrusted.
+- :copy-config:`OGR_SQLITE_SYNCHRONOUS`
 
-- :decl_configoption:`OGR_SQLITE_PRAGMA` can be used to specify any SQLite
-  `pragma <http://www.sqlite.org/pragma.html>`__ . The syntax is
-  ``OGR_SQLITE_PRAGMA = "pragma_name=pragma_value[,pragma_name2=pragma_value2]*"``.
+- :copy-config:`OGR_SQLITE_LOAD_EXTENSIONS`
 
-- :decl_configoption:`OGR_CURRENT_DATE`: the driver updates the GeoPackage 
-  ``last_change`` timestamp when the file is created or modified. If consistent 
-  binary output is required for reproducibility, the timestamp can be forced to 
-  a specific value by setting this global configuration option.
-  When setting the option, take care to meet the specific time format
-  requirement of the GeoPackage standard,
-  e.g. `for version 1.2 <https://www.geopackage.org/spec120/#r15>`__.
+- :copy-config:`OGR_SQLITE_PRAGMA`
 
-- :decl_configoption:`SQLITE_USE_OGR_VFS` =YES enables extra buffering/caching 
-  by the GDAL/OGR I/O layer and can speed up I/O. More information 
-  :ref:`here <target_user_virtual_file_systems_file_caching>`.
-  Be aware that no file locking will occur if this option is activated, so 
-  concurrent edits may lead to database corruption.
+- .. config:: OGR_CURRENT_DATE
+
+     the driver updates the GeoPackage
+     ``last_change`` timestamp when the file is created or modified. If consistent
+     binary output is required for reproducibility, the timestamp can be forced to
+     a specific value by setting this global configuration option.
+     When setting the option, take care to meet the specific time format
+     requirement of the GeoPackage standard,
+     e.g. `for version 1.2 <https://www.geopackage.org/spec120/#r15>`__.
+
+- :copy-config:`SQLITE_USE_OGR_VFS`
 
 Metadata
 --------
@@ -356,7 +446,7 @@ spatial tables that are not registered through the gdal_aspatial
 extension, and support the GeoPackage 1.2 "attributes" data type as
 well. Starting with GDAL 2.2, non spatial tables are by default created
 following the GeoPackage 1.2 "attributes" data type (can be controlled
-with the ASPATIAL_VARIANT layer creation option).
+with the :lco:`ASPATIAL_VARIANT` layer creation option).
 
 Spatial views
 -------------
@@ -375,17 +465,36 @@ really a primary key.
 
 For example:
 
-::
+.. code-block:: sql
 
-   CREATE VIEW my_view AS SELECT foo.fid AS OGC_FID, foo.geom, ... FROM foo JOIN another_table ON foo.some_id = another_table.other_id
-   INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ( 'my_view', 'my_view', 'features', 4326)
-   INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('my_view', 'my_geom', 'GEOMETRY', 4326, 0, 0)
+   CREATE VIEW my_view AS SELECT foo.fid AS OGC_FID, foo.geom FROM foo JOIN another_table ON foo.some_id = another_table.other_id;
+   INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ( 'my_view', 'my_view', 'features', 4326);
+   INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('my_view', 'my_geom', 'GEOMETRY', 4326, 0, 0);
 
 This requires GDAL to be compiled with the SQLITE_HAS_COLUMN_METADATA
 option and SQLite3 with the SQLITE_ENABLE_COLUMN_METADATA option.
 Starting with GDAL 2.3, this can be easily verified if the
 SQLITE_HAS_COLUMN_METADATA=YES driver metadata item is declared (for
 example with "ogrinfo --format GPKG").
+
+Starting with GDAL 3.7.1, it is possible to define a geometry column as the
+result of a Spatialite spatial function. Note however that this is an extension
+likely to be non-interoperable with other software that does not activate Spatialite
+for the SQLite3 database connection. Such geometry column should be registered
+into the ``gpkg_extensions`` using the ``gdal_spatialite_computed_geom_column``
+extension name (cf :ref:`vector.gpkg_spatialite_computed_geom_column`), like below:
+
+.. code-block:: sql
+
+   CREATE VIEW my_view AS SELECT foo.fid AS OGC_FID, AsGBP(ST_Multi(foo.geom)) FROM foo;
+   INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES (
+       'my_view', 'my_view', 'features', 4326);
+   INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES (
+       'my_view', 'my_geom', 'MULTIPOLYGON', 4326, 0, 0);
+   INSERT INTO gpkg_extensions (table_name, column_name, extension_name, definition, scope) VALUES (
+       'my_view', 'my_geom', 'gdal_spatialite_computed_geom_column',
+       'https://gdal.org/drivers/vector/gpkg_spatialite_computed_geom_column.html', 'read-write');
+
 
 Coordinate Reference Systems
 ----------------------------
@@ -431,13 +540,31 @@ Level of support of GeoPackage Extensions
    * - :ref:`vector.geopackage_aspatial`
      - No
      - Yes. Deprecated in GDAL 2.2 for the *attributes* official data_type
+   * - :ref:`vector.gpkg_spatialite_computed_geom_column`
+     - No
+     - Yes, starting with GDAL 3.7.1
+
+Compressed files
+----------------
+
+Starting with GDAL 3.7, the driver can also support reading and creating
+.gpkg.zip files containing one .gpkg file.
+
+On large files, good read performance can only be achieved if the file inside
+the .zip is not compressed or compressed using the `SOZip <https://sozip.org>`__
+optimization.
+
+Update of an existing file is not supported.
+
+Creation involves the creation of a temporary file. Sufficiently large files
+will be automatically compressed using the SOZip optimization.
 
 .. _target_drivers_vector_gpkg_performance_hints:
 
 Performance hints
 -----------------
 
-The same performance hints apply as those mentioned for the 
+The same performance hints apply as those mentioned for the
 :ref:`SQLite driver <target_drivers_vector_sqlite_performance_hints>`.
 
 Examples
@@ -453,9 +580,9 @@ Examples
 
       ogr2ogr -f GPKG filename.gpkg abc.shp
 
--  Update of an existing GeoPackage file – e.g. a GeoPackage template – 
-   by adding features to it from another GeoPackage file containing 
-   features according to the same or a backwards compatible database 
+-  Update of an existing GeoPackage file – e.g. a GeoPackage template –
+   by adding features to it from another GeoPackage file containing
+   features according to the same or a backwards compatible database
    schema.
 
    ::
@@ -503,3 +630,4 @@ See Also
    :hidden:
 
    geopackage_aspatial
+   gpkg_spatialite_computed_geom_column

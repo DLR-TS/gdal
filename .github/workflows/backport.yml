@@ -5,9 +5,10 @@ on:
       - closed
       - labeled
 
+permissions: {}
 jobs:
   backport:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     name: Backport
     steps:
       - name: Backport Bot

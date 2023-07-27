@@ -12,6 +12,8 @@
   if ( OGRGetDriverCount() == 0 ) {
     OGRRegisterAll();
   }
+  // Will be turned on for GDAL 4.0
+  // UseExceptions();
 
 %}
 #endif
@@ -48,6 +50,31 @@
 %include "python_exceptions.i"
 %include "python_strings.i"
 
+// Start: to be removed in GDAL 4.0
+
+// Issue a FutureWarning in a number of functions and methods that will
+// be impacted when exceptions are enabled by default
+
+%pythoncode %{
+
+hasWarnedAboutUserHasNotSpecifiedIfUsingExceptions = False
+
+def _WarnIfUserHasNotSpecifiedIfUsingExceptions():
+    from . import gdal
+    if not hasattr(gdal, "hasWarnedAboutUserHasNotSpecifiedIfUsingExceptions") and not _UserHasSpecifiedIfUsingExceptions():
+        gdal.hasWarnedAboutUserHasNotSpecifiedIfUsingExceptions = True
+        import warnings
+        warnings.warn(
+            "Neither ogr.UseExceptions() nor ogr.DontUseExceptions() has been explicitly called. " +
+            "In GDAL 4.0, exceptions will be enabled by default.", FutureWarning)
+%}
+
+%pythonprepend Open %{
+    _WarnIfUserHasNotSpecifiedIfUsingExceptions()
+%}
+
+// End: to be removed in GDAL 4.0
+
 %extend OGRDataSourceShadow {
   %pythoncode {
     def Destroy(self):
@@ -71,6 +98,17 @@
     def __len__(self):
         """Returns the number of layers on the datasource"""
         return self.GetLayerCount()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._invalidate_layers()
+        self.Destroy()
+        self.this = None
+
+    def __del__(self):
+        self._invalidate_layers()
 
     def __getitem__(self, value):
         """Support dictionary, list, and slice -like access to the datasource.
@@ -97,6 +135,9 @@
 
     def GetLayer(self, iLayer=0):
         """Return the layer given an index or a name"""
+
+        _WarnIfUserHasNotSpecifiedIfUsingExceptions()
+
         if isinstance(iLayer, str):
             return self.GetLayerByName(str(iLayer))
         elif isinstance(iLayer, int):
@@ -104,19 +145,173 @@
         else:
             raise TypeError("Input %s is not of String or Int type" % type(iLayer))
 
-    def DeleteLayer(self, value):
-        """Deletes the layer given an index or layer name"""
+    def _invalidate_layers(self, lyr = None):
+        if hasattr(self, '_layer_references'):
+            for lyr in self._layer_references:
+                lyr.this = None
+
+  }
+
+%feature("shadow") GetLayerByName %{
+    def GetLayerByName(self, name):
+        lyr = $action(self, name)
+
+        if not hasattr(self, '_layer_references'):
+            import weakref
+
+            self._layer_references = weakref.WeakSet()
+
+        if lyr is not None:
+            self._layer_references.add(lyr)
+
+        return lyr
+%}
+
+%feature("shadow") GetLayerByIndex %{
+    def GetLayerByIndex(self, idx):
+        lyr = $action(self, idx)
+
+        if not hasattr(self, '_layer_references'):
+            import weakref
+
+            self._layer_references = weakref.WeakSet()
+
+        if lyr is not None:
+            self._layer_references.add(lyr)
+
+        return lyr
+%}
+
+%feature("shadow") DeleteLayer %{
+    def DeleteLayer(self, value) -> "OGRErr":
+        """
+        DeleteLayer(DataSource self, value) -> OGRErr
+
+        Delete the indicated layer from the datasource.
+
+        For more details: :c:func:`OGR_DS_DeleteLayer`
+
+        Parameters
+        -----------
+        value: str | int
+            index or name of the layer to delete.
+
+        Returns
+        -------
+        int:
+            :py:const:`osgeo.ogr.OGRERR_NONE` on success, or :py:const:`osgeo.ogr.OGRERR_UNSUPPORTED_OPERATION` if deleting
+            layers is not supported for this datasource.
+        """
+
         if isinstance(value, str):
             for i in range(self.GetLayerCount()):
-                name = self.GetLayer(i).GetName()
-                if name == value:
-                    return _ogr.DataSource_DeleteLayer(self, i)
+                lyr = self.GetLayer(i)
+                if lyr.GetName() == value:
+                    return $action(self, i)
             raise ValueError("Layer %s not found to delete" % value)
         elif isinstance(value, int):
-            return _ogr.DataSource_DeleteLayer(self, value)
+            return $action(self, value)
         else:
             raise TypeError("Input %s is not of String or Int type" % type(value))
-  }
+%}
+
+%feature("shadow") ExecuteSQL %{
+def ExecuteSQL(self, statement, spatialFilter=None, dialect="", keep_ref_on_ds=False):
+    """ExecuteSQL(self, statement, spatialFilter: ogr.Geometry = None, dialect: Optional[str] = "", keep_ref_on_ds=False) -> ogr.Layer
+
+    Execute a SQL statement against the dataset
+
+    The result of a SQL query is:
+      - None (or an exception if exceptions are enabled) for statements
+        that are in error
+      - or None for statements that have no results set,
+      - or a ogr.Layer handle representing a results set from the query.
+
+    Note that this ogr.Layer is in addition to the layers in the data store
+    and must be released with ReleaseResultSet() before the data source is closed
+    (destroyed).
+
+    Starting with GDAL 3.7, this method can also be used as a context manager,
+    as a convenient way of automatically releasing the returned result layer.
+
+    For more information on the SQL dialect supported internally by OGR
+    review the OGR SQL document (:ref:`ogr_sql_sqlite_dialect`)
+    Some drivers (i.e. Oracle and PostGIS) pass the SQL directly through to the
+    underlying RDBMS.
+
+    The SQLITE dialect can also be used (:ref:`sql_sqlite_dialect`)
+
+    Parameters
+    ----------
+    statement:
+        the SQL statement to execute (e.g "SELECT * FROM layer")
+    spatialFilter:
+        a geometry which represents a spatial filter. Can be None
+    dialect:
+        allows control of the statement dialect. If set to None or empty string,
+        the OGR SQL engine will be used, except for RDBMS drivers that will
+        use their dedicated SQL engine, unless OGRSQL is explicitly passed as
+        the dialect. The SQLITE dialect can also be used.
+    keep_ref_on_ds:
+        whether the returned layer should keep a (strong) reference on
+        the current dataset. Cf example 2 for a use case.
+
+    Returns
+    -------
+    ogr.Layer:
+        a ogr.Layer containing the results of the query, that will be
+        automatically released when the context manager goes out of scope.
+
+    Examples
+    --------
+    1. Use as a context manager:
+
+    >>> with ds.ExecuteSQL("SELECT * FROM layer") as lyr:
+    ...     print(lyr.GetFeatureCount())
+
+    2. Use keep_ref_on_ds=True to return an object that keeps a reference to its dataset:
+
+    >>> def get_sql_lyr():
+    ...     return gdal.OpenEx("test.shp").ExecuteSQL("SELECT * FROM test", keep_ref_on_ds=True)
+    ...
+    ... with get_sql_lyr() as lyr:
+    ...     print(lyr.GetFeatureCount())
+    """
+
+    sql_lyr = $action(self, statement, spatialFilter, dialect)
+    if sql_lyr:
+        import weakref
+        sql_lyr._to_release = True
+        sql_lyr._dataset_weak_ref = weakref.ref(self)
+        if keep_ref_on_ds:
+            sql_lyr._dataset_strong_ref = self
+    return sql_lyr
+%}
+
+
+%feature("shadow") ReleaseResultSet %{
+def ReleaseResultSet(self, sql_lyr):
+    """ReleaseResultSet(self, sql_lyr: ogr.Layer)
+
+    Release ogr.Layer returned by ExecuteSQL() (when not called as an execution manager)
+
+    The sql_lyr object is invalidated after this call.
+
+    Parameters
+    ----------
+    sql_lyr:
+        ogr.Layer got with ExecuteSQL()
+    """
+
+    if sql_lyr and not hasattr(sql_lyr, "_to_release"):
+        raise Exception("This layer was not returned by ExecuteSQL() and should not be released with ReleaseResultSet()")
+    $action(self, sql_lyr)
+    # Invalidates the layer
+    if sql_lyr:
+        sql_lyr.thisown = None
+        sql_lyr.this = None
+%}
+
 }
 
 #endif
@@ -177,6 +372,21 @@
         for i in fields:
             self.CreateField(i)
 
+    def __enter__(self):
+        """Method called when using Dataset.ExecuteSQL() as a context manager"""
+        if hasattr(self, "_dataset_weak_ref"):
+            self._dataset_strong_ref = self._dataset_weak_ref()
+            assert self._dataset_strong_ref
+            del self._dataset_weak_ref
+            return self
+        raise Exception("__enter__() called in unexpected situation")
+
+    def __exit__(self, *args):
+        """Method called when using Dataset.ExecuteSQL() as a context manager"""
+        if hasattr(self, "_dataset_strong_ref"):
+            self._dataset_strong_ref.ReleaseResultSet(self)
+            del self._dataset_strong_ref
+
     def __iter__(self):
         self.ResetReading()
         while True:
@@ -207,37 +417,35 @@
             def schema(self):
                 """ Return the schema as a PyArrow DataType """
 
-                schema_ptr = self.stream._GetSchemaPtr()
-                if schema_ptr == 0:
+                schema = self.stream.GetSchema()
+                if schema is None:
                     raise Exception("cannot get schema")
-                try:
-                    return pa.DataType._import_from_c(schema_ptr)
-                finally:
-                    self.stream._FreeSchemaPtr(schema_ptr)
+                return pa.DataType._import_from_c(schema._getPtr())
 
             schema = property(schema)
 
+            def __enter__(self):
+                return self
 
-            def _GetNextRecordBatchAsPyArrow(self, l_schema):
+            def __exit__(self, type, value, tb):
+                self.end_of_stream = True
+                self.stream = None
+
+            def GetNextRecordBatch(self):
                 """ Return the next RecordBatch as a PyArrow StructArray, or None at end of iteration """
 
-                array_ptr = self.stream._GetNextRecordBatchPtr()
-                if array_ptr == 0:
+                array = self.stream.GetNextRecordBatch()
+                if array is None:
                     return None
-                try:
-                    return pa.Array._import_from_c(array_ptr, l_schema)
-                finally:
-                    self.stream._FreeRecordBatchPtr(array_ptr)
-
+                return pa.Array._import_from_c(array._getPtr(), self.schema)
 
             def __iter__(self):
                 """ Return an iterator over record batches as a PyArrow StructArray """
                 if self.end_of_stream:
                     raise Exception("Stream has already been iterated over")
 
-                l_schema = self.schema
                 while True:
-                    batch = self._GetNextRecordBatchAsPyArrow(l_schema)
+                    batch = self.GetNextRecordBatch()
                     if not batch:
                         break
                     yield batch
@@ -260,26 +468,28 @@
         class Stream:
             def __init__(self, stream, use_masked_arrays):
                 self.stream = stream
+                self.schema = stream.GetSchema()
                 self.end_of_stream = False
                 self.use_masked_arrays = use_masked_arrays
 
-            def _GetNextRecordBatchAsNumpy(self, schema_ptr):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, type, value, tb):
+                self.end_of_stream = True
+                self.schema = None
+                self.stream = None
+
+            def GetNextRecordBatch(self):
                 """ Return the next RecordBatch as a dictionary of Numpy arrays, or None at end of iteration """
 
-                array_ptr = self.stream._GetNextRecordBatchPtr()
-                if array_ptr == 0:
+                array = self.stream.GetNextRecordBatch()
+                if array is None:
                     return None
 
-                class ArrayPointerKeeper:
-                    def __init__(self, array_ptr):
-                        self.array_ptr = array_ptr
-
-                    def __del__(self):
-                        ArrowArrayStream._FreeRecordBatchPtr(self.array_ptr)
-
-                ret = gdal_array._RecordBatchAsNumpy(array_ptr,
-                                                     schema_ptr,
-                                                     ArrayPointerKeeper(array_ptr))
+                ret = gdal_array._RecordBatchAsNumpy(array._getPtr(),
+                                                     self.schema._getPtr(),
+                                                     array)
                 if ret is None:
                     gdal_array._RaiseException()
                     return ret
@@ -298,15 +508,13 @@
                 if self.end_of_stream:
                     raise Exception("Stream has already been iterated over")
 
-                schema_ptr = self.stream._GetSchemaPtr()
                 try:
                     while True:
-                        batch = self._GetNextRecordBatchAsNumpy(schema_ptr)
+                        batch = self.GetNextRecordBatch()
                         if not batch:
                             break
                         yield batch
                 finally:
-                    self.stream._FreeSchemaPtr(schema_ptr)
                     self.end_of_stream = True
                     self.stream = None
 
@@ -390,7 +598,7 @@
         else:
             idx = self._getfieldindex(key)
             if idx != -1:
-                self.SetField2(idx, value)
+                self._SetField2(idx, value)
             else:
                 idx = self.GetGeomFieldIndex(key)
                 if idx != -1:
@@ -434,7 +642,7 @@
             else:
                 return self.SetGeomField(fld_index, value)
         else:
-            return self.SetField2(fld_index, value)
+            return self._SetField2(fld_index, value)
 
     def GetField(self, fld_index):
         if isinstance(fld_index, str):
@@ -472,45 +680,11 @@
             # For Python3 on non-UTF8 strings
             return self.GetFieldAsBinary(fld_index)
 
-    # With several override, SWIG cannot dispatch automatically unicode strings
-    # to the right implementation, so we have to do it at hand
-    def SetField(self, *args):
-        """
-        SetField(self, int id, char value)
-        SetField(self, char name, char value)
-        SetField(self, int id, int value)
-        SetField(self, char name, int value)
-        SetField(self, int id, double value)
-        SetField(self, char name, double value)
-        SetField(self, int id, int year, int month, int day, int hour, int minute,
-            int second, int tzflag)
-        SetField(self, char name, int year, int month, int day, int hour,
-            int minute, int second, int tzflag)
-        """
-
-        if len(args) == 2 and args[1] is None:
-            return _ogr.Feature_SetFieldNull(self, args[0])
-
-        if len(args) == 2 and (type(args[1]) == type(1) or type(args[1]) == type(12345678901234)):
-            fld_index = args[0]
-            if isinstance(fld_index, str):
-                fld_index = self._getfieldindex(fld_index)
-            return _ogr.Feature_SetFieldInteger64(self, fld_index, args[1])
-
-
-        if len(args) == 2 and isinstance(args[1], str):
-            fld_index = args[0]
-            if isinstance(fld_index, str):
-                fld_index = self._getfieldindex(fld_index)
-            return _ogr.Feature_SetFieldString(self, fld_index, args[1])
-
-        return _ogr.Feature_SetField(self, *args)
-
-    def SetField2(self, fld_index, value):
+    def _SetField2(self, fld_index, value):
         if isinstance(fld_index, str):
             fld_index = self._getfieldindex(fld_index)
         if (fld_index < 0) or (fld_index > self.GetFieldCount()):
-            raise KeyError("Illegal field requested in SetField2()")
+            raise KeyError("Illegal field requested in _SetField2()")
 
         if value is None:
             self.SetFieldNull(fld_index)
@@ -530,7 +704,7 @@
                 self.SetFieldStringList(fld_index, value)
                 return
             else:
-                raise TypeError('Unsupported type of list in SetField2(). Type of element is %s' % str(type(value[0])))
+                raise TypeError('Unsupported type of list in _SetField2(). Type of element is %s' % str(type(value[0])))
 
         try:
             self.SetField(fld_index, value)
@@ -539,6 +713,7 @@
         return
 
     def keys(self):
+        """Return the list of field names (of the layer definition)"""
         names = []
         for i in range(self.GetFieldCount()):
             fieldname = self.GetFieldDefnRef(i).GetName()
@@ -546,12 +721,29 @@
         return names
 
     def items(self):
+        """Return a dictionary with the field names as key, and their value in the feature"""
         keys = self.keys()
         output = {}
         for key in keys:
             output[key] = self.GetField(key)
         return output
+
     def geometry(self):
+        """ Return the feature geometry
+
+            The lifetime of the returned geometry is bound to the one of its belonging
+            feature.
+
+            For more details: :cpp:func:`OGR_F_GetGeometryRef`
+
+            The GetGeometryRef() method is also available as an alias of geometry()
+
+            Returns
+            --------
+            Geometry:
+                the geometry, or None.
+        """
+
         return self.GetGeometryRef()
 
     def ExportToJson(self, as_object=False, options=None):
@@ -601,6 +793,42 @@
 
 %}
 
+%feature("shadow") SetField %{
+    # With several override, SWIG cannot dispatch automatically unicode strings
+    # to the right implementation, so we have to do it at hand
+    def SetField(self, *args) -> "OGRErr":
+        """
+        SetField(self, int id, char value)
+        SetField(self, char name, char value)
+        SetField(self, int id, int value)
+        SetField(self, char name, int value)
+        SetField(self, int id, double value)
+        SetField(self, char name, double value)
+        SetField(self, int id, int year, int month, int day, int hour, int minute,
+            int second, int tzflag)
+        SetField(self, char name, int year, int month, int day, int hour,
+            int minute, int second, int tzflag)
+        """
+
+        if len(args) == 2 and args[1] is None:
+            return _ogr.Feature_SetFieldNull(self, args[0])
+
+        if len(args) == 2 and (type(args[1]) == type(1) or type(args[1]) == type(12345678901234)):
+            fld_index = args[0]
+            if isinstance(fld_index, str):
+                fld_index = self._getfieldindex(fld_index)
+            return _ogr.Feature_SetFieldInteger64(self, fld_index, args[1])
+
+
+        if len(args) == 2 and isinstance(args[1], str):
+            fld_index = args[0]
+            if isinstance(fld_index, str):
+                fld_index = self._getfieldindex(fld_index)
+            return _ogr.Feature_SetFieldString(self, fld_index, args[1])
+
+        return $action(self, *args)
+%}
+
 }
 
 %extend OGRGeometryShadow {
@@ -610,7 +838,7 @@
     self.thisown = 0
 
   def __str__(self):
-    return self.ExportToWkt()
+    return self.ExportToIsoWkt()
 
   def __copy__(self):
     return self.Clone()
@@ -688,81 +916,4 @@
     return self.GetMetadata_Dict(domain)
 %}
 }
-#endif
-
-#ifdef no_longer_defined_since_it_breaks_py2exe_pyinstaller_ticket_6364
-%pythoncode %{
-
-# Backup original dictionary before doing anything else
-_initial_dict = globals().copy()
-
-@property
-def wkb25Bit(module):
-    import warnings
-    warnings.warn("ogr.wkb25DBit deprecated: use ogr.GT_Flatten(), ogr.GT_HasZ() or ogr.GT_SetZ() instead", DeprecationWarning)
-    return module._initial_dict['wkb25DBit']
-
-@property
-def wkb25DBit(module):
-    import warnings
-    warnings.warn("ogr.wkb25DBit deprecated: use ogr.GT_Flatten(), ogr.GT_HasZ() or ogr.GT_SetZ() instead", DeprecationWarning)
-    return module._initial_dict['wkb25DBit']
-
-# Inspired from http://www.dr-josiah.com/2013/12/properties-on-python-modules.html
-class _Module(object):
-    def __init__(self):
-        self.__dict__ = globals()
-        self._initial_dict = _initial_dict
-
-        # Transfer properties from the object to the Class
-        for k, v in list(self.__dict__.items()):
-            if isinstance(v, property):
-                setattr(self.__class__, k, v)
-                #del self.__dict__[k]
-
-        # Replace original module by our object
-        import sys
-        self._original_module = sys.modules[self.__name__]
-        sys.modules[self.__name__] = self
-
-# Custom help() replacement to display the help of the original module
-# instead of the one of our instance object
-class _MyHelper(object):
-
-    def __init__(self, module):
-        self.module = module
-        self.original_help = help
-
-        # Replace builtin help by ours
-        import builtins
-        builtins.help = self
-
-    def __repr__(self):
-        return self.original_help.__repr__()
-
-    def __call__(self, *args, **kwds):
-
-        if args == (self.module,):
-            import sys
-
-            # Restore original module before calling help() otherwise
-            # we don't get methods or classes mentioned
-            sys.modules[self.module.__name__] = self.module._original_module
-
-            ret = self.original_help(self.module._original_module, **kwds)
-
-            # Reinstall our module
-            sys.modules[self.module.__name__] = self.module
-
-            return ret
-        elif args == (self,):
-            return self.original_help(self.original_help, **kwds)
-        else:
-            return self.original_help(*args, **kwds)
-
-_MyHelper(_Module())
-del _MyHelper
-del _Module
-
-%}
 #endif

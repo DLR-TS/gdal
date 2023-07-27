@@ -28,9 +28,9 @@
 #  DEALINGS IN THE SOFTWARE.
 # ******************************************************************************
 
-from osgeo import gdal, gdal_array
 import numpy as np
 
+from osgeo import gdal, gdal_array
 from osgeo_utils.auxiliary.array_util import ArrayOrScalarLike, ScalarLike
 
 
@@ -45,18 +45,29 @@ def GDALTypeCodeToNumericTypeCodeEx(buf_type, signed_byte, default=None):
 
 
 def GDALTypeCodeAndNumericTypeCodeFromDataSet(ds):
-    buf_type = ds.GetRasterBand(1).DataType
-    signed_byte = ds.GetRasterBand(1).GetMetadataItem('PIXELTYPE', 'IMAGE_STRUCTURE') == 'SIGNEDBYTE'
-    np_typecode = GDALTypeCodeToNumericTypeCodeEx(buf_type, signed_byte=signed_byte, default=np.float32)
+    band = ds.GetRasterBand(1)
+    buf_type = band.DataType
+    signed_byte = False
+    if buf_type == gdal.GDT_Byte:
+        band._EnablePixelTypeSignedByteWarning(False)
+        signed_byte = (
+            band.GetMetadataItem("PIXELTYPE", "IMAGE_STRUCTURE") == "SIGNEDBYTE"
+        )
+        band._EnablePixelTypeSignedByteWarning(True)
+    np_typecode = GDALTypeCodeToNumericTypeCodeEx(
+        buf_type, signed_byte=signed_byte, default=np.float32
+    )
     return buf_type, np_typecode
 
 
-def array_dist(x: ArrayOrScalarLike, y: ArrayOrScalarLike, is_max: bool = True) -> ScalarLike:
+def array_dist(
+    x: ArrayOrScalarLike, y: ArrayOrScalarLike, is_max: bool = True
+) -> ScalarLike:
     if isinstance(x, ScalarLike.__args__):
-        return abs(x-y)
+        return abs(x - y)
     if not isinstance(x, np.ndarray):
         x = np.array(x)
     if not isinstance(y, np.ndarray):
         y = np.array(y)
-    diff = np.abs(x-y)
+    diff = np.abs(x - y)
     return np.max(diff) if is_max else np.min(diff)

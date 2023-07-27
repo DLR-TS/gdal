@@ -103,16 +103,14 @@ gdal_optional_format(pdf "Geospatial PDF") # write only if none of GDAL_USE_POPP
 gdal_dependent_format(png "PNG image format" "GDAL_USE_PNG OR GDAL_USE_PNG_INTERNAL")
 gdal_dependent_format(gif "Graphics Interchange Format" "GDAL_USE_GIF OR GDAL_USE_GIF_INTERNAL")
 
-gdal_dependent_format(wcs "OGC Web Coverage Service" "GDAL_USE_CURL" SKIP_ADD_SUBDIRECTORY)
-gdal_dependent_format(http "HTTP driver" "GDAL_USE_CURL" SKIP_ADD_SUBDIRECTORY)
-add_subdirectory(wcs)
+gdal_dependent_format(wcs "OGC Web Coverage Service" "GDAL_USE_CURL")
+gdal_dependent_format(http "HTTP driver" "GDAL_USE_CURL")
 
 gdal_dependent_format(netcdf "NetCDF network Common Data Form" "GDAL_USE_NETCDF")
 gdal_optional_format(zarr "ZARR")
 gdal_dependent_format(daas "Airbus DS Intelligence Data As A Service(DAAS)" "GDAL_USE_CURL")
 gdal_dependent_format(eeda "Earth Engine Data API" "GDAL_USE_CURL")
 gdal_dependent_format(fits "FITS Driver" "GDAL_USE_CFITSIO")
-gdal_dependent_format(rasdaman "Rasdaman GDAL driver" "GDAL_USE_RASDAMAN")
 gdal_dependent_format(hdf5 "Hierarchical Data Format Release 5 (HDF5)" "GDAL_USE_HDF5")
 gdal_dependent_format(plmosaic "PLMosaic (Planet Labs Mosaics API)" "GDAL_USE_CURL")
 gdal_dependent_format(wms "Web Map Services" "GDAL_USE_CURL")
@@ -120,7 +118,7 @@ gdal_dependent_format(gta "Generic Tagged Arrays" "GDAL_USE_GTA")
 gdal_dependent_format(webp "WebP" "GDAL_USE_WEBP")
 gdal_dependent_format(hdf4 "Hierarchical Data Format Release 4 (HDF4)" "GDAL_USE_HDF4")
 gdal_dependent_format(rasterlite "Rasterlite - Rasters in SQLite DB" "GDAL_USE_SQLITE3;OGR_ENABLE_DRIVER_SQLITE")
-gdal_dependent_format(mbtiles "MBTile" "GDAL_USE_SQLITE3;OGR_ENABLE_DRIVER_GPKG")
+gdal_dependent_format(mbtiles "MBTile" "GDAL_USE_SQLITE3;OGR_ENABLE_DRIVER_GPKG;OGR_ENABLE_DRIVER_MVT")
 gdal_dependent_format(postgisraster "PostGIS Raster driver" "GDAL_USE_POSTGRESQL")
 gdal_dependent_format(dds "DirectDraw Surface" "GDAL_USE_CRNLIB")
 gdal_dependent_format(kea "Kea" "GDAL_USE_KEA;GDAL_USE_HDF5")
@@ -131,6 +129,7 @@ gdal_dependent_format(exr "EXR support via OpenEXR library" "GDAL_USE_OPENEXR")
 gdal_dependent_format(pcraster "PCRaster CSF 2.0 raster file driver" "GDAL_USE_LIBCSF OR GDAL_USE_LIBCSF_INTERNAL")
 gdal_dependent_format(rdb "RIEGL RDB Map Pixel (.mpx) driver" "rdb_FOUND")
 gdal_dependent_format(jpegxl "JPEG-XL" "GDAL_USE_JXL")
+gdal_dependent_format(basisu_ktx2 "Basis Universal and KTX2 texture formats" "GDAL_USE_BASISU")
 
 # ######################################################################################################################
 # driver with proprietary libraries Kakadu software SDK
@@ -157,9 +156,3 @@ target_include_directories(
                      $<TARGET_PROPERTY:ogr_MEM,SOURCE_DIR>)
 target_sources(${GDAL_LIB_TARGET_NAME} PRIVATE $<TARGET_OBJECTS:gdal_frmts>)
 set_property(TARGET gdal_frmts PROPERTY POSITION_INDEPENDENT_CODE ${GDAL_OBJECT_LIBRARIES_POSITION_INDEPENDENT_CODE})
-
-# Special case for HTTP driver since it is included in the frmts/wcs/ directory We should ultimately make it a separate
-# frmts/http/ to clean up things.
-if (GDAL_ENABLE_DRIVER_HTTP AND NOT GDAL_ENABLE_DRIVER_HTTP_PLUGIN)
-  target_compile_definitions(gdal_frmts PRIVATE -DFRMT_http)
-endif ()

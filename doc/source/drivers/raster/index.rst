@@ -32,6 +32,7 @@ Raster drivers
    airsar
    arg
    bag
+   basisu
    blx
    bmp
    bsb
@@ -107,6 +108,7 @@ Raster drivers
    kea
    kmlsuperoverlay
    kro
+   ktx2
    lan
    l1b
    lcp
@@ -126,9 +128,12 @@ Raster drivers
    ngsgeoid
    ngw
    nitf
+   noaa_b
+   nsidcbin
    ntv2
    nwtgrd
    ogcapi
+   openfilegdb
    ozi
    palsar
    paux
@@ -142,7 +147,6 @@ Raster drivers
    pnm
    postgisraster
    prf
-   rasdaman
    rasterlite
    rasterlite2
    r
