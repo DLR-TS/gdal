@@ -71,9 +71,7 @@ ogr_dependent_driver(xodr XODR "GDAL_USE_OPENDRIVE")
 ogr_dependent_driver(idrisi IDRISI "GDAL_ENABLE_DRIVER_IDRISI")
 
 ogr_dependent_driver(pds "Planetary Data Systems TABLE" "GDAL_ENABLE_DRIVER_PDS;OGR_ENABLE_DRIVER_GML")
-###
-#ogr_dependent_driver(xodr "Open Dynamic Road Information" "GDAL_USE_OPENDRIVE")
-###
+
 # Caution: if modifying SQLite declaration here, also modify it in gdal.cmake
 ogr_dependent_driver(sqlite "SQLite3 / Spatialite RDBMS" "GDAL_USE_SQLITE3")
 # Caution: if modifying GPKG declaration here, also modify it in gdal.cmake
