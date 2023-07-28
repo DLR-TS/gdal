@@ -34,10 +34,6 @@ CPL_CVSID("$Id$")
 
 extern "C" void CPL_DLL RegisterOGRXODR();
 
-/*--------------------------------------------------------------------*/
-/*---------------------------     open    ----------------------------*/
-/*--------------------------------------------------------------------*/
-
 static GDALDataset *OGRXODRDriverOpen( GDALOpenInfo* poOpenInfo )
 {
     if( poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr )
@@ -53,17 +49,10 @@ static GDALDataset *OGRXODRDriverOpen( GDALOpenInfo* poOpenInfo )
 
     return poDS;
 }
-/*--------------------------------------------------------------------*/
-/*---------------------------     identity   -------------------------*/
-/*--------------------------------------------------------------------*/
+
 static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
   return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
 }
-
-/*--------------------------------------------------------------------*/
-/*---------------------------     register   -------------------------*/
-/*--------------------------------------------------------------------*/
-
 
 void RegisterOGRXODR()
 {
@@ -91,4 +80,3 @@ void RegisterOGRXODR()
         GetGDALDriverManager()->RegisterDriver( poDriver );
     }
 }
-

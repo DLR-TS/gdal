@@ -33,8 +33,6 @@ using namespace std;
 
 CPL_CVSID("$Id$")
 
-/*--------------------------------------------------------------------*/
-
 OGRXODRDataSource::OGRXODRDataSource()
 {
     papoLayers = NULL;
@@ -52,7 +50,6 @@ OGRXODRDataSource::~OGRXODRDataSource()
 
 }
 
-/*--------------------------------------------------------------------*/
 int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
 {
     
@@ -68,12 +65,12 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
         fp = VSIFOpenExL(pszFilename, "rb", true);
     if( fp == nullptr )
     {
-        CPLError(CE_Warning, CPLE_OpenFailed, "Failed to open %s.");
+        CPLError(CE_Warning, CPLE_OpenFailed, "Failed to open %s."); //TODO %s is never substituted
         return false;
     }
 
 
-    if( bUpdate )
+    if( bUpdate )//TODO merge with upper if condition on the same variable
     {
         CPLError(CE_Failure, CPLE_OpenFailed,
                 "Update access not supported by the xodr driver.");
@@ -112,8 +109,6 @@ int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
     
 }
 
-/*--------------------------------------------------------------------*/
-
 OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
 {
     if( iLayer < 0 || iLayer >= nLayers )
@@ -122,7 +117,6 @@ OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
     return papoLayers[iLayer];
 }
 
-/*--------------------------------------------------------------------*/
 int OGRXODRDataSource::TestCapability( CPL_UNUSED const char * pszCap )
 
 {
