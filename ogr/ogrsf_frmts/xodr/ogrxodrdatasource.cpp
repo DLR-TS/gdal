@@ -74,7 +74,7 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     nLayers = 5;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
-    //xml_parse_result result = doc.load_file(fileName);
+    xml_parse_result result = doc.load_file(fileName);
     xml_node opendrive = doc.child("OpenDRIVE");
     xml_node header = opendrive.child("header");
     std::string refSystem = header.child("geoReference").child_value();
