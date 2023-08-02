@@ -30,7 +30,7 @@
 #include "cpl_conv.h"
 #include "cpl_error.h"
 
-CPL_CVSID("$Id$")
+CPL_CVSID("$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
 
 extern "C" void CPL_DLL RegisterOGRXODR();
 
@@ -56,27 +56,17 @@ static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
 
 void RegisterOGRXODR()
 {
-    if(GDALGetDriverByName("XODR") != NULL )
+    if(GDALGetDriverByName("XODR") != nullptr )
         return;
 
-    GDALDriver *poDriver;
-    if(GDALGetDriverByName("XODR") == nullptr){
+    GDALDriver *poDriver = new GDALDriver();
+    poDriver->SetDescription( "XODR" );
+    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
+    poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
+    poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
+    
+    poDriver->pfnOpen = OGRXODRDriverOpen;
+    poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
-        poDriver = new GDALDriver();
-
-        poDriver->SetDescription( "XODR" );
-        poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
-        poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
-        poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
-        poDriver->SetMetadataItem(GDAL_DCAP_VIRTUALIO, "YES"); //TODO really? not better "no"? 
-        /*
-        * SetMetadataItem( GDAL_DCAP_VIRTUALIO, "YES" ) is specified to indicate that the driver can deal with files opened with the VSI*L GDAL API. 
-        * Otherwise this metadata item should not be defined.
-        */ 
-        
-        poDriver->pfnOpen = OGRXODRDriverOpen;
-        poDriver->pfnIdentify = OGRXODRDriverIdentity;
-
-        GetGDALDriverManager()->RegisterDriver( poDriver );
-    }
+    GetGDALDriverManager()->RegisterDriver( poDriver );
 }

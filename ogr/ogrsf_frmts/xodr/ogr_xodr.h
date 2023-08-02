@@ -24,8 +24,6 @@
  * limitations under the License.
  ****************************************************************************/
  
-
-//#pragma pack(pop)
 #pragma once
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
@@ -36,7 +34,7 @@
 
 
 /*--------------------------------------------------------------------*/
-/*---------------------  Layer declerations  -------------------------*/
+/*---------------------  Layer declarations  -------------------------*/
 /*--------------------------------------------------------------------*/
 
 class OGRXODRLayer : public OGRLayer
@@ -117,20 +115,19 @@ private:
  };
 
 /*--------------------------------------------------------------------*/
-/*--------------------  Datasource declerations ----------------------*/
+/*--------------------  Data source declarations ----------------------*/
 /*--------------------------------------------------------------------*/
 
 class OGRXODRDataSource : public GDALDataset
 {
     OGRXODRLayer       **papoLayers;
     int                 nLayers;
-    std::string         fileName;
 
 public:
                         OGRXODRDataSource();
                         ~OGRXODRDataSource();
 
-    int                 Open(const char *pszFilename, int bUpdate);
+    int                 Open(const char *fileName, int bUpdate);
 
     int                 GetLayerCount() override { return nLayers; }
     OGRLayer            *GetLayer( int ) override;
@@ -140,12 +137,7 @@ public:
 };
 
 /*--------------------------------------------------------------------*/
-/*--------------------    Driver declerations   ----------------------*/
+/*--------------------    Driver declarations   ----------------------*/
 /*--------------------------------------------------------------------*/
-
-static GDALDataset* OGRXODRDriverOpen(GDALOpenInfo* poOpenInfo);
-static int          OGRXODRDriverIdentify(GDALOpenInfo* poOpenInfo);
-static GDALDataset* OGRXODRDriverCreate(const char* pszLayerName, int nXSize, int nYSize,
-                                    int nBands, GDALDataType eDT, char** papszOptions);
 
 /*--------------------------------------------------------------------*/

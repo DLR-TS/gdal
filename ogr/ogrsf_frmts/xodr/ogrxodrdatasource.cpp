@@ -35,78 +35,67 @@ CPL_CVSID("$Id$")
 
 OGRXODRDataSource::OGRXODRDataSource()
 {
-    papoLayers = NULL;
+    papoLayers = nullptr;
     nLayers = 0;
-   
 }
 
 OGRXODRDataSource::~OGRXODRDataSource()
 {
-    int i;
-    for( int i = 0; i < nLayers; i++ )
+     for( int i = 0; i < nLayers; i++ )
+     {
         delete papoLayers[i];
         papoLayers[i] = nullptr;
-    CPLFree(papoLayers); 
-
+     }
+    CPLFree(papoLayers);
 }
 
-int  OGRXODRDataSource::Open( const char *pszFilename, int bUpdate )
+int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
 {
-    
-    bUpdate = CPL_TO_BOOL(bUpdate);
-    CPLString osFilename(pszFilename);
-    const CPLString osBaseFilename = CPLGetFilename(pszFilename);
+    VSILFILE *filePointer = nullptr;
 
-    VSILFILE *fp = nullptr;
-
-    if( bUpdate )
-        fp = VSIFOpenExL(pszFilename, "rb+", true);
-    else
-        fp = VSIFOpenExL(pszFilename, "rb", true);
-    if( fp == nullptr )
+    bool updatable = CPL_TO_BOOL(bUpdate);
+    if(updatable)
     {
-        CPLError(CE_Warning, CPLE_OpenFailed, "Failed to open %s."); //TODO %s is never substituted
-        return false;
+        CPLError(CE_Failure, CPLE_OpenFailed, "Write or update access not supported by XODR driver.");
+        return CE_Failure;
+    } else 
+    {
+        filePointer = VSIFOpenExL(fileName, "r", true);
     }
-
-
-    if( bUpdate )//TODO merge with upper if condition on the same variable
+    
+    if( filePointer == nullptr )
     {
-        CPLError(CE_Failure, CPLE_OpenFailed,
-                "Update access not supported by the xodr driver.");
-        return FALSE;
+        //TODO is this ever called on an opening error? An incorrect file name or path is caught earlier already.
+        CPLError(CE_Failure, CPLE_OpenFailed, "Failed to load OpenDRIVE file %s.", fileName);
+        return CE_Failure;
     }
    
     // Create a corresponding layer.
     nLayers = 5;
-    fileName = pszFilename;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
-    xml_parse_result result = doc.load_file(pszFilename);
+    //xml_parse_result result = doc.load_file(fileName);
     xml_node opendrive = doc.child("OpenDRIVE");
     xml_node header = opendrive.child("header");
-    std::string RefSystem = header.child("geoReference").child_value();
-   
-    vector<Road> roads = xodr.get_roads();
+    std::string refSystem = header.child("geoReference").child_value();
+    roads = xodr.get_roads();
    
     papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers, sizeof(OGRXODRLayer *) * nLayers);
     //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
-    string layername = "ReferenceLine";
-    papoLayers[0] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    layername = "Lanes";
-    papoLayers[1] = new OGRXODRLayer(pszFilename, fp, layername.c_str(),  layername, roads, RefSystem);
-    layername = "RoadMark";
-    papoLayers[2] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    layername = "RoadObject";
-    papoLayers[3] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    layername = "RoadSignal";
-    papoLayers[4] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    //layername = "drive";
-    //papoLayers[5] = new OGRXODRLayer(pszFilename, fp, layername.c_str(), layername, roads, RefSystem);
-    
+    string layerName = "ReferenceLine";
+    papoLayers[0] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    layerName = "Lanes";
+    papoLayers[1] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    layerName = "RoadMark";
+    papoLayers[2] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    layerName = "RoadObject";
+    papoLayers[3] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    layerName = "RoadSignal";
+    papoLayers[4] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    //layerName = "drive";
+    //papoLayers[5] = new OGRXODRLayer(fileName, fp, layerName.c_str(), layerName, roads, refSystem);
     
     return TRUE;
-    
 }
 
 OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
