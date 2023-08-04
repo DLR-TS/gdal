@@ -71,7 +71,7 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     }
    
     // Create a corresponding layer.
-    nLayers = 5;
+    nLayers = 6;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
     xml_parse_result result = doc.load_file(fileName);
@@ -84,7 +84,7 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
     string layerName = "ReferenceLine";
     papoLayers[0] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
-    layerName = "Lanes";
+    layerName = "LaneBorder";
     papoLayers[1] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     layerName = "RoadMark";
     papoLayers[2] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
@@ -92,8 +92,8 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     papoLayers[3] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     layerName = "RoadSignal";
     papoLayers[4] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
-    //layerName = "drive";
-    //papoLayers[5] = new OGRXODRLayer(fileName, fp, layerName.c_str(), layerName, roads, refSystem);
+    layerName = "Lane";
+    papoLayers[5] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     
     return TRUE;
 }

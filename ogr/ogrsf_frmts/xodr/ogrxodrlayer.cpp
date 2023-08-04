@@ -57,12 +57,12 @@ OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
   poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
   SetDescription(poFeatureDefn->GetName());
   
-  if (layerName == "ReferenceLine" || layerName == "Lanes" ||
+  if (layerName == "ReferenceLine" || layerName == "LaneBorder" ||
       layerName == "RoadMark" ||
       layerName == "RoadObject" || layerName == "RoadSignal") {
     
     poFeatureDefn->SetGeomType(wkbMultiLineString);
-  }else if(layerName == "drive"){
+  }else if(layerName == "Lane"){
     poFeatureDefn->SetGeomType(wkbMultiPolygon);
   }
   
@@ -121,7 +121,7 @@ OGRFeature* OGRXODRLayer::GetNextFeature()
       }
     }
     /*---------------------------     Lane    ----------------------------*/
-    if((layerName == "Lanes") && (LaneMeshesIter != LaneMeshes.end())){
+    if((layerName == "LaneBorder") && (LaneMeshesIter != LaneMeshes.end())){
       
       OGRLineString lineString_even;
       OGRLineString lineString_odd;
@@ -265,9 +265,66 @@ OGRFeature* OGRXODRLayer::GetNextFeature()
       return poFeature.release();
     }
   }
-  if(layerName == "drive" && (LaneMeshesIter != LaneMeshes.end())){
-  
-  }
+  if((layerName == "Lane") && (LaneMeshesIter != LaneMeshes.end())){
+    OGRLineString lineString_even;
+    OGRLineString lineString_odd;
+
+    std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
+    std::unique_ptr<OGRMultiPolygon> poMP(new OGRMultiPolygon());
+
+    odr::Mesh3D LaneMesh = *LaneMeshesIter;
+    odr::Lane Lane = *LaneIter;
+    std::string LaneRoadID = *LanesRoadIDsIter;
+
+    std::vector<odr::Vec3D> LaneGeometries = LaneMesh.vertices;
+    for(std::size_t lanegeometry = 0; lanegeometry < LaneGeometries.size(); lanegeometry++){
+      odr::Vec3D LaneGeometry = LaneGeometries[lanegeometry];
+      if (lanegeometry % 2 != 0) { 
+        lineString_even.addPoint(LaneGeometry[0], LaneGeometry[1]);
+      } else {
+        lineString_odd.addPoint(LaneGeometry[0], LaneGeometry[1]);
+      }
+    
+    }
+
+    OGRLinearRing ring;
+    for (int i = 0; i < lineString_even.getNumPoints(); ++i) {
+      OGRPoint point;
+      lineString_even.getPoint(i, &point);
+      ring.addPoint(point.getX(), point.getY());
+    }
+    for (int i = lineString_odd.getNumPoints() - 1; i >= 0; --i) {
+        OGRPoint point;
+        lineString_odd.getPoint(i, &point);
+        ring.addPoint(point.getX(), point.getY());
+    }
+    OGRPoint startPoint;
+    lineString_even.getPoint(0, &startPoint);
+    ring.addPoint(startPoint.getX(), startPoint.getY());
+
+    std::unique_ptr<OGRPolygon> poP(new OGRPolygon());
+    poP->addRing(&ring);
+
+    std::unique_ptr<OGRGeometry> poGeometry(poP->MakeValid());
+    poFeature->SetGeometry(poGeometry.get());
+    
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"), LaneRoadID.c_str());
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("LaneID"), Lane.id);
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), Lane.type.c_str());
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("Predecessor"), Lane.predecessor);
+    poFeature->SetField(poFeatureDefn->GetFieldIndex("Successor"), Lane.successor);
+      
+    poFeature->SetFID(nNextFID++);
+
+    LanesRoadIDsIter++;
+    LaneIter++;
+    LaneMeshesIter++; 
+
+    if ((m_poFilterGeom == nullptr || FilterGeometry(poFeature->GetGeometryRef())) &&
+            (m_poAttrQuery == nullptr || m_poAttrQuery->Evaluate(poFeature.get()))) {
+            return poFeature.release();
+    }
+  } 
 
   return nullptr;
 }
@@ -297,7 +354,7 @@ OGRFeature *OGRXODRLayer::getLayer() {
     OGRFieldDefn oFieldJunction("Junction", OFTString);
     poFeatureDefn->AddFieldDefn(&oFieldJunction);
 
-  } else if (layerName == "Lanes") {
+  } else if (layerName == "LaneBorder") {
     OGRFieldDefn oFieldID("ID", OFTInteger);
     poFeatureDefn->AddFieldDefn(&oFieldID);
 
@@ -355,7 +412,25 @@ OGRFeature *OGRXODRLayer::getLayer() {
     poFeatureDefn->AddFieldDefn(&oFieldType);
 
     
+  } else if (layerName == "Lane") {
+
+    OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
+    poFeatureDefn->AddFieldDefn(&oFieldLaneID);
+
+    OGRFieldDefn oFieldRoadID("RoadID", OFTString);
+    poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+
+    OGRFieldDefn oFieldType("Type", OFTString);
+    poFeatureDefn->AddFieldDefn(&oFieldType);
+
+    OGRFieldDefn oFieldPred("Predecessor", OFTInteger);
+    poFeatureDefn->AddFieldDefn(&oFieldPred);
+
+    OGRFieldDefn oFieldSuc("Successor", OFTInteger);
+    poFeatureDefn->AddFieldDefn(&oFieldSuc);
+
   }
+
 
   return NULL;
 }
