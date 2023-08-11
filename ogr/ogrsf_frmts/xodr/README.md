@@ -48,6 +48,7 @@ cd <gdal>/build/apps/
 
 This should print a list of supported OGR formats, including `XODR` in the first row:
 
+
 ```bash
 Supported Formats:
   XODR -vector- (rov): OpenDRIVE - Open Dynamic Road Information for Vehicle Environment
@@ -55,7 +56,20 @@ Supported Formats:
   PDS4 -raster,vector- (rw+vs): NASA Planetary Data System 4
   ...
 ```
+---
+> **_NOTE:_** If you are on Linux, depending on your environment you might experience linker errors like: 
+```bash
+ogrinfo: error while loading shared libraries: libgdal.so.33: cannot open shared object file: No such file or directory
 
+```
+In such a case set the following environment variables:
+
+```bash
+ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/build
+ export GDAL_DRIVER_PATH=<gdal>/build/gdalplugins/
+
+```
+---
 To convert reference lines of an OpenDRIVE file into, e.g., an ESRI Shapefile, use the provided app `ogr2ogr`:
 
 ```bash
