@@ -65,7 +65,7 @@ ogrinfo: error while loading shared libraries: libgdal.so.33: cannot open shared
 In such a case set the following environment variables:
 
 ```bash
- export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/build
+ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/build/apps
  export GDAL_DRIVER_PATH=<gdal>/build/gdalplugins/
 
 ```
