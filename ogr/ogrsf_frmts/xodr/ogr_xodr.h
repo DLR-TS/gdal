@@ -57,9 +57,6 @@ struct RoadElements{
 
   std::vector<odr::RoadObject> roadObjects;
   std::vector<odr::Mesh3D>     roadObjectMeshes;
-
-  std::vector<odr::RoadSignal> roadSignals;
-  std::vector<odr::Mesh3D>     roadSignalMeshes;
   
 };
 public:
@@ -74,13 +71,13 @@ public:
     std::vector<odr::Lane>                      Lanes;
     std::vector<odr::RoadMark>                  RoadMarks;
     std::vector<odr::RoadObject>                RoadObjects;
-    std::vector<odr::RoadSignal>                RoadSignals;
+
 
     std::vector<std::string>                    LanesRoadIDs;
     std::vector<odr::Mesh3D>                    LaneMeshes;
     std::vector<odr::Mesh3D>                    RoadMarkMeshes;
     std::vector<odr::Mesh3D>                    RoadObjectMeshes;
-    std::vector<odr::Mesh3D>                    RoadSignalMeshes;
+
 
 
     std::vector<odr::Road>::iterator            RoadIter;
@@ -89,12 +86,12 @@ public:
     std::vector<odr::LaneSection>::iterator     LaneSectionIter;
     std::vector<odr::RoadMark>::iterator        RoadMarkIter;
     std::vector<odr::RoadObject>::iterator      RoadObjectIter;
-    std::vector<odr::RoadSignal>::iterator      RoadSignalIter;
+
 
     std::vector<odr::Mesh3D>::iterator          LaneMeshesIter;
     std::vector<odr::Mesh3D>::iterator          RoadMarkMeshesIter;
     std::vector<odr::Mesh3D>::iterator          RoadObjectMeshesIter;
-    std::vector<odr::Mesh3D>::iterator          RoadSignalMeshesIter;
+
 
     virtual void                                ResetReading() override;
     virtual OGRFeature *                        GetNextFeature() override;

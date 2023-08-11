@@ -71,7 +71,7 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     }
    
     // Create a corresponding layer.
-    nLayers = 6;
+    nLayers = 5;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
     xml_parse_result result = doc.load_file(fileName);
@@ -90,10 +90,8 @@ int  OGRXODRDataSource::Open( const char *fileName, int bUpdate )
     papoLayers[2] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     layerName = "RoadObject";
     papoLayers[3] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
-    layerName = "RoadSignal";
-    papoLayers[4] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     layerName = "Lane";
-    papoLayers[5] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
+    papoLayers[4] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(), layerName, roads, refSystem);
     
     return TRUE;
 }
@@ -109,6 +107,12 @@ OGRLayer *OGRXODRDataSource::GetLayer( int iLayer )
 int OGRXODRDataSource::TestCapability( CPL_UNUSED const char * pszCap )
 
 {
+    if (EQUAL(pszCap, ODsCCreateLayer))
+        return TRUE;
+    else if (EQUAL(pszCap, ODsCDeleteLayer))
+        return FALSE;
+    else if (EQUAL(pszCap, ODsCZGeometries))
+        return TRUE;
     return FALSE;
 }
 

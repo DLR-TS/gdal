@@ -59,7 +59,7 @@ OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
   
   if (layerName == "ReferenceLine" || layerName == "LaneBorder" ||
       layerName == "RoadMark" ||
-      layerName == "RoadObject" || layerName == "RoadSignal") {
+      layerName == "RoadObject") {
     
     poFeatureDefn->SetGeomType(wkbMultiLineString);
   }else if(layerName == "Lane"){
@@ -237,34 +237,7 @@ OGRFeature* OGRXODRLayer::GetNextFeature()
       }
 
   } 
-  if( (layerName == "RoadSignal") && (RoadSignalMeshesIter != RoadSignalMeshes.end())){
-    OGRLineString lineString;
-    std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
-    std::unique_ptr<OGRMultiLineString> poLS(new OGRMultiLineString());
-    const odr::Mesh3D& RoadSignalMesh = *RoadSignalMeshesIter;
-    odr::RoadSignal RoadSignal = *RoadSignalIter;
-    
-    const std::vector<odr::Vec3D> RoadSignalGeometries = RoadSignalMesh.vertices;
-    for (std::size_t roadsignalgeometry = 0; roadsignalgeometry < RoadSignalGeometries.size(); roadsignalgeometry++) {
-      const odr::Vec3D& RoadSignalGeometry = RoadSignalGeometries[roadsignalgeometry];
-      lineString.addPoint(RoadSignalGeometry[0], RoadSignalGeometry[1]);
-    }
-    poLS->addGeometry(&lineString);
-    std::unique_ptr<OGRGeometry> poGeometry(poLS->MakeValid());
-    poFeature->SetGeometry(poGeometry.get());
-    poFeature->SetField(poFeatureDefn->GetFieldIndex("SignalID"), RoadSignal.id.c_str());
-    poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"), RoadSignal.road_id.c_str());
-    poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"), RoadSignal.type.c_str());
-    poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"), RoadSignal.name.c_str());
-    
-    poFeature->SetFID(nNextFID++);
-    RoadSignalIter++;
-    RoadSignalMeshesIter++;
-    if ((m_poFilterGeom == nullptr || FilterGeometry(poFeature->GetGeometryRef())) &&
-        (m_poAttrQuery == nullptr || m_poAttrQuery->Evaluate(poFeature.get()))) {
-      return poFeature.release();
-    }
-  }
+  /*--------------------------- Lanes ----------------------------*/
   if((layerName == "Lane") && (LaneMeshesIter != LaneMeshes.end())){
     OGRLineString lineString_even;
     OGRLineString lineString_odd;
@@ -398,20 +371,6 @@ OGRFeature *OGRXODRLayer::getLayer() {
     OGRFieldDefn oFieldObjectName("Name", OFTString);
     poFeatureDefn->AddFieldDefn(&oFieldObjectName);
 
-  } else if (layerName == "RoadSignal") {
-    OGRFieldDefn oFieldSignalID("SignalID", OFTString);
-    poFeatureDefn->AddFieldDefn(&oFieldSignalID);
-
-    OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-    poFeatureDefn->AddFieldDefn(&oFieldRoadID);
-    
-    OGRFieldDefn oFieldObjectName("Name", OFTString);
-    poFeatureDefn->AddFieldDefn(&oFieldObjectName);
-    
-    OGRFieldDefn oFieldType("Type", OFTString);
-    poFeatureDefn->AddFieldDefn(&oFieldType);
-
-    
   } else if (layerName == "Lane") {
 
     OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
@@ -466,11 +425,6 @@ void OGRXODRLayer::Initialization(){
   RoadObjectMeshes = roadElements.roadObjectMeshes;
   RoadObjectMeshesIter = RoadObjectMeshes.begin();
 
-  RoadSignals = roadElements.roadSignals;
-  RoadSignalIter = RoadSignals.begin();
-
-  RoadSignalMeshes = roadElements.roadSignalMeshes;
-  RoadSignalMeshesIter = RoadSignalMeshes.begin();
 
 }
 
@@ -517,13 +471,6 @@ OGRXODRLayer::RoadElements OGRXODRLayer::getRoadElements(){
       roadElements.roadObjectMeshes.push_back(RoadObjectMesh);
     }
 
-    for(odr::RoadSignal RoadSignal : Road.get_road_signals()){
-      roadElements.roadSignals.push_back(RoadSignal);
-      
-      odr::Mesh3D RoadSignalMesh = Road.get_road_signal_mesh(RoadSignal);
-      roadElements.roadSignalMeshes.push_back(RoadSignalMesh);
-
-    }
   }
   return roadElements;
 }
