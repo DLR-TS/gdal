@@ -75,12 +75,8 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
 
     nLayers = 5;
     odr::OpenDriveMap xodr(fileName);
-    xml_document doc;
-    xml_parse_result result = doc.load_file(fileName);
-    xml_node opendrive = doc.child("OpenDRIVE");
-    xml_node header = opendrive.child("header");
-    std::string proj4Defn = header.child("geoReference").child_value();
-    roads = xodr.get_roads();
+    std::string proj4Defn = xodr.proj4;
+    std::vector<odr::Road> roads = xodr.get_roads();
 
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
     string layerName = "ReferenceLine";

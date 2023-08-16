@@ -132,7 +132,6 @@ class OGRXODRDataSource : public GDALDataset
   private:
     OGRXODRLayer **layers;
     int nLayers;
-    std::vector<odr::Road> roads;
 
   public:
     OGRXODRDataSource();
