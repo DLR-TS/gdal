@@ -30,18 +30,19 @@
 #include "cpl_conv.h"
 #include "cpl_error.h"
 
-CPL_CVSID("$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
+CPL_CVSID(
+    "$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
 
 extern "C" void CPL_DLL RegisterOGRXODR();
 
-static GDALDataset *OGRXODRDriverOpen( GDALOpenInfo* poOpenInfo )
+static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
 {
-    if( poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr )
+    if (poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr)
         return nullptr;
-    
-    OGRXODRDataSource   *poDS = new OGRXODRDataSource();
 
-    if( !poDS->Open( poOpenInfo->pszFilename, FALSE ) )
+    OGRXODRDataSource *poDS = new OGRXODRDataSource();
+
+    if (!poDS->Open(poOpenInfo->pszFilename, FALSE))
     {
         delete poDS;
         poDS = nullptr;
@@ -50,23 +51,26 @@ static GDALDataset *OGRXODRDriverOpen( GDALOpenInfo* poOpenInfo )
     return poDS;
 }
 
-static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo) {
-  return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
+static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo)
+{
+    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
 }
 
 void RegisterOGRXODR()
 {
-    if(GDALGetDriverByName("XODR") != nullptr )
+    if (GDALGetDriverByName("XODR") != nullptr)
         return;
 
     GDALDriver *poDriver = new GDALDriver();
-    poDriver->SetDescription( "XODR" );
-    poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
-    poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment" );
-    poDriver->SetMetadataItem( GDAL_DMD_EXTENSION, "xodr" );
-    
+    poDriver->SetDescription("XODR");
+    poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
+    poDriver->SetMetadataItem(
+        GDAL_DMD_LONGNAME,
+        "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
+    poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
+
     poDriver->pfnOpen = OGRXODRDriverOpen;
     poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
-    GetGDALDriverManager()->RegisterDriver( poDriver );
+    GetGDALDriverManager()->RegisterDriver(poDriver);
 }
