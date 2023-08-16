@@ -35,25 +35,25 @@ CPL_CVSID(
 
 extern "C" void CPL_DLL RegisterOGRXODR();
 
-static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
+static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *openInfo)
 {
-    if (poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr)
+    if (openInfo->eAccess == GA_Update || openInfo->fpL == nullptr)
         return nullptr;
 
-    OGRXODRDataSource *poDS = new OGRXODRDataSource();
+    OGRXODRDataSource *dataSource = new OGRXODRDataSource();
 
-    if (!poDS->Open(poOpenInfo->pszFilename, FALSE))
+    if (!dataSource->Open(openInfo->pszFilename, FALSE))
     {
-        delete poDS;
-        poDS = nullptr;
+        delete dataSource;
+        dataSource = nullptr;
     }
 
-    return poDS;
+    return dataSource;
 }
 
-static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo)
+static int OGRXODRDriverIdentity(GDALOpenInfo *openInfo)
 {
-    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
+    return EQUAL(CPLGetExtension(openInfo->pszFilename), "xodr");
 }
 
 void RegisterOGRXODR()
@@ -61,16 +61,16 @@ void RegisterOGRXODR()
     if (GDALGetDriverByName("XODR") != nullptr)
         return;
 
-    GDALDriver *poDriver = new GDALDriver();
-    poDriver->SetDescription("XODR");
-    poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-    poDriver->SetMetadataItem(
+    GDALDriver *driver = new GDALDriver();
+    driver->SetDescription("XODR");
+    driver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
+    driver->SetMetadataItem(
         GDAL_DMD_LONGNAME,
         "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
-    poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
+    driver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
 
-    poDriver->pfnOpen = OGRXODRDriverOpen;
-    poDriver->pfnIdentify = OGRXODRDriverIdentity;
+    driver->pfnOpen = OGRXODRDriverOpen;
+    driver->pfnIdentify = OGRXODRDriverIdentity;
 
-    GetGDALDriverManager()->RegisterDriver(poDriver);
+    GetGDALDriverManager()->RegisterDriver(driver);
 }

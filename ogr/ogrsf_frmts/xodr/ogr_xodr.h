@@ -40,36 +40,37 @@ class OGRXODRLayer : public OGRLayer
 {
   private:
     const char *pszFilename_;
-    VSILFILE *fpXODR;
-    std::vector<odr::Road> Roads;
-    std::vector<odr::Road>::iterator RoadIter;
-    int nNextFID;
-    OGRSpatialReference *poSRS;
+    VSILFILE *file;
+    std::string layerName;
+    std::vector<odr::Road> roads;
+     int nNextFID;
+    OGRSpatialReference *spatialRef;
 
-    OGRFeatureDefn *poFeatureDefn;
+    OGRFeatureDefn *featureDefn;
 
     std::string fileName;
-    std::string layerName;
 
-    std::vector<odr::LaneSection> LaneSections;
-    std::vector<odr::Lane> Lanes;
-    std::vector<odr::RoadMark> RoadMarks;
-    std::vector<odr::RoadObject> RoadObjects;
+    std::vector<odr::Road>::iterator roadIter;
 
-    std::vector<std::string> LanesRoadIDs;
-    std::vector<odr::Mesh3D> LaneMeshes;
-    std::vector<odr::Mesh3D> RoadMarkMeshes;
-    std::vector<odr::Mesh3D> RoadObjectMeshes;
+    std::vector<odr::LaneSection> laneSections;
+    std::vector<odr::Lane> lanes;
+    std::vector<odr::RoadMark> roadMarks;
+    std::vector<odr::RoadObject> roadObjects;
 
-    std::vector<odr::Lane>::iterator LaneIter;
-    std::vector<std::string>::iterator LanesRoadIDsIter;
-    std::vector<odr::LaneSection>::iterator LaneSectionIter;
-    std::vector<odr::RoadMark>::iterator RoadMarkIter;
-    std::vector<odr::RoadObject>::iterator RoadObjectIter;
+    std::vector<std::string> lanesRoadIDs;
+    std::vector<odr::Mesh3D> laneMeshes;
+    std::vector<odr::Mesh3D> roadMarkMeshes;
+    std::vector<odr::Mesh3D> roadObjectMeshes;
 
-    std::vector<odr::Mesh3D>::iterator LaneMeshesIter;
-    std::vector<odr::Mesh3D>::iterator RoadMarkMeshesIter;
-    std::vector<odr::Mesh3D>::iterator RoadObjectMeshesIter;
+    std::vector<odr::Lane>::iterator laneIter;
+    std::vector<std::string>::iterator lanesRoadIDsIter;
+    std::vector<odr::LaneSection>::iterator laneSectionIter;
+    std::vector<odr::RoadMark>::iterator roadMarkIter;
+    std::vector<odr::RoadObject>::iterator roadObjectIter;
+
+    std::vector<odr::Mesh3D>::iterator laneMeshesIter;
+    std::vector<odr::Mesh3D>::iterator roadMarkMeshesIter;
+    std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
 
     struct RoadElements
     {
@@ -86,33 +87,39 @@ class OGRXODRLayer : public OGRLayer
         std::vector<odr::Mesh3D> roadObjectMeshes;
     };
 
-    enum layer_value
-    {
-        header = 0
-    };
-
     virtual void ResetReading() override;
     virtual OGRFeature *GetNextFeature() override;
 
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
-        return poFeatureDefn;
+        return featureDefn;
     }
     virtual int TestCapability(const char *) override
     {
         return FALSE;
     }
 
+    /**
+     * Initializes XODR road elements and iterators.
+    */
+    void initXodrElements();
     std::string getReferenceSystem();
-    OGRFeature *getLayer();
 
-    void Initialization();
+    /**
+     * Completes feature class definition with all specific attributes
+     * according to layer type.
+    */
+    void defineFeatureClass();
+    
+    /**
+     * Provides every sub-element of a road as vector.
+    */
     RoadElements getRoadElements();
 
   public:
-    OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
+    OGRXODRLayer(const char *pszFilename, VSILFILE *filePtr,
                  const char *pszLayerName, std::string layer,
-                 std::vector<odr::Road> Roads, std::string refSystem);
+                 std::vector<odr::Road> xodrRoads, std::string proj4Defn);
     ~OGRXODRLayer();
 };
 
@@ -123,7 +130,7 @@ class OGRXODRLayer : public OGRLayer
 class OGRXODRDataSource : public GDALDataset
 {
   private:
-    OGRXODRLayer **papoLayers;
+    OGRXODRLayer **layers;
     int nLayers;
     std::vector<odr::Road> roads;
 
@@ -142,9 +149,3 @@ class OGRXODRDataSource : public GDALDataset
 
     virtual int TestCapability(const char *) override;
 };
-
-/*--------------------------------------------------------------------*/
-/*--------------------    Driver declarations   ----------------------*/
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/

@@ -39,50 +39,47 @@
 using namespace odr;
 using namespace pugi;
 using namespace std;
-/*--------------------------------------------------------------------*/
 
-OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
+OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *filePtr,
                            const char *pszLayerName, std::string layer,
-                           std::vector<odr::Road> roads, std::string refSystem)
-    : pszFilename_(CPLStrdup(pszFilename)), fpXODR(fp), Roads(roads),
-      RoadIter(Roads.begin()), nNextFID(0), poSRS(NULL)
+                           std::vector<odr::Road> xodrRoads, std::string proj4Defn)
+    : pszFilename_(CPLStrdup(pszFilename)), file(filePtr), layerName(layer), 
+    roads(xodrRoads), nNextFID(0), spatialRef(NULL)
 {
+    initXodrElements();
 
-    layerName = layer;
-    Initialization();
-
-    poFeatureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
-    SetDescription(poFeatureDefn->GetName());
+    this->featureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
+    SetDescription(featureDefn->GetName());
 
     if (layerName == "ReferenceLine" || layerName == "LaneBorder" ||
         layerName == "RoadMark" || layerName == "RoadObject")
     {
 
-        poFeatureDefn->SetGeomType(wkbMultiLineString);
+        featureDefn->SetGeomType(wkbMultiLineString);
     }
     else if (layerName == "Lane")
     {
-        poFeatureDefn->SetGeomType(wkbMultiPolygon);
+        featureDefn->SetGeomType(wkbMultiPolygon);
     }
 
-    poFeatureDefn->Reference();
+    featureDefn->Reference();
     ResetReading();
-    poSRS = new OGRSpatialReference();
-    poSRS->importFromProj4(refSystem.c_str());
-    poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(poSRS);
+    spatialRef = new OGRSpatialReference();
+    spatialRef->importFromProj4(proj4Defn.c_str());
+    featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(spatialRef);
 
-    getLayer();
+    defineFeatureClass();
 }
 
 OGRXODRLayer::~OGRXODRLayer()
 {
-    if (poFeatureDefn != NULL)
+    if (featureDefn != NULL)
     {
-        poFeatureDefn->Release();
+        featureDefn->Release();
     }
 
-    if (poSRS)
-        poSRS->Release();
+    if (spatialRef)
+        spatialRef->Release();
 }
 /*--------------------------------------------------------------------*/
 /*--------------------      Layer iteration     ----------------------*/
@@ -92,271 +89,237 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 {
     if (layerName == "ReferenceLine")
     {
-        if (RoadIter != Roads.end())
+        if (roadIter != roads.end())
         {
-            std::unique_ptr<OGRFeature> poFeature(
-                new OGRFeature(poFeatureDefn));
-            std::unique_ptr<OGRLineString> poLS(new OGRLineString());
+            std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
+            std::unique_ptr<OGRLineString> lineString(new OGRLineString());
 
             const double eps = 0.9;
-            odr::Road Road = *RoadIter;
-            odr::RefLine refLine = Road.ref_line;
-            std::set<double> s_vals =
-                refLine.approximate_linear(eps, 0.0, Road.length);
+            odr::Road road = *roadIter;
+            odr::RefLine refLine = road.ref_line;
+            std::set<double> sVals = refLine.approximate_linear(eps, 0.0, road.length);
 
-            for (const double &s : s_vals)
+            for (const double &s : sVals)
             {
                 odr::Vec3D roadGeometry = refLine.get_xyz(s);
-                poLS->addPoint(roadGeometry[0], roadGeometry[1]);
+                lineString->addPoint(roadGeometry[0], roadGeometry[1]);
             }
 
-            std::unique_ptr<OGRGeometry> poGeometry(poLS->MakeValid());
-            poFeature->SetGeometry(poGeometry.get());
-            poFeature->SetField("ID", Road.id.c_str());
-            poFeature->SetField("Length", Road.length);
-            poFeature->SetField("Junction", Road.junction.c_str());
-            poFeature->SetFID(nNextFID++);
+            std::unique_ptr<OGRGeometry> geometry(lineString->MakeValid());
+            feature->SetGeometry(geometry.get());
+            feature->SetField("ID", road.id.c_str());
+            feature->SetField("Length", road.length);
+            feature->SetField("Junction", road.junction.c_str());
+            feature->SetFID(nNextFID++);
 
-            RoadIter++;
+            roadIter++;
             if ((m_poFilterGeom == nullptr ||
-                 FilterGeometry(poFeature->GetGeometryRef())) &&
+                 FilterGeometry(feature->GetGeometryRef())) &&
                 (m_poAttrQuery == nullptr ||
-                 m_poAttrQuery->Evaluate(poFeature.get())))
+                 m_poAttrQuery->Evaluate(feature.get())))
             {
-                return poFeature.release();
+                return feature.release();
             }
         }
     }
     /*---------------------------     Lane    ----------------------------*/
-    if ((layerName == "LaneBorder") && (LaneMeshesIter != LaneMeshes.end()))
+    if ((layerName == "LaneBorder") && (laneMeshesIter != laneMeshes.end()))
     {
+        OGRLineString lineStringEven;
+        OGRLineString lineStringOdd;
+        std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
+        std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
 
-        OGRLineString lineString_even;
-        OGRLineString lineString_odd;
-        std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
-        std::unique_ptr<OGRMultiLineString> poLS(new OGRMultiLineString());
+        odr::Mesh3D laneMesh = *laneMeshesIter;
+        odr::Lane lane = *laneIter;
+        std::string laneRoadID = *lanesRoadIDsIter;
 
-        odr::Mesh3D LaneMesh = *LaneMeshesIter;
-        odr::Lane Lane = *LaneIter;
-        std::string LaneRoadID = *LanesRoadIDsIter;
-
-        std::vector<odr::Vec3D> LaneGeometries = LaneMesh.vertices;
-        for (std::size_t lanegeometry = 0; lanegeometry < LaneGeometries.size();
-             lanegeometry++)
+        std::vector<odr::Vec3D> laneVertices = laneMesh.vertices;
+        for (std::size_t iVertex = 0; iVertex < laneVertices.size(); iVertex++)
         {
-            odr::Vec3D LaneGeometry = LaneGeometries[lanegeometry];
-            if (lanegeometry % 2 != 0)
+            odr::Vec3D laneVertex = laneVertices[iVertex];
+            if (iVertex % 2 != 0)
             {
-                lineString_even.addPoint(LaneGeometry[0], LaneGeometry[1]);
+                lineStringEven.addPoint(laneVertex[0], laneVertex[1]);
             }
             else
             {
-                lineString_odd.addPoint(LaneGeometry[0], LaneGeometry[1]);
+                lineStringOdd.addPoint(laneVertex[0], laneVertex[1]);
             }
         }
 
-        poLS->addGeometry(&lineString_even);
-        poLS->addGeometry(&lineString_odd);
+        multiLineString->addGeometry(&lineStringEven);
+        multiLineString->addGeometry(&lineStringOdd);
+        std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+        feature->SetGeometry(geometry.get());
+        feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("ID"), lane.id);
+        feature->SetField(featureDefn->GetFieldIndex("Type"), lane.type.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("Predecessor"), lane.predecessor);
+        feature->SetField(featureDefn->GetFieldIndex("Successor"), lane.successor);
+        feature->SetFID(nNextFID++);
 
-        std::unique_ptr<OGRGeometry> poGeometry(poLS->MakeValid());
-        poFeature->SetGeometry(poGeometry.get());
-
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"),
-                            LaneRoadID.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("ID"), Lane.id);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"),
-                            Lane.type.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Predecessor"),
-                            Lane.predecessor);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Successor"),
-                            Lane.successor);
-
-        poFeature->SetFID(nNextFID++);
-
-        LanesRoadIDsIter++;
-        LaneIter++;
-        LaneMeshesIter++;
+        lanesRoadIDsIter++;
+        laneIter++;
+        laneMeshesIter++;
 
         if ((m_poFilterGeom == nullptr ||
-             FilterGeometry(poFeature->GetGeometryRef())) &&
+             FilterGeometry(feature->GetGeometryRef())) &&
             (m_poAttrQuery == nullptr ||
-             m_poAttrQuery->Evaluate(poFeature.get())))
+             m_poAttrQuery->Evaluate(feature.get())))
         {
-            return poFeature.release();
+            return feature.release();
         }
     }
     /*---------------------------   RoadMark  ----------------------------*/
-    if ((layerName == "RoadMark") &&
-        (RoadMarkMeshesIter != RoadMarkMeshes.end()))
+    if ((layerName == "RoadMark") && (roadMarkMeshesIter != roadMarkMeshes.end()))
     {
+        OGRLineString lineStringEven;
+        OGRLineString lineStringOdd;
 
-        OGRLineString lineString_even;
-        OGRLineString lineString_odd;
+        std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
+        std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
 
-        std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
-        std::unique_ptr<OGRMultiLineString> poLS(new OGRMultiLineString());
+        odr::Mesh3D roadMarkMesh = *roadMarkMeshesIter;
+        odr::RoadMark roadMark = *roadMarkIter;
 
-        odr::Mesh3D RoadMarkMesh = *RoadMarkMeshesIter;
-        odr::RoadMark RoadMark = *RoadMarkIter;
-
-        std::vector<odr::Vec3D> RoadMarkGeometries = RoadMarkMesh.vertices;
-        for (std::size_t roadmarkgeometry = 0;
-             roadmarkgeometry < RoadMarkGeometries.size(); roadmarkgeometry++)
+        std::vector<odr::Vec3D> roadMarkVertices = roadMarkMesh.vertices;
+        for (std::size_t iVertex = 0; iVertex < roadMarkVertices.size(); iVertex++)
         {
-            odr::Vec3D RoadMarkGeometry = RoadMarkGeometries[roadmarkgeometry];
-            if (roadmarkgeometry % 2 != 0)
+            odr::Vec3D roadMarkVertex = roadMarkVertices[iVertex];
+            if (iVertex % 2 != 0)
             {
-                lineString_even.addPoint(RoadMarkGeometry[0],
-                                         RoadMarkGeometry[1]);
+                lineStringEven.addPoint(roadMarkVertex[0], roadMarkVertex[1]);
             }
             else
             {
-                lineString_odd.addPoint(RoadMarkGeometry[0],
-                                        RoadMarkGeometry[1]);
+                lineStringOdd.addPoint(roadMarkVertex[0], roadMarkVertex[1]);
             }
         }
-        poLS->addGeometry(&lineString_even);
-        poLS->addGeometry(&lineString_odd);
+        multiLineString->addGeometry(&lineStringEven);
+        multiLineString->addGeometry(&lineStringOdd);
 
-        std::unique_ptr<OGRGeometry> poGeometry(poLS->MakeValid());
+        std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+        feature->SetGeometry(geometry.get());
+        feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadMark.road_id.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("LaneID"), roadMark.lane_id);
+        feature->SetField(featureDefn->GetFieldIndex("Type"), roadMark.type.c_str());
+        feature->SetFID(nNextFID++);
 
-        poFeature->SetGeometry(poGeometry.get());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"),
-                            RoadMark.road_id.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("LaneID"),
-                            RoadMark.lane_id);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"),
-                            RoadMark.type.c_str());
-
-        poFeature->SetFID(nNextFID++);
-
-        RoadMarkIter++;
-        RoadMarkMeshesIter++;
+        roadMarkIter++;
+        roadMarkMeshesIter++;
 
         if ((m_poFilterGeom == nullptr ||
-             FilterGeometry(poFeature->GetGeometryRef())) &&
+             FilterGeometry(feature->GetGeometryRef())) &&
             (m_poAttrQuery == nullptr ||
-             m_poAttrQuery->Evaluate(poFeature.get())))
+             m_poAttrQuery->Evaluate(feature.get())))
         {
-            return poFeature.release();
+            return feature.release();
         }
     }
     /*--------------------------- RoadObjects ----------------------------*/
-    if ((layerName == "RoadObject") &&
-        (RoadObjectMeshesIter != RoadObjectMeshes.end()))
+    if ((layerName == "RoadObject") && (roadObjectMeshesIter != roadObjectMeshes.end()))
     {
-
         OGRLineString lineString;
-        std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
-        std::unique_ptr<OGRMultiLineString> poLS(new OGRMultiLineString());
-        const odr::Mesh3D &RoadObjectMesh = *RoadObjectMeshesIter;
-        odr::RoadObject RoadObject = *RoadObjectIter;
-        const std::vector<odr::Vec3D> RoadObjectGeometries =
-            RoadObjectMesh.vertices;
 
-        for (std::size_t roadobjectgeometry = 0;
-             roadobjectgeometry < RoadObjectGeometries.size();
-             roadobjectgeometry++)
+        std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
+        std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
+        
+        const odr::Mesh3D &roadObjectMesh = *roadObjectMeshesIter;
+        odr::RoadObject roadObject = *roadObjectIter;
+        const std::vector<odr::Vec3D> roadObjectVertices = roadObjectMesh.vertices;
+
+        for (std::size_t iVertex = 0; iVertex < roadObjectVertices.size(); iVertex++)
         {
-            const odr::Vec3D &RoadObjectGeometry =
-                RoadObjectGeometries[roadobjectgeometry];
-            lineString.addPoint(RoadObjectGeometry[0], RoadObjectGeometry[1]);
+            const odr::Vec3D &roadObjectVertex = roadObjectVertices[iVertex];
+            lineString.addPoint(roadObjectVertex[0], roadObjectVertex[1]);
         }
-        poLS->addGeometry(&lineString);
-        std::unique_ptr<OGRGeometry> poGeometry(poLS->MakeValid());
-        poFeature->SetGeometry(poGeometry.get());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("ObjectID"),
-                            RoadObject.id.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"),
-                            RoadObject.road_id.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"),
-                            RoadObject.type.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Name"),
-                            RoadObject.name.c_str());
-        poFeature->SetFID(nNextFID++);
-        RoadObjectIter++;
-        RoadObjectMeshesIter++;
+        multiLineString->addGeometry(&lineString);
+        std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+        feature->SetGeometry(geometry.get());
+        feature->SetField(featureDefn->GetFieldIndex("ObjectID"), roadObject.id.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadObject.road_id.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("Type"), roadObject.type.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("Name"), roadObject.name.c_str());
+        feature->SetFID(nNextFID++);
+
+        roadObjectIter++;
+        roadObjectMeshesIter++;
+
         if ((m_poFilterGeom == nullptr ||
-             FilterGeometry(poFeature->GetGeometryRef())) &&
+             FilterGeometry(feature->GetGeometryRef())) &&
             (m_poAttrQuery == nullptr ||
-             m_poAttrQuery->Evaluate(poFeature.get())))
+             m_poAttrQuery->Evaluate(feature.get())))
         {
-            return poFeature.release();
+            return feature.release();
         }
     }
     /*--------------------------- Lanes ----------------------------*/
-    if ((layerName == "Lane") && (LaneMeshesIter != LaneMeshes.end()))
+    if ((layerName == "Lane") && (laneMeshesIter != laneMeshes.end()))
     {
-        OGRLineString lineString_even;
-        OGRLineString lineString_odd;
+        OGRLineString lineStringEven;
+        OGRLineString lineStringOdd;
 
-        std::unique_ptr<OGRFeature> poFeature(new OGRFeature(poFeatureDefn));
-        std::unique_ptr<OGRMultiPolygon> poMP(new OGRMultiPolygon());
+        std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
+        std::unique_ptr<OGRMultiPolygon> multiPolygon(new OGRMultiPolygon());
 
-        odr::Mesh3D LaneMesh = *LaneMeshesIter;
-        odr::Lane Lane = *LaneIter;
-        std::string LaneRoadID = *LanesRoadIDsIter;
+        odr::Mesh3D laneMesh = *laneMeshesIter;
+        odr::Lane lane = *laneIter;
+        std::string laneRoadID = *lanesRoadIDsIter;
 
-        std::vector<odr::Vec3D> LaneGeometries = LaneMesh.vertices;
-        for (std::size_t lanegeometry = 0; lanegeometry < LaneGeometries.size();
-             lanegeometry++)
+        std::vector<odr::Vec3D> laneVertices = laneMesh.vertices;
+        for (std::size_t iVertex = 0; iVertex < laneVertices.size(); iVertex++)
         {
-            odr::Vec3D LaneGeometry = LaneGeometries[lanegeometry];
-            if (lanegeometry % 2 != 0)
+            odr::Vec3D laneVertex = laneVertices[iVertex];
+            if (iVertex % 2 != 0)
             {
-                lineString_even.addPoint(LaneGeometry[0], LaneGeometry[1]);
+                lineStringEven.addPoint(laneVertex[0], laneVertex[1]);
             }
             else
             {
-                lineString_odd.addPoint(LaneGeometry[0], LaneGeometry[1]);
+                lineStringOdd.addPoint(laneVertex[0], laneVertex[1]);
             }
         }
 
         OGRLinearRing ring;
-        for (int i = 0; i < lineString_even.getNumPoints(); ++i)
+        for (int i = 0; i < lineStringEven.getNumPoints(); ++i)
         {
             OGRPoint point;
-            lineString_even.getPoint(i, &point);
+            lineStringEven.getPoint(i, &point);
             ring.addPoint(point.getX(), point.getY());
         }
-        for (int i = lineString_odd.getNumPoints() - 1; i >= 0; --i)
+        for (int i = lineStringOdd.getNumPoints() - 1; i >= 0; --i)
         {
             OGRPoint point;
-            lineString_odd.getPoint(i, &point);
+            lineStringOdd.getPoint(i, &point);
             ring.addPoint(point.getX(), point.getY());
         }
         OGRPoint startPoint;
-        lineString_even.getPoint(0, &startPoint);
+        lineStringEven.getPoint(0, &startPoint);
         ring.addPoint(startPoint.getX(), startPoint.getY());
 
-        std::unique_ptr<OGRPolygon> poP(new OGRPolygon());
-        poP->addRing(&ring);
+        std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
+        polygon->addRing(&ring);
 
-        std::unique_ptr<OGRGeometry> poGeometry(poP->MakeValid());
-        poFeature->SetGeometry(poGeometry.get());
+        std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
+        feature->SetGeometry(geometry.get());
+        feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("LaneID"), lane.id);
+        feature->SetField(featureDefn->GetFieldIndex("Type"), lane.type.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("Predecessor"), lane.predecessor);
+        feature->SetField(featureDefn->GetFieldIndex("Successor"), lane.successor);
+        feature->SetFID(nNextFID++);
 
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("RoadID"),
-                            LaneRoadID.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("LaneID"), Lane.id);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Type"),
-                            Lane.type.c_str());
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Predecessor"),
-                            Lane.predecessor);
-        poFeature->SetField(poFeatureDefn->GetFieldIndex("Successor"),
-                            Lane.successor);
-
-        poFeature->SetFID(nNextFID++);
-
-        LanesRoadIDsIter++;
-        LaneIter++;
-        LaneMeshesIter++;
+        lanesRoadIDsIter++;
+        laneIter++;
+        laneMeshesIter++;
 
         if ((m_poFilterGeom == nullptr ||
-             FilterGeometry(poFeature->GetGeometryRef())) &&
+             FilterGeometry(feature->GetGeometryRef())) &&
             (m_poAttrQuery == nullptr ||
-             m_poAttrQuery->Evaluate(poFeature.get())))
+             m_poAttrQuery->Evaluate(feature.get())))
         {
-            return poFeature.release();
+            return feature.release();
         }
     }
 
@@ -368,176 +331,167 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 /*--------------------------------------------------------------------*/
 void OGRXODRLayer::ResetReading()
 {
-    VSIFSeekL(fpXODR, 0, SEEK_SET);
+    VSIFSeekL(file, 0, SEEK_SET);
     nNextFID = 0;
 }
 /*--------------------------------------------------------------------*/
 /*---------------------------     Layer    ----------------------------*/
 /*--------------------------------------------------------------------*/
 
-OGRFeature *OGRXODRLayer::getLayer()
+void OGRXODRLayer::defineFeatureClass()
 {
-
     if (layerName == "ReferenceLine")
-    {  // reference line
-
+    {
         OGRFieldDefn oFieldID("ID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldID);
+        featureDefn->AddFieldDefn(&oFieldID);
 
         OGRFieldDefn oFieldLen("Length", OFTReal);
-        poFeatureDefn->AddFieldDefn(&oFieldLen);
+        featureDefn->AddFieldDefn(&oFieldLen);
 
         OGRFieldDefn oFieldJunction("Junction", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldJunction);
+        featureDefn->AddFieldDefn(&oFieldJunction);
     }
     else if (layerName == "LaneBorder")
     {
         OGRFieldDefn oFieldID("ID", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldID);
+        featureDefn->AddFieldDefn(&oFieldID);
 
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+        featureDefn->AddFieldDefn(&oFieldRoadID);
 
         OGRFieldDefn oFieldType("Type", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldType);
+        featureDefn->AddFieldDefn(&oFieldType);
 
         OGRFieldDefn oFieldPred("Predecessor", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldPred);
+        featureDefn->AddFieldDefn(&oFieldPred);
 
         OGRFieldDefn oFieldSuc("Successor", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldSuc);
+        featureDefn->AddFieldDefn(&oFieldSuc);
     }
     else if (layerName == "RoadMark")
     {
-
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+        featureDefn->AddFieldDefn(&oFieldRoadID);
 
         OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldLaneID);
+        featureDefn->AddFieldDefn(&oFieldLaneID);
 
         OGRFieldDefn oFieldType("Type", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldType);
+        featureDefn->AddFieldDefn(&oFieldType);
 
         OGRFieldDefn oFieldName("Name", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldName);
+        featureDefn->AddFieldDefn(&oFieldName);
     }
     else if (layerName == "RoadObject")
     {
-
         OGRFieldDefn oFieldObjectID("ObjectID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldObjectID);
+        featureDefn->AddFieldDefn(&oFieldObjectID);
 
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+        featureDefn->AddFieldDefn(&oFieldRoadID);
 
         OGRFieldDefn oFieldType("Type", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldType);
+        featureDefn->AddFieldDefn(&oFieldType);
 
         OGRFieldDefn oFieldObjectName("Name", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldObjectName);
+        featureDefn->AddFieldDefn(&oFieldObjectName);
     }
     else if (layerName == "Lane")
     {
-
         OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldLaneID);
+        featureDefn->AddFieldDefn(&oFieldLaneID);
 
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldRoadID);
+        featureDefn->AddFieldDefn(&oFieldRoadID);
 
         OGRFieldDefn oFieldType("Type", OFTString);
-        poFeatureDefn->AddFieldDefn(&oFieldType);
+        featureDefn->AddFieldDefn(&oFieldType);
 
         OGRFieldDefn oFieldPred("Predecessor", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldPred);
+        featureDefn->AddFieldDefn(&oFieldPred);
 
         OGRFieldDefn oFieldSuc("Successor", OFTInteger);
-        poFeatureDefn->AddFieldDefn(&oFieldSuc);
+        featureDefn->AddFieldDefn(&oFieldSuc);
     }
-
-    return NULL;
 }
 /*--------------------------------------------------------------------*/
 /*------------------------ Initialization   --------------------------*/
 /*--------------------------------------------------------------------*/
-// This function allows to initialize public variable to setting iteration correctly element by element
-void OGRXODRLayer::Initialization()
+void OGRXODRLayer::initXodrElements()
 {
     RoadElements roadElements = getRoadElements();
 
-    LaneSections = roadElements.laneSections;
-    LaneSectionIter = LaneSections.begin();
+    roadIter = roads.begin();
 
-    Lanes = roadElements.lanes;
-    LaneIter = Lanes.begin();
+    laneSections = roadElements.laneSections;
+    laneSectionIter = laneSections.begin();
 
-    LanesRoadIDs = roadElements.laneRoadID;
-    LanesRoadIDsIter = LanesRoadIDs.begin();
+    lanes = roadElements.lanes;
+    laneIter = lanes.begin();
 
-    LaneMeshes = roadElements.laneMeshes;
-    LaneMeshesIter = LaneMeshes.begin();
+    lanesRoadIDs = roadElements.laneRoadID;
+    lanesRoadIDsIter = lanesRoadIDs.begin();
 
-    RoadMarks = roadElements.roadMarks;
-    RoadMarkIter = RoadMarks.begin();
+    laneMeshes = roadElements.laneMeshes;
+    laneMeshesIter = laneMeshes.begin();
 
-    RoadMarkMeshes = roadElements.roadMarkMeshes;
-    RoadMarkMeshesIter = RoadMarkMeshes.begin();
+    roadMarks = roadElements.roadMarks;
+    roadMarkIter = roadMarks.begin();
 
-    RoadObjects = roadElements.roadObjects;
-    RoadObjectIter = RoadObjects.begin();
+    roadMarkMeshes = roadElements.roadMarkMeshes;
+    roadMarkMeshesIter = roadMarkMeshes.begin();
 
-    RoadObjectMeshes = roadElements.roadObjectMeshes;
-    RoadObjectMeshesIter = RoadObjectMeshes.begin();
+    roadObjects = roadElements.roadObjects;
+    roadObjectIter = roadObjects.begin();
+
+    roadObjectMeshes = roadElements.roadObjectMeshes;
+    roadObjectMeshesIter = roadObjectMeshes.begin();
 }
 
 /*--------------------------------------------------------------------*/
 /*------------------------ getRoadElements   --------------------------*/
 /*--------------------------------------------------------------------*/
-// This function provide every sub-element of road as vector
 OGRXODRLayer::RoadElements OGRXODRLayer::getRoadElements()
 {
     RoadElements roadElements;
 
     const double eps = 0.5;
     //for (int road = 0; road < Roads.size(); road++) {
-    for (odr::Road Road : Roads)
+    for (odr::Road road : roads)
     {
-
-        for (odr::LaneSection LaneSection : Road.get_lanesections())
+        for (odr::LaneSection laneSection : road.get_lanesections())
         {
+            roadElements.laneSections.push_back(laneSection);
 
-            roadElements.laneSections.push_back(LaneSection);
-
-            for (odr::Lane Lane : LaneSection.get_lanes())
+            for (odr::Lane lane : laneSection.get_lanes())
             {
-                roadElements.laneRoadID.push_back(Road.id);
+                roadElements.laneRoadID.push_back(road.id);
 
-                roadElements.lanes.push_back(Lane);
+                roadElements.lanes.push_back(lane);
 
-                odr::Mesh3D LaneMesh = Road.get_lane_mesh(Lane, eps);
-                roadElements.laneMeshes.push_back(LaneMesh);
+                odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
+                roadElements.laneMeshes.push_back(laneMesh);
 
-                for (odr::RoadMark RoadMark : Lane.get_roadmarks(
-                         LaneSection.s0, Road.get_lanesection_end(LaneSection)))
+                for (odr::RoadMark roadMark : lane.get_roadmarks(
+                         laneSection.s0, road.get_lanesection_end(laneSection)))
                 {
 
-                    roadElements.roadMarks.push_back(RoadMark);
+                    roadElements.roadMarks.push_back(roadMark);
 
-                    odr::Mesh3D RoadMarkMesh =
-                        Road.get_roadmark_mesh(Lane, RoadMark, eps);
-                    roadElements.roadMarkMeshes.push_back(RoadMarkMesh);
+                    odr::Mesh3D roadMarkMesh =
+                        road.get_roadmark_mesh(lane, roadMark, eps);
+                    roadElements.roadMarkMeshes.push_back(roadMarkMesh);
                 }
             }
         }
 
-        for (odr::RoadObject RoadObject : Road.get_road_objects())
+        for (odr::RoadObject roadObject : road.get_road_objects())
         {
-            roadElements.roadObjects.push_back(RoadObject);
+            roadElements.roadObjects.push_back(roadObject);
 
-            odr::Mesh3D RoadObjectMesh =
-                Road.get_road_object_mesh(RoadObject, eps);
-            roadElements.roadObjectMeshes.push_back(RoadObjectMesh);
+            odr::Mesh3D roadObjectMesh =
+                road.get_road_object_mesh(roadObject, eps);
+            roadElements.roadObjectMeshes.push_back(roadObjectMesh);
         }
     }
     return roadElements;

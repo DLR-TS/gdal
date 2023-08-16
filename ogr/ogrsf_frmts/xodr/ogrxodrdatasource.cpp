@@ -35,7 +35,7 @@ CPL_CVSID("$Id$")
 
 OGRXODRDataSource::OGRXODRDataSource()
 {
-    papoLayers = nullptr;
+    layers = nullptr;
     nLayers = 0;
 }
 
@@ -43,15 +43,15 @@ OGRXODRDataSource::~OGRXODRDataSource()
 {
     for (int i = 0; i < nLayers; i++)
     {
-        delete papoLayers[i];
-        papoLayers[i] = nullptr;
+        delete layers[i];
+        layers[i] = nullptr;
     }
-    CPLFree(papoLayers);
+    CPLFree(layers);
 }
 
 int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
 {
-    VSILFILE *filePointer = nullptr;
+    VSILFILE *file = nullptr;
 
     bool updatable = CPL_TO_BOOL(bUpdate);
     if (updatable)
@@ -62,10 +62,10 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     }
     else
     {
-        filePointer = VSIFOpenExL(fileName, "r", true);
+        file = VSIFOpenExL(fileName, "r", true);
     }
 
-    if (filePointer == nullptr)
+    if (file == nullptr)
     {
         //TODO is this ever called on an opening error? An incorrect file name or path is caught earlier already.
         CPLError(CE_Failure, CPLE_OpenFailed,
@@ -73,34 +73,26 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
         return CE_Failure;
     }
 
-    // Create a corresponding layer.
     nLayers = 5;
     odr::OpenDriveMap xodr(fileName);
     xml_document doc;
     xml_parse_result result = doc.load_file(fileName);
     xml_node opendrive = doc.child("OpenDRIVE");
     xml_node header = opendrive.child("header");
-    std::string refSystem = header.child("geoReference").child_value();
+    std::string proj4Defn = header.child("geoReference").child_value();
     roads = xodr.get_roads();
 
-    papoLayers = (OGRXODRLayer **)CPLRealloc(papoLayers,
-                                             sizeof(OGRXODRLayer *) * nLayers);
-    //papoLayers = static_cast<OGRXODRLayer **>(CPLMalloc(sizeof(void *)));
+    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
     string layerName = "ReferenceLine";
-    papoLayers[0] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(),
-                                     layerName, roads, refSystem);
+    layers[0] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
     layerName = "LaneBorder";
-    papoLayers[1] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(),
-                                     layerName, roads, refSystem);
+    layers[1] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
     layerName = "RoadMark";
-    papoLayers[2] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(),
-                                     layerName, roads, refSystem);
+    layers[2] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
     layerName = "RoadObject";
-    papoLayers[3] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(),
-                                     layerName, roads, refSystem);
+    layers[3] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
     layerName = "Lane";
-    papoLayers[4] = new OGRXODRLayer(fileName, filePointer, layerName.c_str(),
-                                     layerName, roads, refSystem);
+    layers[4] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
 
     return TRUE;
 }
@@ -110,17 +102,16 @@ OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
     if (iLayer < 0 || iLayer >= nLayers)
         return NULL;
 
-    return papoLayers[iLayer];
+    return layers[iLayer];
 }
 
-int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *pszCap)
-
+int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 {
-    if (EQUAL(pszCap, ODsCCreateLayer))
+    if (EQUAL(capability, ODsCCreateLayer))
         return TRUE;
-    else if (EQUAL(pszCap, ODsCDeleteLayer))
+    else if (EQUAL(capability, ODsCDeleteLayer))
         return FALSE;
-    else if (EQUAL(pszCap, ODsCZGeometries))
+    else if (EQUAL(capability, ODsCZGeometries))
         return TRUE;
     return FALSE;
 }
