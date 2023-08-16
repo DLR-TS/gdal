@@ -39,11 +39,13 @@
 
 class OGRXODRLayer : public OGRLayer
 {
-    OGRFeatureDefn          *poFeatureDefn;
-    VSILFILE                *fpXODR;
     const char              *pszFilename_;
+    VSILFILE                *fpXODR;
+    std::vector<odr::Road>  Roads;
+    std::vector<odr::Road>::iterator RoadIter;
     int                      nNextFID;
     OGRSpatialReference     *poSRS;
+    OGRFeatureDefn          *poFeatureDefn;
     
 struct RoadElements{
   std::vector<odr::LaneSection> laneSections;
@@ -66,7 +68,7 @@ public:
     std::string                                 fileName;
     std::string                                 layerName;
 
-    std::vector<odr::Road>                      Roads;
+
     std::vector<odr::LaneSection>               LaneSections;
     std::vector<odr::Lane>                      Lanes;
     std::vector<odr::RoadMark>                  RoadMarks;
@@ -80,7 +82,7 @@ public:
 
 
 
-    std::vector<odr::Road>::iterator            RoadIter;
+    
     std::vector<odr::Lane>::iterator            LaneIter;
     std::vector<std::string>::iterator          LanesRoadIDsIter;
     std::vector<odr::LaneSection>::iterator     LaneSectionIter;

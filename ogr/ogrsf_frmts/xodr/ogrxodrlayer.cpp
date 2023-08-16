@@ -44,8 +44,8 @@ using namespace std;
 OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *fp,
                            const char *pszLayerName, std::string layer,
                            std::vector<odr::Road> roads, std::string refSystem):
+    pszFilename_(CPLStrdup(pszFilename)),
     fpXODR(fp), 
-    pszFilename_(CPLStrdup(pszFilename)), 
     Roads(roads),
     RoadIter(Roads.begin()),
     nNextFID(0),
