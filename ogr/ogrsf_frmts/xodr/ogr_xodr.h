@@ -42,12 +42,10 @@ class OGRXODRLayer : public OGRLayer
     VSILFILE *file;
     std::string layerName;
     std::vector<odr::Road> roads;
-     int nNextFID;
+    int nNextFID;
     OGRSpatialReference *spatialRef;
 
     OGRFeatureDefn *featureDefn;
-
-    std::string fileName;
 
     std::vector<odr::Road>::iterator roadIter;
 

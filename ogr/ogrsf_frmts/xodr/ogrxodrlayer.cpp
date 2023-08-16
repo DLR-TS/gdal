@@ -64,8 +64,9 @@ OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
         featureDefn->SetGeomType(wkbMultiPolygon);
     }
 
-    featureDefn->Reference();
+    featureDefn->Reference(); // TODO Why calling this? A call to Dereference() is required as well then.
     ResetReading();
+
     spatialRef = new OGRSpatialReference();
     spatialRef->importFromProj4(proj4Defn.c_str());
     featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(spatialRef);
@@ -75,13 +76,15 @@ OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
 
 OGRXODRLayer::~OGRXODRLayer()
 {
-    if (featureDefn != NULL)
+    if (featureDefn)
     {
         featureDefn->Release();
     }
 
     if (spatialRef)
+    {
         spatialRef->Release();
+    }  
 }
 /*--------------------------------------------------------------------*/
 /*--------------------      Layer iteration     ----------------------*/
@@ -124,8 +127,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             }
         }
     }
-    /*---------------------------     Lane    ----------------------------*/
-    if ((layerName == "LaneBorder") && (laneMeshesIter != laneMeshes.end()))
+    else if ((layerName == "LaneBorder") && (laneMeshesIter != laneMeshes.end()))
     {
         OGRLineString lineStringEven;
         OGRLineString lineStringOdd;
@@ -173,8 +175,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             return feature.release();
         }
     }
-    /*---------------------------   RoadMark  ----------------------------*/
-    if ((layerName == "RoadMark") && (roadMarkMeshesIter != roadMarkMeshes.end()))
+    else if ((layerName == "RoadMark") && (roadMarkMeshesIter != roadMarkMeshes.end()))
     {
         OGRLineString lineStringEven;
         OGRLineString lineStringOdd;
@@ -219,8 +220,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             return feature.release();
         }
     }
-    /*--------------------------- RoadObjects ----------------------------*/
-    if ((layerName == "RoadObject") && (roadObjectMeshesIter != roadObjectMeshes.end()))
+    else if ((layerName == "RoadObject") && (roadObjectMeshesIter != roadObjectMeshes.end()))
     {
         OGRLineString lineString;
 
@@ -256,8 +256,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             return feature.release();
         }
     }
-    /*--------------------------- Lanes ----------------------------*/
-    if ((layerName == "Lane") && (laneMeshesIter != laneMeshes.end()))
+    else if ((layerName == "Lane") && (laneMeshesIter != laneMeshes.end()))
     {
         OGRLineString lineStringEven;
         OGRLineString lineStringOdd;
@@ -323,9 +322,13 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         {
             return feature.release();
         }
+    } 
+    else
+    {
+        CPLError(CE_Failure, CPLE_AppDefined, "Invalid layer name : %s.", layerName);
+        return nullptr;
     }
 
-    return nullptr;
 }
 
 /*--------------------------------------------------------------------*/
@@ -458,7 +461,6 @@ OGRXODRLayer::RoadElements OGRXODRLayer::getRoadElements()
     RoadElements roadElements;
 
     const double eps = 0.5;
-    //for (int road = 0; road < Roads.size(); road++) {
     for (odr::Road road : roads)
     {
         for (odr::LaneSection laneSection : road.get_lanesections())
