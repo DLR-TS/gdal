@@ -40,15 +40,17 @@ using namespace odr;
 using namespace pugi;
 using namespace std;
 
-OGRXODRLayer::OGRXODRLayer(const char *pszFilename, VSILFILE *filePtr,
-                           const char *pszLayerName, std::string layer,
-                           std::vector<odr::Road> xodrRoads, std::string proj4Defn)
-    : pszFilename_(CPLStrdup(pszFilename)), file(filePtr), layerName(layer), 
-    roads(xodrRoads), nNextFID(0), spatialRef(NULL)
+OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
+                           std::vector<odr::Road> xodrRoads, std::string proj4Defn): 
+    file(filePtr), 
+    layerName(name), 
+    roads(xodrRoads), 
+    nNextFID(0), 
+    spatialRef(NULL)
 {
     initXodrElements();
 
-    this->featureDefn = new OGRFeatureDefn(CPLGetBasename(pszLayerName));
+    this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
 
     if (layerName == "ReferenceLine" || layerName == "LaneBorder" ||

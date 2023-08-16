@@ -80,15 +80,15 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
 
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
     string layerName = "ReferenceLine";
-    layers[0] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
+    layers[0] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
     layerName = "LaneBorder";
-    layers[1] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
+    layers[1] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
     layerName = "RoadMark";
-    layers[2] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
+    layers[2] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
     layerName = "RoadObject";
-    layers[3] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
+    layers[3] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
     layerName = "Lane";
-    layers[4] = new OGRXODRLayer(fileName, file, layerName.c_str(), layerName, roads, proj4Defn);
+    layers[4] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
 
     return TRUE;
 }

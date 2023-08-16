@@ -39,7 +39,6 @@
 class OGRXODRLayer : public OGRLayer
 {
   private:
-    const char *pszFilename_;
     VSILFILE *file;
     std::string layerName;
     std::vector<odr::Road> roads;
@@ -103,7 +102,6 @@ class OGRXODRLayer : public OGRLayer
      * Initializes XODR road elements and iterators.
     */
     void initXodrElements();
-    std::string getReferenceSystem();
 
     /**
      * Completes feature class definition with all specific attributes
@@ -117,8 +115,7 @@ class OGRXODRLayer : public OGRLayer
     RoadElements getRoadElements();
 
   public:
-    OGRXODRLayer(const char *pszFilename, VSILFILE *filePtr,
-                 const char *pszLayerName, std::string layer,
+    OGRXODRLayer(VSILFILE *filePtr, std::string name,
                  std::vector<odr::Road> xodrRoads, std::string proj4Defn);
     ~OGRXODRLayer();
 };
