@@ -102,7 +102,7 @@ class OGRXODRLayer : public OGRLayer
     void initXodrElements();
 
     /**
-     * Completes feature class definition with all specific attributes
+     * Completes feature class definition with all specific attributes and geometry type
      * according to layer type.
     */
     void defineFeatureClass();

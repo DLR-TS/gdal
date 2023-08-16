@@ -53,17 +53,6 @@ OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
     this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
 
-    if (layerName == "ReferenceLine" || layerName == "LaneBorder" ||
-        layerName == "RoadMark" || layerName == "RoadObject")
-    {
-
-        featureDefn->SetGeomType(wkbMultiLineString);
-    }
-    else if (layerName == "Lane")
-    {
-        featureDefn->SetGeomType(wkbMultiPolygon);
-    }
-
     featureDefn->Reference(); // TODO Why calling this? A call to Dereference() is required as well then.
     ResetReading();
 
@@ -222,10 +211,8 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     }
     else if ((layerName == "RoadObject") && (roadObjectMeshesIter != roadObjectMeshes.end()))
     {
-        OGRLineString lineString;
-
         std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
-        std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
+        std::unique_ptr<OGRLineString> lineString(new OGRLineString());
         
         const odr::Mesh3D &roadObjectMesh = *roadObjectMeshesIter;
         odr::RoadObject roadObject = *roadObjectIter;
@@ -234,10 +221,9 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         for (std::size_t iVertex = 0; iVertex < roadObjectVertices.size(); iVertex++)
         {
             const odr::Vec3D &roadObjectVertex = roadObjectVertices[iVertex];
-            lineString.addPoint(roadObjectVertex[0], roadObjectVertex[1]);
+            lineString->addPoint(roadObjectVertex[0], roadObjectVertex[1]);
         }
-        multiLineString->addGeometry(&lineString);
-        std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+        std::unique_ptr<OGRGeometry> geometry(lineString->MakeValid());
         feature->SetGeometry(geometry.get());
         feature->SetField(featureDefn->GetFieldIndex("ObjectID"), roadObject.id.c_str());
         feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadObject.road_id.c_str());
@@ -258,11 +244,12 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     }
     else if ((layerName == "Lane") && (laneMeshesIter != laneMeshes.end()))
     {
+        // TODO Center lanes with ID 0 cannot have any polygonal geometry because they have no width!
         OGRLineString lineStringEven;
         OGRLineString lineStringOdd;
 
         std::unique_ptr<OGRFeature> feature(new OGRFeature(featureDefn));
-        std::unique_ptr<OGRMultiPolygon> multiPolygon(new OGRMultiPolygon());
+        std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
 
         odr::Mesh3D laneMesh = *laneMeshesIter;
         odr::Lane lane = *laneIter;
@@ -283,6 +270,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         }
 
         OGRLinearRing ring;
+        // TODO Debug these iterations. There seems to be a bug.
         for (int i = 0; i < lineStringEven.getNumPoints(); ++i)
         {
             OGRPoint point;
@@ -299,10 +287,17 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         lineStringEven.getPoint(0, &startPoint);
         ring.addPoint(startPoint.getX(), startPoint.getY());
 
-        std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
         polygon->addRing(&ring);
 
         std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
+
+        std::string geomType = geometry->getGeometryName();
+        if (strcmp(geomType.c_str(), "POLYGON") != 0) {
+            // TODO Debug wrong polygon creation
+            std::printf("%s::%d: Geometry is supposed to be POLYGON but is %s instead!\n", 
+                        __FILE__, __LINE__, geomType.c_str());
+        }
+
         feature->SetGeometry(geometry.get());
         feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
         feature->SetField(featureDefn->GetFieldIndex("LaneID"), lane.id);
@@ -316,19 +311,16 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         laneMeshesIter++;
 
         if ((m_poFilterGeom == nullptr ||
-             FilterGeometry(feature->GetGeometryRef())) &&
+            FilterGeometry(feature->GetGeometryRef())) &&
             (m_poAttrQuery == nullptr ||
-             m_poAttrQuery->Evaluate(feature.get())))
+            m_poAttrQuery->Evaluate(feature.get())))
         {
             return feature.release();
         }
     } 
-    else
-    {
-        CPLError(CE_Failure, CPLE_AppDefined, "Invalid layer name : %s.", layerName);
-        return nullptr;
-    }
 
+    // End of features for the given layer reached.
+    return nullptr;
 }
 
 /*--------------------------------------------------------------------*/
@@ -347,6 +339,8 @@ void OGRXODRLayer::defineFeatureClass()
 {
     if (layerName == "ReferenceLine")
     {
+        featureDefn->SetGeomType(wkbLineString);
+        
         OGRFieldDefn oFieldID("ID", OFTString);
         featureDefn->AddFieldDefn(&oFieldID);
 
@@ -358,6 +352,8 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerName == "LaneBorder")
     {
+        featureDefn->SetGeomType(wkbMultiLineString);
+
         OGRFieldDefn oFieldID("ID", OFTInteger);
         featureDefn->AddFieldDefn(&oFieldID);
 
@@ -375,6 +371,8 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerName == "RoadMark")
     {
+        featureDefn->SetGeomType(wkbMultiLineString);
+
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
         featureDefn->AddFieldDefn(&oFieldRoadID);
 
@@ -389,6 +387,8 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerName == "RoadObject")
     {
+        featureDefn->SetGeomType(wkbLineString);
+
         OGRFieldDefn oFieldObjectID("ObjectID", OFTString);
         featureDefn->AddFieldDefn(&oFieldObjectID);
 
@@ -403,6 +403,8 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerName == "Lane")
     {
+        featureDefn->SetGeomType(wkbPolygon);
+
         OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
         featureDefn->AddFieldDefn(&oFieldLaneID);
 
