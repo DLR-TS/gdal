@@ -69,6 +69,7 @@ class OGRXODRLayer : public OGRLayer
     std::vector<odr::Mesh3D>::iterator roadMarkMeshesIter;
     std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
 
+    // TODO Store just one object of RoadElements as member and remove duplicates above
     struct RoadElements
     {
         std::vector<odr::LaneSection> laneSections;
