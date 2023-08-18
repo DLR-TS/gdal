@@ -42,40 +42,16 @@ class OGRXODRLayer : public OGRLayer
     VSILFILE *file;
     std::string layerName;
     std::vector<odr::Road> roads;
-    int nNextFID;
     OGRSpatialReference *spatialRef;
 
-    OGRFeatureDefn *featureDefn;
+    /* Unique feature ID which is automatically incremented for any new road feature creation. */
+    int nNextFID;
 
-    std::vector<odr::Road>::iterator roadIter;
-
-    std::vector<odr::LaneSection> laneSections;
-    std::vector<odr::Lane> lanes;
-    std::vector<odr::RoadMark> roadMarks;
-    std::vector<odr::RoadObject> roadObjects;
-
-    std::vector<std::string> lanesRoadIDs;
-    std::vector<odr::Mesh3D> laneMeshes;
-    std::vector<odr::Mesh3D> roadMarkMeshes;
-    std::vector<odr::Mesh3D> roadObjectMeshes;
-
-    std::vector<odr::Lane>::iterator laneIter;
-    std::vector<std::string>::iterator lanesRoadIDsIter;
-    std::vector<odr::LaneSection>::iterator laneSectionIter;
-    std::vector<odr::RoadMark>::iterator roadMarkIter;
-    std::vector<odr::RoadObject>::iterator roadObjectIter;
-
-    std::vector<odr::Mesh3D>::iterator laneMeshesIter;
-    std::vector<odr::Mesh3D>::iterator roadMarkMeshesIter;
-    std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
-
-    // TODO Store just one object of RoadElements as member and remove duplicates above
     struct RoadElements
     {
-        std::vector<odr::LaneSection> laneSections;
-
-        std::vector<std::string> laneRoadID;
         std::vector<odr::Lane> lanes;
+        std::vector<odr::LaneSection> laneSections;
+        std::vector<std::string> laneRoadIDs;
         std::vector<odr::Mesh3D> laneMeshes;
 
         std::vector<odr::RoadMark> roadMarks;
@@ -84,6 +60,22 @@ class OGRXODRLayer : public OGRLayer
         std::vector<odr::RoadObject> roadObjects;
         std::vector<odr::Mesh3D> roadObjectMeshes;
     };
+    RoadElements roadElements;
+
+    std::vector<odr::Road>::iterator roadIter;
+
+    std::vector<odr::Lane>::iterator laneIter;
+    std::vector<odr::LaneSection>::iterator laneSectionIter;
+    std::vector<std::string>::iterator laneRoadIDIter;
+    std::vector<odr::Mesh3D>::iterator laneMeshIter;
+
+    std::vector<odr::RoadMark>::iterator roadMarkIter;
+    std::vector<odr::Mesh3D>::iterator roadMarkMeshIter;
+
+    std::vector<odr::RoadObject>::iterator roadObjectIter;
+    std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
+   
+    OGRFeatureDefn *featureDefn;
 
     virtual void ResetReading() override;
     virtual OGRFeature *GetNextFeature() override;
@@ -100,7 +92,7 @@ class OGRXODRLayer : public OGRLayer
     /**
      * Initializes XODR road elements and iterators.
     */
-    void initXodrElements();
+    void resetRoadElementIterators();
 
     /**
      * Completes feature class definition with all specific attributes and geometry type
@@ -109,9 +101,13 @@ class OGRXODRLayer : public OGRLayer
     void defineFeatureClass();
     
     /**
-     * Provides every sub-element of a road as vector.
+     * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
+     * 
+     * \param xodrRoads Roads of the dataset.
+     * \param eps Approximation factor for sampling of continuous geometry functions into discrete
+     * OGC Simple Feature geometries.
     */
-    RoadElements getRoadElements();
+    RoadElements createRoadElements(const double eps = 0.5);
 
   public:
     OGRXODRLayer(VSILFILE *filePtr, std::string name,

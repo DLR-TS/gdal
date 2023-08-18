@@ -37,22 +37,19 @@
 #include <string>
 #include <typeinfo>
 using namespace odr;
-using namespace pugi;
 using namespace std;
 
 OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
                            std::vector<odr::Road> xodrRoads, std::string proj4Defn): 
     file(filePtr), 
     layerName(name), 
-    roads(xodrRoads), 
-    nNextFID(0), 
-    spatialRef(NULL)
+    roads(xodrRoads),
+    spatialRef(nullptr)
 {
-    initXodrElements();
+    roadElements = createRoadElements();
 
     this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
-
     featureDefn->Reference(); // TODO Why calling this? A call to Dereference() is required as well then.
     ResetReading();
 
@@ -75,9 +72,6 @@ OGRXODRLayer::~OGRXODRLayer()
         spatialRef->Release();
     }  
 }
-/*--------------------------------------------------------------------*/
-/*--------------------      Layer iteration     ----------------------*/
-/*--------------------------------------------------------------------*/
 
 OGRFeature *OGRXODRLayer::GetNextFeature()
 {
@@ -113,11 +107,11 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     }
     else if (layerName == "LaneBorder")
     {
-        if (laneIter != lanes.end())
+        if (laneIter != roadElements.lanes.end())
         {
             odr::Lane lane = *laneIter;
-            odr::Mesh3D laneMesh = *laneMeshesIter;
-            std::string laneRoadID = *lanesRoadIDsIter;
+            odr::Mesh3D laneMesh = *laneMeshIter;
+            std::string laneRoadID = *laneRoadIDIter;
             
             OGRLineString lineStringEven;
             OGRLineString lineStringOdd;
@@ -151,16 +145,16 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetFID(nNextFID++);
 
             laneIter++;
-            laneMeshesIter++;
-            lanesRoadIDsIter++;
+            laneMeshIter++;
+            laneRoadIDIter++;
         }
     }
     else if (layerName == "RoadMark")
     {
-        if (roadMarkIter != roadMarks.end())
+        if (roadMarkIter != roadElements.roadMarks.end())
         {
             odr::RoadMark roadMark = *roadMarkIter;        
-            odr::Mesh3D roadMarkMesh = *roadMarkMeshesIter;
+            odr::Mesh3D roadMarkMesh = *roadMarkMeshIter;
             
             OGRLineString lineStringEven;
             OGRLineString lineStringOdd;
@@ -192,12 +186,12 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetFID(nNextFID++);
 
             roadMarkIter++;
-            roadMarkMeshesIter++;
+            roadMarkMeshIter++;
         }
     }
     else if (layerName == "RoadObject")
     {
-        if (roadObjectIter != roadObjects.end())
+        if (roadObjectIter != roadElements.roadObjects.end())
         {
             odr::RoadObject roadObject = *roadObjectIter;
             const odr::Mesh3D &roadObjectMesh = *roadObjectMeshesIter;
@@ -225,19 +219,19 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     }
     else if (layerName == "Lane")
     {
-        while(laneIter != lanes.end() && (*laneIter).id == 0)
+        while(laneIter != roadElements.lanes.end() && (*laneIter).id == 0)
         {
-            // Skip lane(s) with id 0
+            // Skip lane(s) with id 0 because center lanes don't have any width.
             laneIter++;
-            laneMeshesIter++;
-            lanesRoadIDsIter++;
+            laneMeshIter++;
+            laneRoadIDIter++;
         }
 
-        if (laneIter != lanes.end())
+        if (laneIter != roadElements.lanes.end())
         {
             odr::Lane lane = *laneIter;
-            odr::Mesh3D laneMesh = *laneMeshesIter;
-            std::string laneRoadID = *lanesRoadIDsIter;
+            odr::Mesh3D laneMesh = *laneMeshIter;
+            std::string laneRoadID = *laneRoadIDIter;
 
             OGRLineString lineStringEven;
             OGRLineString lineStringOdd;
@@ -298,8 +292,8 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetFID(nNextFID++);
 
             laneIter++;
-            laneMeshesIter++;
-            lanesRoadIDsIter++;
+            laneMeshIter++;
+            laneRoadIDIter++;
         }
     } 
 
@@ -314,17 +308,12 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     }
 }
 
-/*--------------------------------------------------------------------*/
-/*--------------------       Reset Reading      ----------------------*/
-/*--------------------------------------------------------------------*/
 void OGRXODRLayer::ResetReading()
 {
     VSIFSeekL(file, 0, SEEK_SET);
     nNextFID = 0;
+    resetRoadElementIterators();
 }
-/*--------------------------------------------------------------------*/
-/*---------------------------     Layer    ----------------------------*/
-/*--------------------------------------------------------------------*/
 
 void OGRXODRLayer::defineFeatureClass()
 {
@@ -412,84 +401,61 @@ void OGRXODRLayer::defineFeatureClass()
         featureDefn->AddFieldDefn(&oFieldSuc);
     }
 }
-/*--------------------------------------------------------------------*/
-/*------------------------ Initialization   --------------------------*/
-/*--------------------------------------------------------------------*/
-void OGRXODRLayer::initXodrElements()
-{
-    RoadElements roadElements = getRoadElements();
 
+void OGRXODRLayer::resetRoadElementIterators()
+{
     roadIter = roads.begin();
 
-    laneSections = roadElements.laneSections;
-    laneSectionIter = laneSections.begin();
+    laneIter = roadElements.lanes.begin();
+    laneSectionIter = roadElements.laneSections.begin();
+    laneRoadIDIter = roadElements.laneRoadIDs.begin();
+    laneMeshIter = roadElements.laneMeshes.begin();
 
-    lanes = roadElements.lanes;
-    laneIter = lanes.begin();
+    roadMarkIter = roadElements.roadMarks.begin();
+    roadMarkMeshIter = roadElements.roadMarkMeshes.begin();
 
-    lanesRoadIDs = roadElements.laneRoadID;
-    lanesRoadIDsIter = lanesRoadIDs.begin();
-
-    laneMeshes = roadElements.laneMeshes;
-    laneMeshesIter = laneMeshes.begin();
-
-    roadMarks = roadElements.roadMarks;
-    roadMarkIter = roadMarks.begin();
-
-    roadMarkMeshes = roadElements.roadMarkMeshes;
-    roadMarkMeshesIter = roadMarkMeshes.begin();
-
-    roadObjects = roadElements.roadObjects;
-    roadObjectIter = roadObjects.begin();
-
-    roadObjectMeshes = roadElements.roadObjectMeshes;
-    roadObjectMeshesIter = roadObjectMeshes.begin();
+    roadObjectIter = roadElements.roadObjects.begin();
+    roadObjectMeshesIter = roadElements.roadObjectMeshes.begin();
 }
 
-/*--------------------------------------------------------------------*/
-/*------------------------ getRoadElements   --------------------------*/
-/*--------------------------------------------------------------------*/
-OGRXODRLayer::RoadElements OGRXODRLayer::getRoadElements()
+OGRXODRLayer::RoadElements OGRXODRLayer::createRoadElements(const double eps)
 {
-    RoadElements roadElements;
+    RoadElements elements;
 
-    const double eps = 0.5;
     for (odr::Road road : roads)
     {
         for (odr::LaneSection laneSection : road.get_lanesections())
         {
-            roadElements.laneSections.push_back(laneSection);
+            elements.laneSections.push_back(laneSection);
 
             for (odr::Lane lane : laneSection.get_lanes())
             {
-                roadElements.laneRoadID.push_back(road.id);
+                elements.laneRoadIDs.push_back(road.id);
 
-                roadElements.lanes.push_back(lane);
+                elements.lanes.push_back(lane);
 
                 odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
-                roadElements.laneMeshes.push_back(laneMesh);
+                elements.laneMeshes.push_back(laneMesh);
 
                 for (odr::RoadMark roadMark : lane.get_roadmarks(
                          laneSection.s0, road.get_lanesection_end(laneSection)))
                 {
+                    elements.roadMarks.push_back(roadMark);
 
-                    roadElements.roadMarks.push_back(roadMark);
-
-                    odr::Mesh3D roadMarkMesh =
-                        road.get_roadmark_mesh(lane, roadMark, eps);
-                    roadElements.roadMarkMeshes.push_back(roadMarkMesh);
+                    odr::Mesh3D roadMarkMesh = road.get_roadmark_mesh(lane, roadMark, eps);
+                    elements.roadMarkMeshes.push_back(roadMarkMesh);
                 }
             }
         }
 
         for (odr::RoadObject roadObject : road.get_road_objects())
         {
-            roadElements.roadObjects.push_back(roadObject);
+            elements.roadObjects.push_back(roadObject);
 
             odr::Mesh3D roadObjectMesh =
                 road.get_road_object_mesh(roadObject, eps);
-            roadElements.roadObjectMeshes.push_back(roadObjectMesh);
+            elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
     }
-    return roadElements;
+    return elements;
 }
