@@ -28,7 +28,7 @@ jobs:
       cache-name: cmake-ubuntu-focal
     steps:
     - name: Checkout GDAL
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Setup cache
       uses: actions/cache@v3
       id: cache
@@ -270,7 +270,7 @@ jobs:
         run: |
           git config --global core.autocrlf false
       - name: Checkout GDAL
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install development packages
         uses: msys2/setup-msys2@v2
         with:
@@ -365,7 +365,7 @@ jobs:
       run: |
         git config --global core.autocrlf false
     - name: Checkout GDAL
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - uses: ilammy/msvc-dev-cmd@v1
     - name: populate JAVA_HOME
       shell: pwsh
@@ -478,7 +478,7 @@ jobs:
       run: |
         git config --global core.autocrlf false
     - name: Checkout GDAL
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - uses: conda-incubator/setup-miniconda@v2
       with:
         activate-environment: gdalenv
@@ -532,7 +532,7 @@ jobs:
       with:
         xcode-version: 12.4
     - name: Checkout GDAL
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Setup cache
       uses: actions/cache@v3
       id: cache
@@ -611,7 +611,7 @@ jobs:
       run: |
         git config --global core.autocrlf false
     - name: Checkout GDAL
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - uses: conda-incubator/setup-miniconda@v2
       with:
         activate-environment: gdalenv
