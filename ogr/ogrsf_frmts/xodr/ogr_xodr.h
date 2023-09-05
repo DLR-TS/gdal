@@ -54,6 +54,10 @@ class OGRXODRLayer : public OGRLayer
         std::vector<std::string> laneRoadIDs;
         std::vector<odr::Mesh3D> laneMeshes;
 
+        std::vector<odr::Line3D> laneLines;
+        std::vector<odr::Line3D> laneLinesInner;
+        std::vector<odr::Line3D> laneLinesOuter;
+        
         std::vector<odr::RoadMark> roadMarks;
         std::vector<odr::Mesh3D> roadMarkMeshes;
 
@@ -68,7 +72,11 @@ class OGRXODRLayer : public OGRLayer
     std::vector<odr::LaneSection>::iterator laneSectionIter;
     std::vector<std::string>::iterator laneRoadIDIter;
     std::vector<odr::Mesh3D>::iterator laneMeshIter;
-
+    
+    std::vector<odr::Line3D>::iterator laneLinesIter;
+    std::vector<odr::Line3D>::iterator laneLinesInnerIter;
+    std::vector<odr::Line3D>::iterator laneLinesOuterIter;
+    
     std::vector<odr::RoadMark>::iterator roadMarkIter;
     std::vector<odr::Mesh3D>::iterator roadMarkMeshIter;
 

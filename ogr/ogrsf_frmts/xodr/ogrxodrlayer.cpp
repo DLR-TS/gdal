@@ -110,31 +110,23 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         if (laneIter != roadElements.lanes.end())
         {
             odr::Lane lane = *laneIter;
-            odr::Mesh3D laneMesh = *laneMeshIter;
+            odr::Line3D laneLine = *laneLinesIter;
             std::string laneRoadID = *laneRoadIDIter;
             
-            OGRLineString lineStringEven;
-            OGRLineString lineStringOdd;
+            OGRLineString lineString;
 
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
             std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
 
-            std::vector<odr::Vec3D> laneVertices = laneMesh.vertices;
-            for (std::size_t iVertex = 0; iVertex < laneVertices.size(); iVertex++)
+            for (std::size_t iVertex = 0; iVertex < laneLine.size(); iVertex++)
             {
-                odr::Vec3D laneVertex = laneVertices[iVertex];
-                if (iVertex % 2 != 0)
-                {
-                    lineStringEven.addPoint(laneVertex[0], laneVertex[1]);
-                }
-                else
-                {
-                    lineStringOdd.addPoint(laneVertex[0], laneVertex[1]);
-                }
+                odr::Vec3D laneVertex = laneLine[iVertex];
+                lineString.addPoint(laneVertex[0], laneVertex[1]);
+                
             }
 
-            multiLineString->addGeometry(&lineStringEven);
-            multiLineString->addGeometry(&lineStringOdd);
+            multiLineString->addGeometry(&lineString);
+
             std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
             feature->SetGeometry(geometry.get());
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
@@ -145,7 +137,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetFID(nNextFID++);
 
             laneIter++;
-            laneMeshIter++;
+            laneLinesIter++;
             laneRoadIDIter++;
         }
     }
@@ -217,83 +209,64 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             roadObjectMeshesIter++;
         }
     }
-    else if (layerName == "Lane")
-    {
-        while(laneIter != roadElements.lanes.end() && (*laneIter).id == 0)
-        {
-            // Skip lane(s) with id 0 because center lanes don't have any width.
-            laneIter++;
-            laneMeshIter++;
-            laneRoadIDIter++;
-        }
-
-        if (laneIter != roadElements.lanes.end())
-        {
+    else if (layerName == "Lane"){
+        if(laneLinesInnerIter != roadElements.laneLinesInner.end()){
+            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+            
+            odr::Line3D laneInner = *laneLinesInnerIter;
+            odr::Line3D laneOuter = *laneLinesOuterIter;
             odr::Lane lane = *laneIter;
-            odr::Mesh3D laneMesh = *laneMeshIter;
             std::string laneRoadID = *laneRoadIDIter;
 
-            OGRLineString lineStringEven;
-            OGRLineString lineStringOdd;
+            OGRLineString lineStringInner;
+            OGRLineString lineStringOuter;
 
-            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-            std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
+            for(std::size_t lanevertex = 0; lanevertex < laneInner.size(); lanevertex++){
+                odr::Vec3D laneVertex = laneInner[lanevertex];
+                lineStringInner.addPoint(laneVertex[0], laneVertex[1]);
+            }
 
-            std::vector<odr::Vec3D> laneVertices = laneMesh.vertices;
-            for (std::size_t iVertex = 0; iVertex < laneVertices.size(); iVertex++)
-            {
-                odr::Vec3D laneVertex = laneVertices[iVertex];
-                if (iVertex % 2 != 0)
-                {
-                    lineStringEven.addPoint(laneVertex[0], laneVertex[1]);
-                }
-                else
-                {
-                    lineStringOdd.addPoint(laneVertex[0], laneVertex[1]);
-                }
+            for(std::size_t lanevertex = 0; lanevertex < laneOuter.size(); lanevertex++){
+                odr::Vec3D laneVertex = laneOuter[lanevertex];
+                lineStringOuter.addPoint(laneVertex[0], laneVertex[1]);
             }
 
             OGRLinearRing ring;
-            // TODO Check whether using i++ instead of ++i is more robust. It makes a difference!
-            for (int i = 0; i < lineStringEven.getNumPoints(); ++i)
+
+            for (int i = 0; i < lineStringInner.getNumPoints(); i++)
             {
                 OGRPoint point;
-                lineStringEven.getPoint(i, &point);
+                lineStringInner.getPoint(i, &point);
                 ring.addPoint(point.getX(), point.getY());
             }
-            // TODO Check whether using i-- instead of --i is more robust. It makes a difference!
-            for (int i = lineStringOdd.getNumPoints() - 1; i >= 0; --i)
+
+            for (int i = lineStringOuter.getNumPoints() - 1; i >= 0; i--)
             {
                 OGRPoint point;
-                lineStringOdd.getPoint(i, &point);
+                lineStringOuter.getPoint(i, &point);
                 ring.addPoint(point.getX(), point.getY());
             }
+
             OGRPoint startPoint;
-            lineStringEven.getPoint(0, &startPoint);
+            lineStringInner.getPoint(0, &startPoint);
             ring.addPoint(startPoint.getX(), startPoint.getY());
-
+            
+            std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
             polygon->addRing(&ring);
-
             std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
-
-            std::string geomType = geometry->getGeometryName();
-            if (strcmp(geomType.c_str(), "POLYGON") != 0) {
-                // TODO Debug wrong polygon creation
-                std::printf("%s::%d: Geometry of road[%s]:lane[%d]is supposed to be POLYGON but is %s\n", 
-                            __FILE__, __LINE__, laneRoadID.c_str(), lane.id, geometry->exportToWkt().c_str());
-            }
-
             feature->SetGeometry(geometry.get());
+
+            feature->SetFID(nNextFID++);
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
             feature->SetField(featureDefn->GetFieldIndex("LaneID"), lane.id);
             feature->SetField(featureDefn->GetFieldIndex("Type"), lane.type.c_str());
             feature->SetField(featureDefn->GetFieldIndex("Predecessor"), lane.predecessor);
             feature->SetField(featureDefn->GetFieldIndex("Successor"), lane.successor);
-            feature->SetFID(nNextFID++);
-
-            laneIter++;
-            laneMeshIter++;
+            
             laneRoadIDIter++;
+            laneIter++;
+            laneLinesOuterIter++;
+            laneLinesInnerIter++;
         }
     } 
 
@@ -411,6 +384,10 @@ void OGRXODRLayer::resetRoadElementIterators()
     laneRoadIDIter = roadElements.laneRoadIDs.begin();
     laneMeshIter = roadElements.laneMeshes.begin();
 
+    laneLinesIter = roadElements.laneLines.begin();
+    laneLinesInnerIter = roadElements.laneLinesInner.begin();
+    laneLinesOuterIter = roadElements.laneLinesOuter.begin();
+
     roadMarkIter = roadElements.roadMarks.begin();
     roadMarkMeshIter = roadElements.roadMarkMeshes.begin();
 
@@ -436,6 +413,13 @@ OGRXODRLayer::RoadElements OGRXODRLayer::createRoadElements(const double eps)
 
                 odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
                 elements.laneMeshes.push_back(laneMesh);
+
+                odr::Line3D laneLineOuter = road.get_lane_border_line(lane, eps, true);
+                elements.laneLines.push_back(laneLineOuter);
+                elements.laneLinesOuter.push_back(laneLineOuter);
+                
+                odr::Line3D laneLineInner = road.get_lane_border_line(lane, eps, false);
+                elements.laneLinesInner.push_back(laneLineInner);
 
                 for (odr::RoadMark roadMark : lane.get_roadmarks(
                          laneSection.s0, road.get_lanesection_end(laneSection)))
