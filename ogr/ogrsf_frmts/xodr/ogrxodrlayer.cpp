@@ -110,24 +110,19 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         if (laneIter != roadElements.lanes.end())
         {
             odr::Lane lane = *laneIter;
-            odr::Line3D laneLine = *laneLinesIter;
+            odr::Line3D laneOuter = *laneLinesOuterIter;
             std::string laneRoadID = *laneRoadIDIter;
             
             OGRLineString lineString;
 
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-            std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
 
-            for (std::size_t iVertex = 0; iVertex < laneLine.size(); iVertex++)
-            {
-                odr::Vec3D laneVertex = laneLine[iVertex];
+            for(auto laneOuterIter = laneOuter.begin(); laneOuterIter != laneOuter.end(); ++laneOuterIter) {
+                odr::Vec3D laneVertex = *laneOuterIter;
                 lineString.addPoint(laneVertex[0], laneVertex[1]);
-                
             }
 
-            multiLineString->addGeometry(&lineString);
-
-            std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+            std::unique_ptr<OGRGeometry> geometry(lineString.MakeValid());
             feature->SetGeometry(geometry.get());
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
             feature->SetField(featureDefn->GetFieldIndex("ID"), lane.id);
@@ -137,7 +132,8 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetFID(nNextFID++);
 
             laneIter++;
-            laneLinesIter++;
+            laneLinesOuterIter++;
+            laneLinesInnerIter++; // For consistency, even though not used here
             laneRoadIDIter++;
         }
     }
@@ -309,7 +305,7 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerName == "LaneBorder")
     {
-        featureDefn->SetGeomType(wkbMultiLineString);
+        featureDefn->SetGeomType(wkbLineString);
 
         OGRFieldDefn oFieldID("ID", OFTInteger);
         featureDefn->AddFieldDefn(&oFieldID);
@@ -388,7 +384,6 @@ void OGRXODRLayer::resetRoadElementIterators()
     laneRoadIDIter = roadElements.laneRoadIDs.begin();
     laneMeshIter = roadElements.laneMeshes.begin();
 
-    laneLinesIter = roadElements.laneLines.begin();
     laneLinesInnerIter = roadElements.laneLinesInner.begin();
     laneLinesOuterIter = roadElements.laneLinesOuter.begin();
 
@@ -419,7 +414,6 @@ OGRXODRLayer::RoadElements OGRXODRLayer::createRoadElements(const double eps)
                 elements.laneMeshes.push_back(laneMesh);
 
                 odr::Line3D laneLineOuter = road.get_lane_border_line(lane, eps, true);
-                elements.laneLines.push_back(laneLineOuter);
                 elements.laneLinesOuter.push_back(laneLineOuter);
                 
                 odr::Line3D laneLineInner = road.get_lane_border_line(lane, eps, false);
