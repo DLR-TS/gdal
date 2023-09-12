@@ -210,7 +210,17 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         }
     }
     else if (layerName == "Lane"){
-        if(laneLinesInnerIter != roadElements.laneLinesInner.end()){
+
+        while(laneIter != roadElements.lanes.end() && (*laneIter).id == 0)
+        {
+            // Skip lane(s) with id 0
+            laneIter++;
+            laneLinesOuterIter++;
+            laneLinesInnerIter++;
+            laneRoadIDIter++;
+        }      
+
+        if(laneIter != roadElements.lanes.end()) {
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
             
             odr::Line3D laneInner = *laneLinesInnerIter;
@@ -218,42 +228,36 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             odr::Lane lane = *laneIter;
             std::string laneRoadID = *laneRoadIDIter;
 
-            OGRLineString lineStringInner;
-            OGRLineString lineStringOuter;
-
-            for(std::size_t lanevertex = 0; lanevertex < laneInner.size(); lanevertex++){
-                odr::Vec3D laneVertex = laneInner[lanevertex];
-                lineStringInner.addPoint(laneVertex[0], laneVertex[1]);
-            }
-
-            for(std::size_t lanevertex = 0; lanevertex < laneOuter.size(); lanevertex++){
-                odr::Vec3D laneVertex = laneOuter[lanevertex];
-                lineStringOuter.addPoint(laneVertex[0], laneVertex[1]);
-            }
-
             OGRLinearRing ring;
 
-            for (int i = 0; i < lineStringInner.getNumPoints(); i++)
-            {
-                OGRPoint point;
-                lineStringInner.getPoint(i, &point);
-                ring.addPoint(point.getX(), point.getY());
+            for(auto laneOuterIter = laneOuter.begin(); laneOuterIter != laneOuter.end(); ++laneOuterIter) {
+                odr::Vec3D laneVertex = *laneOuterIter;
+                ring.addPoint(laneVertex[0], laneVertex[1]);
             }
 
-            for (int i = lineStringOuter.getNumPoints() - 1; i >= 0; i--)
-            {
-                OGRPoint point;
-                lineStringOuter.getPoint(i, &point);
-                ring.addPoint(point.getX(), point.getY());
+            for(auto laneInnerIter = laneInner.rbegin(); laneInnerIter != laneInner.rend(); ++laneInnerIter) {
+                odr::Vec3D laneVertex = *laneInnerIter;
+                ring.addPoint(laneVertex[0], laneVertex[1]);
             }
 
+            // Close the ring
             OGRPoint startPoint;
-            lineStringInner.getPoint(0, &startPoint);
+            ring.getPoint(0, &startPoint);
             ring.addPoint(startPoint.getX(), startPoint.getY());
-            
+           
             std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
             polygon->addRing(&ring);
             std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
+                        
+            std::string geomType = geometry->getGeometryName();
+            if (strcmp(geomType.c_str(), "POLYGON") != 0) {
+                // Function MakeValid() destroyed the initial Polygon
+                // TODO Filter out dangling parts
+                // TODO Use OGRGeometryFactory::removeLowerDimensionSubGeoms at first
+                std::printf("%s::%d: Geometry of road(%s)::lane(%d) is supposed to be POLYGON but is this instead: %s\n", 
+                            __FILE__, __LINE__, laneRoadID.c_str(), lane.id, geometry->exportToWkt().c_str());
+            }
+
             feature->SetGeometry(geometry.get());
 
             feature->SetFID(nNextFID++);
@@ -263,10 +267,10 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetField(featureDefn->GetFieldIndex("Predecessor"), lane.predecessor);
             feature->SetField(featureDefn->GetFieldIndex("Successor"), lane.successor);
             
-            laneRoadIDIter++;
             laneIter++;
             laneLinesOuterIter++;
             laneLinesInnerIter++;
+            laneRoadIDIter++;
         }
     } 
 
