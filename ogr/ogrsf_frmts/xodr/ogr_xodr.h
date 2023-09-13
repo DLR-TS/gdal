@@ -32,6 +32,15 @@
 #include <pugixml/pugixml.hpp>
 #include <vector>
 
+enum XODRLayerType
+{
+    ReferenceLine,
+    LaneBorder,
+    RoadMark,
+    RoadObject,
+    Lane
+};
+
 /*--------------------------------------------------------------------*/
 /*---------------------  Layer declarations  -------------------------*/
 /*--------------------------------------------------------------------*/
@@ -40,7 +49,7 @@ class OGRXODRLayer : public OGRLayer
 {
   private:
     VSILFILE *file;
-    std::string layerName;
+    XODRLayerType layerType;
     std::vector<odr::Road> roads;
     OGRSpatialReference *spatialRef;
 
@@ -56,7 +65,7 @@ class OGRXODRLayer : public OGRLayer
 
         std::vector<odr::Line3D> laneLinesInner;
         std::vector<odr::Line3D> laneLinesOuter;
-        
+
         std::vector<odr::RoadMark> roadMarks;
         std::vector<odr::Mesh3D> roadMarkMeshes;
 
@@ -71,16 +80,16 @@ class OGRXODRLayer : public OGRLayer
     std::vector<odr::LaneSection>::iterator laneSectionIter;
     std::vector<std::string>::iterator laneRoadIDIter;
     std::vector<odr::Mesh3D>::iterator laneMeshIter;
-    
+
     std::vector<odr::Line3D>::iterator laneLinesInnerIter;
     std::vector<odr::Line3D>::iterator laneLinesOuterIter;
-    
+
     std::vector<odr::RoadMark>::iterator roadMarkIter;
     std::vector<odr::Mesh3D>::iterator roadMarkMeshIter;
 
     std::vector<odr::RoadObject>::iterator roadObjectIter;
     std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
-   
+
     OGRFeatureDefn *featureDefn;
 
     virtual void ResetReading() override;
@@ -105,7 +114,7 @@ class OGRXODRLayer : public OGRLayer
      * according to layer type.
     */
     void defineFeatureClass();
-    
+
     /**
      * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
      * 
@@ -116,9 +125,11 @@ class OGRXODRLayer : public OGRLayer
     RoadElements createRoadElements(const double eps = 0.5);
 
   public:
-    OGRXODRLayer(VSILFILE *filePtr, std::string name,
+    OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
                  std::vector<odr::Road> xodrRoads, std::string proj4Defn);
     ~OGRXODRLayer();
+
+    static const std::map<XODRLayerType, std::string> layerTypeToString;
 };
 
 /*--------------------------------------------------------------------*/

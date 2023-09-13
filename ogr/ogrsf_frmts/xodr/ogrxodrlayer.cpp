@@ -39,15 +39,23 @@
 using namespace odr;
 using namespace std;
 
-OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, std::string name,
+const std::map<XODRLayerType, std::string> OGRXODRLayer::layerTypeToString = {
+    {XODRLayerType::ReferenceLine, "ReferenceLine"},
+    {XODRLayerType::LaneBorder, "LaneBorder"},
+    {XODRLayerType::RoadMark, "RoadMark"},
+    {XODRLayerType::RoadObject, "RoadObject"},
+    {XODRLayerType::Lane, "Lane"}};
+
+OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
                            std::vector<odr::Road> xodrRoads, std::string proj4Defn): 
-    file(filePtr), 
-    layerName(name), 
+    file(filePtr),
+    layerType(xodrLayerType),
     roads(xodrRoads),
     spatialRef(nullptr)
 {
     roadElements = createRoadElements();
 
+    std::string layerName = layerTypeToString.at(layerType);
     this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
     featureDefn->Reference(); // TODO Why calling this? A call to Dereference() is required as well then.
@@ -77,7 +85,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (layerName == "ReferenceLine")
+    if (layerType == XODRLayerType::ReferenceLine)
     {
         if (roadIter != roads.end())
         {
@@ -105,7 +113,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             roadIter++;
         }
     }
-    else if (layerName == "LaneBorder")
+    else if (layerType == XODRLayerType::LaneBorder)
     {
         if (laneIter != roadElements.lanes.end())
         {
@@ -137,7 +145,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             laneRoadIDIter++;
         }
     }
-    else if (layerName == "RoadMark")
+    else if (layerType == XODRLayerType::RoadMark)
     {
         if (roadMarkIter != roadElements.roadMarks.end())
         {
@@ -177,7 +185,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             roadMarkMeshIter++;
         }
     }
-    else if (layerName == "RoadObject")
+    else if (layerType == XODRLayerType::RoadObject)
     {
         if (roadObjectIter != roadElements.roadObjects.end())
         {
@@ -205,7 +213,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             roadObjectMeshesIter++;
         }
     }
-    else if (layerName == "Lane"){
+    else if (layerType == XODRLayerType::Lane){
 
         while(laneIter != roadElements.lanes.end() && (*laneIter).id == 0)
         {
@@ -290,7 +298,7 @@ void OGRXODRLayer::ResetReading()
 
 void OGRXODRLayer::defineFeatureClass()
 {
-    if (layerName == "ReferenceLine")
+    if (layerType == XODRLayerType::ReferenceLine)
     {
         featureDefn->SetGeomType(wkbLineString);
         
@@ -303,7 +311,7 @@ void OGRXODRLayer::defineFeatureClass()
         OGRFieldDefn oFieldJunction("Junction", OFTString);
         featureDefn->AddFieldDefn(&oFieldJunction);
     }
-    else if (layerName == "LaneBorder")
+    else if (layerType == XODRLayerType::LaneBorder)
     {
         featureDefn->SetGeomType(wkbLineString);
 
@@ -322,7 +330,7 @@ void OGRXODRLayer::defineFeatureClass()
         OGRFieldDefn oFieldSuc("Successor", OFTInteger);
         featureDefn->AddFieldDefn(&oFieldSuc);
     }
-    else if (layerName == "RoadMark")
+    else if (layerType == XODRLayerType::RoadMark)
     {
         featureDefn->SetGeomType(wkbMultiLineString);
 
@@ -338,7 +346,7 @@ void OGRXODRLayer::defineFeatureClass()
         OGRFieldDefn oFieldName("Name", OFTString);
         featureDefn->AddFieldDefn(&oFieldName);
     }
-    else if (layerName == "RoadObject")
+    else if (layerType == XODRLayerType::RoadObject)
     {
         featureDefn->SetGeomType(wkbLineString);
 
@@ -354,7 +362,7 @@ void OGRXODRLayer::defineFeatureClass()
         OGRFieldDefn oFieldObjectName("Name", OFTString);
         featureDefn->AddFieldDefn(&oFieldObjectName);
     }
-    else if (layerName == "Lane")
+    else if (layerType == XODRLayerType::Lane)
     {
         featureDefn->SetGeomType(wkbPolygon);
 

@@ -79,16 +79,11 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     std::vector<odr::Road> roads = xodr.get_roads();
 
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
-    string layerName = "ReferenceLine";
-    layers[0] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
-    layerName = "LaneBorder";
-    layers[1] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
-    layerName = "RoadMark";
-    layers[2] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
-    layerName = "RoadObject";
-    layers[3] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
-    layerName = "Lane";
-    layers[4] = new OGRXODRLayer(file, layerName, roads, proj4Defn);
+    layers[0] = new OGRXODRLayer(file, XODRLayerType::ReferenceLine, roads, proj4Defn);
+    layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roads, proj4Defn);
+    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roads, proj4Defn);
+    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roads, proj4Defn);
+    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roads, proj4Defn);
 
     return TRUE;
 }
