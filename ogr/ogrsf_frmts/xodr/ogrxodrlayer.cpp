@@ -156,7 +156,6 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             OGRLineString lineStringOdd;
 
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-            std::unique_ptr<OGRMultiLineString> multiLineString(new OGRMultiLineString());
 
             std::vector<odr::Vec3D> roadMarkVertices = roadMarkMesh.vertices;
             for (std::size_t iVertex = 0; iVertex < roadMarkVertices.size(); iVertex++)
@@ -171,10 +170,30 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
                     lineStringOdd.addPoint(roadMarkVertex[0], roadMarkVertex[1]);
                 }
             }
-            multiLineString->addGeometry(&lineStringEven);
-            multiLineString->addGeometry(&lineStringOdd);
 
-            std::unique_ptr<OGRGeometry> geometry(multiLineString->MakeValid());
+            OGRLinearRing ring;
+            ring.addSubLineString(&lineStringOdd);
+            lineStringEven.reversePoints();
+            ring.addSubLineString(&lineStringEven);
+            // Close the ring
+            OGRPoint startPoint;
+            ring.getPoint(0, &startPoint);
+            ring.addPoint(startPoint.getX(), startPoint.getY());
+
+            std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
+            polygon->addRing(&ring);
+            std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
+
+            // TODO move out to separate function and combine with lane and road object polygon check
+            std::string geomType = geometry->getGeometryName();
+            if (strcmp(geomType.c_str(), "POLYGON") != 0) {
+                // Function MakeValid() destroyed the initial Polygon
+                // TODO Filter out dangling parts
+                // TODO Use OGRGeometryFactory::removeLowerDimensionSubGeoms at first
+                std::printf("%s::%d: Geometry of road mark is supposed to be POLYGON but is this instead: %s\n", 
+                            __FILE__, __LINE__, geometry->exportToWkt().c_str());
+            }
+
             feature->SetGeometry(geometry.get());
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadMark.road_id.c_str());
             feature->SetField(featureDefn->GetFieldIndex("LaneID"), roadMark.lane_id);
@@ -247,7 +266,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             // Close the ring
             OGRPoint startPoint;
             ring.getPoint(0, &startPoint);
-            ring.addPoint(startPoint.getX(), startPoint.getY());
+            ring.addPoint(startPoint.getX(), startPoint.getY()); // TODO change everywhere to ring.addPoint(&startPoint);
            
             std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
             polygon->addRing(&ring);
@@ -332,7 +351,7 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerType == XODRLayerType::RoadMark)
     {
-        featureDefn->SetGeomType(wkbMultiLineString);
+        featureDefn->SetGeomType(wkbPolygon);
 
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
         featureDefn->AddFieldDefn(&oFieldRoadID);
@@ -342,9 +361,6 @@ void OGRXODRLayer::defineFeatureClass()
 
         OGRFieldDefn oFieldType("Type", OFTString);
         featureDefn->AddFieldDefn(&oFieldType);
-
-        OGRFieldDefn oFieldName("Name", OFTString);
-        featureDefn->AddFieldDefn(&oFieldName);
     }
     else if (layerType == XODRLayerType::RoadObject)
     {
