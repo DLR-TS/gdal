@@ -3,13 +3,11 @@
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
  * Purpose:  Definition of OGR driver components for OpenDRIVE.
- * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center (DLR)
- *           Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)        
- *			 Cristhian Eduardo Murcia Galeano, cristhianmurcia182@gmail.com
- *			 Ana Maria Orozco, ana.orozco.net@gmail.com 
+ * Author:   Michael Scholz, German Aerospace Center (DLR)
+ *           Gülsen Bardak, German Aerospace Center (DLR)        
  *
  ******************************************************************************
- * Copyright 2022 German Aerospace Center (DLR), Institute of Transportation Systems
+ * Copyright 2023 German Aerospace Center (DLR), Institute of Transportation Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

@@ -1,17 +1,13 @@
-
 /******************************************************************************
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
  * Purpose:  Implementation of OGRXODRLayer.
- * Author:   Michael Scholz, michael.scholz@dlr.de, German Aerospace Center
- *(DLR) Oliver Böttcher, oliver.boettcher@dlr.de, German Aerospace Center (DLR)
- *			 Cristhian Eduardo Murcia Galeano,
- *cristhianmurcia182@gmail.com Ana Maria Orozco, ana.orozco.net@gmail.com
+ * Author:   Michael Scholz, German Aerospace Center (DLR)
+ *           Gülsen Bardak, German Aerospace Center (DLR)        
  *
  ******************************************************************************
- * Copyright 2022 German Aerospace Center (DLR), Institute of Transportation
- *Systems
+ * Copyright 2023 German Aerospace Center (DLR), Institute of Transportation Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +56,7 @@ OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
     std::string layerName = layerTypeToString.at(layerType);
     this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
-    featureDefn->Reference(); // TODO Why calling this? A call to Dereference() is required as well then.
+    featureDefn->Reference();
     ResetReading();
 
     spatialRef = new OGRSpatialReference();
@@ -105,7 +101,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
                 lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
             }
             OGRGeometry* geometry = lineString.MakeValid();
-            
+
             feature->SetGeometry(geometry);
             feature->SetField("ID", road.id.c_str());
             feature->SetField("Length", road.length);
