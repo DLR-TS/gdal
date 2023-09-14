@@ -26,9 +26,6 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-using namespace odr;
-using namespace std;
-
 OGRXODRLayerRoadObject::OGRXODRLayerRoadObject(RoadElements xodrRoadElements,
                                                std::string proj4Defn,
                                                bool dissolveTriangulatedSurface)

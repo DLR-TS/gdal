@@ -32,8 +32,6 @@
 #include <memory>
 #include <string>
 #include <typeinfo>
-using namespace odr;
-using namespace std;
 
 OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface): 
