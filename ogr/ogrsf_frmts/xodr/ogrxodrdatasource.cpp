@@ -83,7 +83,7 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roads, proj4Defn);
     layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roads, proj4Defn, false);
     layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roads, proj4Defn, false);
-    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roads, proj4Defn);
+    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roads, proj4Defn, false);
 
     return TRUE;
 }

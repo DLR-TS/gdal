@@ -265,50 +265,55 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         {
             // Skip lane(s) with id 0
             laneIter++;
-            laneLinesOuterIter++;
-            laneLinesInnerIter++;
+            laneMeshIter++;
             laneRoadIDIter++;
         }      
 
         if(laneIter != roadElements.lanes.end()) {
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
             
-            odr::Line3D laneInner = *laneLinesInnerIter;
-            odr::Line3D laneOuter = *laneLinesOuterIter;
             odr::Lane lane = *laneIter;
+            odr::Mesh3D laneMesh = *laneMeshIter;
+
             std::string laneRoadID = *laneRoadIDIter;
+            
+            std::vector<odr::Vec3D> meshVertices = laneMesh.vertices;
+            std::vector<uint32_t> meshIndices = laneMesh.indices;
 
-            OGRLinearRing ring;
+            OGRTriangulatedSurface tin;
+            const size_t numIndices = meshIndices.size();
+            // Build triangles from mesh vertices.
+            // Each triple of mesh indices defines which vertices form a triangle.
+            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
+                uint32_t vertexIdx = meshIndices[idx];
+                odr::Vec3D vertexP = meshVertices[vertexIdx];
+                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
 
-            for(auto laneOuterIter = laneOuter.begin(); laneOuterIter != laneOuter.end(); ++laneOuterIter) {
-                odr::Vec3D laneVertex = *laneOuterIter;
-                ring.addPoint(laneVertex[0], laneVertex[1]);
+                vertexIdx = meshIndices[idx + 1];
+                odr::Vec3D vertexQ = meshVertices[vertexIdx];
+                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
+
+                vertexIdx = meshIndices[idx + 2];
+                odr::Vec3D vertexR = meshVertices[vertexIdx];
+                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
+
+                OGRTriangle triangle(p, q, r);
+                tin.addGeometry(&triangle);
             }
 
-            for(auto laneInnerIter = laneInner.rbegin(); laneInnerIter != laneInner.rend(); ++laneInnerIter) {
-                odr::Vec3D laneVertex = *laneInnerIter;
-                ring.addPoint(laneVertex[0], laneVertex[1]);
+            if (dissolveSurface) {
+                OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
+                bool isSimple = dissolvedPolygon->IsSimple();
+                if(!isSimple) {
+                    CPLError(CE_Warning, CPLE_WrongFormat,
+                             "Dissolved lane polygon of road(%s):lane(%d) is not simple",
+                             laneRoadID.c_str(), lane.id);
+                }
+                feature->SetGeometry(dissolvedPolygon);
+            } else {
+                //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+                feature->SetGeometry(&tin);
             }
-
-            // Close the ring
-            OGRPoint startPoint;
-            ring.getPoint(0, &startPoint);
-            ring.addPoint(startPoint.getX(), startPoint.getY()); // TODO change everywhere to ring.addPoint(&startPoint);
-           
-            std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
-            polygon->addRing(&ring);
-            std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
-                        
-            std::string geomType = geometry->getGeometryName();
-            if (strcmp(geomType.c_str(), "POLYGON") != 0) {
-                // Function MakeValid() destroyed the initial Polygon
-                // TODO Filter out dangling parts
-                // TODO Use OGRGeometryFactory::removeLowerDimensionSubGeoms at first
-                std::printf("%s::%d: Geometry of road(%s)::lane(%d) is supposed to be POLYGON but is this instead: %s\n", 
-                            __FILE__, __LINE__, laneRoadID.c_str(), lane.id, geometry->exportToWkt().c_str());
-            }
-
-            feature->SetGeometry(geometry.get());
 
             feature->SetFID(nNextFID++);
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
@@ -318,8 +323,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             feature->SetField(featureDefn->GetFieldIndex("Successor"), lane.successor);
             
             laneIter++;
-            laneLinesOuterIter++;
-            laneLinesInnerIter++;
+            laneMeshIter++;
             laneRoadIDIter++;
         }
     } 
@@ -415,7 +419,11 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerType == XODRLayerType::Lane)
     {
-        featureDefn->SetGeomType(wkbPolygon);
+        if (dissolveSurface) {
+            featureDefn->SetGeomType(wkbPolygon);  
+        } else {
+            featureDefn->SetGeomType(wkbTINZ);
+        }
 
         OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
         featureDefn->AddFieldDefn(&oFieldLaneID);
