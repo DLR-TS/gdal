@@ -125,6 +125,11 @@ class OGRXODRLayer : public OGRLayer
     */
     RoadElements createRoadElements(const double eps = 0.5);
 
+    /**
+     * Builds an ordinary TIN from libOpenDRIVE's mesh.
+    */
+    OGRTriangulatedSurface triangulateSurface(odr::Mesh3D mesh);
+
   public:
     /**
      * \param dissolveTriangulatedSurface True if original triangulated surface meshes from 

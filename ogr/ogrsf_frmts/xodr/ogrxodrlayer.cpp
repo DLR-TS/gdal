@@ -156,29 +156,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             odr::RoadMark roadMark = *roadMarkIter;        
             odr::Mesh3D roadMarkMesh = *roadMarkMeshIter;
             
-            std::vector<odr::Vec3D> meshVertices = roadMarkMesh.vertices;
-            std::vector<uint32_t> meshIndices = roadMarkMesh.indices;
-
-            OGRTriangulatedSurface tin;
-            const size_t numIndices = meshIndices.size();
-            // Build triangles from mesh vertices.
-            // Each triple of mesh indices defines which vertices form a triangle.
-            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
-                uint32_t vertexIdx = meshIndices[idx];
-                odr::Vec3D vertexP = meshVertices[vertexIdx];
-                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
-
-                vertexIdx = meshIndices[idx + 1];
-                odr::Vec3D vertexQ = meshVertices[vertexIdx];
-                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
-
-                vertexIdx = meshIndices[idx + 2];
-                odr::Vec3D vertexR = meshVertices[vertexIdx];
-                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
-
-                OGRTriangle triangle(p, q, r);
-                tin.addGeometry(&triangle);
-            }
+            OGRTriangulatedSurface tin = triangulateSurface(roadMarkMesh);
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
@@ -211,29 +189,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             odr::RoadObject roadObject = *roadObjectIter;
             odr::Mesh3D roadObjectMesh = *roadObjectMeshesIter;
 
-            std::vector<odr::Vec3D> meshVertices = roadObjectMesh.vertices;
-            std::vector<uint32_t> meshIndices = roadObjectMesh.indices;
-
-            OGRTriangulatedSurface tin;
-            const size_t numIndices = meshIndices.size();
-            // Build triangles from mesh vertices.
-            // Each triple of mesh indices defines which vertices form a triangle.
-            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
-                uint32_t vertexIdx = meshIndices[idx];
-                odr::Vec3D vertexP = meshVertices[vertexIdx];
-                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
-
-                vertexIdx = meshIndices[idx + 1];
-                odr::Vec3D vertexQ = meshVertices[vertexIdx];
-                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
-
-                vertexIdx = meshIndices[idx + 2];
-                odr::Vec3D vertexR = meshVertices[vertexIdx];
-                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
-
-                OGRTriangle triangle(p, q, r);
-                tin.addGeometry(&triangle);
-            }
+            OGRTriangulatedSurface tin = triangulateSurface(roadObjectMesh);
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
@@ -276,30 +232,8 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             odr::Mesh3D laneMesh = *laneMeshIter;
 
             std::string laneRoadID = *laneRoadIDIter;
-            
-            std::vector<odr::Vec3D> meshVertices = laneMesh.vertices;
-            std::vector<uint32_t> meshIndices = laneMesh.indices;
 
-            OGRTriangulatedSurface tin;
-            const size_t numIndices = meshIndices.size();
-            // Build triangles from mesh vertices.
-            // Each triple of mesh indices defines which vertices form a triangle.
-            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
-                uint32_t vertexIdx = meshIndices[idx];
-                odr::Vec3D vertexP = meshVertices[vertexIdx];
-                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
-
-                vertexIdx = meshIndices[idx + 1];
-                odr::Vec3D vertexQ = meshVertices[vertexIdx];
-                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
-
-                vertexIdx = meshIndices[idx + 2];
-                odr::Vec3D vertexR = meshVertices[vertexIdx];
-                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
-
-                OGRTriangle triangle(p, q, r);
-                tin.addGeometry(&triangle);
-            }
+            OGRTriangulatedSurface tin = triangulateSurface(laneMesh);
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
@@ -507,4 +441,32 @@ OGRXODRLayer::RoadElements OGRXODRLayer::createRoadElements(const double eps)
         }
     }
     return elements;
+}
+
+OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh) {
+    std::vector<odr::Vec3D> meshVertices = mesh.vertices;
+    std::vector<uint32_t> meshIndices = mesh.indices;
+
+    OGRTriangulatedSurface tin;
+    const size_t numIndices = meshIndices.size();
+    // Build triangles from mesh vertices.
+    // Each triple of mesh indices defines which vertices form a triangle.
+    for (std::size_t idx = 0; idx < numIndices; idx += 3) {
+        uint32_t vertexIdx = meshIndices[idx];
+        odr::Vec3D vertexP = meshVertices[vertexIdx];
+        OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
+
+        vertexIdx = meshIndices[idx + 1];
+        odr::Vec3D vertexQ = meshVertices[vertexIdx];
+        OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
+
+        vertexIdx = meshIndices[idx + 2];
+        odr::Vec3D vertexR = meshVertices[vertexIdx];
+        OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
+
+        OGRTriangle triangle(p, q, r);
+        tin.addGeometry(&triangle);
+    }
+
+    return tin;
 }
