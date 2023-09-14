@@ -101,8 +101,8 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 
             for (const double &s : sVals)
             {
-                odr::Vec3D roadGeometry = refLine.get_xyz(s);
-                lineString->addPoint(roadGeometry[0], roadGeometry[1]);
+                odr::Vec3D refLineVertex = refLine.get_xyz(s);
+                lineString->addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
             }
 
             std::unique_ptr<OGRGeometry> geometry(lineString->MakeValid());
@@ -119,17 +119,17 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     {
         if (laneIter != roadElements.lanes.end())
         {
+            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+
             odr::Lane lane = *laneIter;
             odr::Line3D laneOuter = *laneLinesOuterIter;
             std::string laneRoadID = *laneRoadIDIter;
             
             OGRLineString lineString;
 
-            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-
             for(auto laneOuterIter = laneOuter.begin(); laneOuterIter != laneOuter.end(); ++laneOuterIter) {
                 odr::Vec3D laneVertex = *laneOuterIter;
-                lineString.addPoint(laneVertex[0], laneVertex[1]);
+                lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
             }
 
             std::unique_ptr<OGRGeometry> geometry(lineString.MakeValid());
