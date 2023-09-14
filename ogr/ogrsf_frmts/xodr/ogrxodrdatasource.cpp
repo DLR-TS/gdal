@@ -81,8 +81,8 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
     layers[0] = new OGRXODRLayer(file, XODRLayerType::ReferenceLine, roads, proj4Defn);
     layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roads, proj4Defn);
-    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roads, proj4Defn);
-    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roads, proj4Defn);
+    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roads, proj4Defn, false);
+    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roads, proj4Defn, false);
     layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roads, proj4Defn);
 
     return TRUE;

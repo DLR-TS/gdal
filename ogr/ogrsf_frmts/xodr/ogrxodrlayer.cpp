@@ -206,20 +206,49 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     {
         if (roadObjectIter != roadElements.roadObjects.end())
         {
-            odr::RoadObject roadObject = *roadObjectIter;
-            const odr::Mesh3D &roadObjectMesh = *roadObjectMeshesIter;
-            const std::vector<odr::Vec3D> roadObjectVertices = roadObjectMesh.vertices;
-
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-            std::unique_ptr<OGRLineString> lineString(new OGRLineString());
+            
+            odr::RoadObject roadObject = *roadObjectIter;
+            odr::Mesh3D roadObjectMesh = *roadObjectMeshesIter;
 
-            for (std::size_t iVertex = 0; iVertex < roadObjectVertices.size(); iVertex++)
-            {
-                const odr::Vec3D &roadObjectVertex = roadObjectVertices[iVertex];
-                lineString->addPoint(roadObjectVertex[0], roadObjectVertex[1]);
+            std::vector<odr::Vec3D> meshVertices = roadObjectMesh.vertices;
+            std::vector<uint32_t> meshIndices = roadObjectMesh.indices;
+
+            OGRTriangulatedSurface tin;
+            const size_t numIndices = meshIndices.size();
+            // Build triangles from mesh vertices.
+            // Each triple of mesh indices defines which vertices form a triangle.
+            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
+                uint32_t vertexIdx = meshIndices[idx];
+                odr::Vec3D vertexP = meshVertices[vertexIdx];
+                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
+
+                vertexIdx = meshIndices[idx + 1];
+                odr::Vec3D vertexQ = meshVertices[vertexIdx];
+                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
+
+                vertexIdx = meshIndices[idx + 2];
+                odr::Vec3D vertexR = meshVertices[vertexIdx];
+                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
+
+                OGRTriangle triangle(p, q, r);
+                tin.addGeometry(&triangle);
             }
-            std::unique_ptr<OGRGeometry> geometry(lineString->MakeValid());
-            feature->SetGeometry(geometry.get());
+
+            if (dissolveSurface) {
+                OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
+                bool isSimple = dissolvedPolygon->IsSimple();
+                if(!isSimple) {
+                    CPLError(CE_Warning, CPLE_WrongFormat,
+                             "Dissolved road object polygon of road(%s):object(%s) is not simple",
+                             roadObject.road_id.c_str(), roadObject.id.c_str());
+                }
+                feature->SetGeometry(dissolvedPolygon);
+            } else {
+                //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+                feature->SetGeometry(&tin);
+            }
+
             feature->SetField(featureDefn->GetFieldIndex("ObjectID"), roadObject.id.c_str());
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadObject.road_id.c_str());
             feature->SetField(featureDefn->GetFieldIndex("Type"), roadObject.type.c_str());
@@ -366,7 +395,11 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerType == XODRLayerType::RoadObject)
     {
-        featureDefn->SetGeomType(wkbLineString);
+        if (dissolveSurface) {
+            featureDefn->SetGeomType(wkbPolygon);  
+        } else {
+            featureDefn->SetGeomType(wkbTINZ);
+        }
 
         OGRFieldDefn oFieldObjectID("ObjectID", OFTString);
         featureDefn->AddFieldDefn(&oFieldObjectID);
