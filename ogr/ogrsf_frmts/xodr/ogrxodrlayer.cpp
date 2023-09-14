@@ -92,21 +92,21 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
         if (roadIter != roads.end())
         {
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-            std::unique_ptr<OGRLineString> lineString(new OGRLineString());
 
             const double eps = 0.9;
             odr::Road road = *roadIter;
             odr::RefLine refLine = road.ref_line;
             std::set<double> sVals = refLine.approximate_linear(eps, 0.0, road.length);
 
+            OGRLineString lineString;
             for (const double &s : sVals)
             {
                 odr::Vec3D refLineVertex = refLine.get_xyz(s);
-                lineString->addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
+                lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
             }
-
-            std::unique_ptr<OGRGeometry> geometry(lineString->MakeValid());
-            feature->SetGeometry(geometry.get());
+            OGRGeometry* geometry = lineString.MakeValid();
+            
+            feature->SetGeometry(geometry);
             feature->SetField("ID", road.id.c_str());
             feature->SetField("Length", road.length);
             feature->SetField("Junction", road.junction.c_str());
@@ -126,14 +126,13 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
             std::string laneRoadID = *laneRoadIDIter;
             
             OGRLineString lineString;
-
             for(auto laneOuterIter = laneOuter.begin(); laneOuterIter != laneOuter.end(); ++laneOuterIter) {
                 odr::Vec3D laneVertex = *laneOuterIter;
                 lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
             }
+            OGRGeometry* geometry = lineString.MakeValid();
 
-            std::unique_ptr<OGRGeometry> geometry(lineString.MakeValid());
-            feature->SetGeometry(geometry.get());
+            feature->SetGeometry(geometry);
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), laneRoadID.c_str());
             feature->SetField(featureDefn->GetFieldIndex("ID"), lane.id);
             feature->SetField(featureDefn->GetFieldIndex("Type"), lane.type.c_str());
@@ -160,12 +159,6 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
-                bool isSimple = dissolvedPolygon->IsSimple();
-                if(!isSimple) {
-                    CPLError(CE_Warning, CPLE_WrongFormat,
-                             "Dissolved road mark polygon of road(%s):lane(%d) is not simple",
-                             roadMark.road_id.c_str(), roadMark.lane_id);
-                }
                 feature->SetGeometry(dissolvedPolygon);
             } else {
                 //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
@@ -193,12 +186,6 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
-                bool isSimple = dissolvedPolygon->IsSimple();
-                if(!isSimple) {
-                    CPLError(CE_Warning, CPLE_WrongFormat,
-                             "Dissolved road object polygon of road(%s):object(%s) is not simple",
-                             roadObject.road_id.c_str(), roadObject.id.c_str());
-                }
                 feature->SetGeometry(dissolvedPolygon);
             } else {
                 //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
@@ -237,12 +224,6 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 
             if (dissolveSurface) {
                 OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
-                bool isSimple = dissolvedPolygon->IsSimple();
-                if(!isSimple) {
-                    CPLError(CE_Warning, CPLE_WrongFormat,
-                             "Dissolved lane polygon of road(%s):lane(%d) is not simple",
-                             laneRoadID.c_str(), lane.id);
-                }
                 feature->SetGeometry(dissolvedPolygon);
             } else {
                 //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
