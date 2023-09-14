@@ -1,9 +1,14 @@
 add_gdal_driver(
   TARGET ogr_XODR
   SOURCES ogr_xodr.h 
-          ogrxodrdatasource.cpp 
-          ogrxodrlayer.cpp 
           ogrxodrdriver.cpp
+          ogrxodrdatasource.cpp 
+          ogrxodrlayer.cpp
+          ogrxodrlayerlane.cpp 
+          ogrxodrlayerlaneborder.cpp 
+          ogrxodrlayerreferenceline.cpp
+          ogrxodrlayerroadmark.cpp
+          ogrxodrlayerroadobject.cpp
   PLUGIN_CAPABLE)
 
 gdal_standard_includes(ogr_XODR)

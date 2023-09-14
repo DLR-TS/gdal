@@ -75,12 +75,12 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
 
-    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
-    layers[0] = new OGRXODRLayer(file, XODRLayerType::ReferenceLine, roadElements, proj4Defn);
-    layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roadElements, proj4Defn);
-    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roadElements, proj4Defn, false);
-    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roadElements, proj4Defn, false);
-    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roadElements, proj4Defn, false);
+    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers); //TODO update this to our new different classes
+    layers[0] = new OGRXODRLayerReferenceLine(file, roadElements, proj4Defn);
+    layers[1] = new OGRXODRLayerLaneBorder(file, roadElements, proj4Defn);
+    layers[2] = new OGRXODRLayerRoadMark(file, roadElements, proj4Defn, false);
+    layers[3] = new OGRXODRLayerRoadObject(file, roadElements, proj4Defn, false);
+    layers[4] = new OGRXODRLayerLane(file, roadElements, proj4Defn, false);
 
     return TRUE;
 }

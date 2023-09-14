@@ -30,15 +30,6 @@
 #include <pugixml/pugixml.hpp>
 #include <vector>
 
-enum XODRLayerType
-{
-    ReferenceLine,
-    LaneBorder,
-    RoadMark,
-    RoadObject,
-    Lane
-};
-
 struct RoadElements
 {
     std::vector<odr::Road> roads;
@@ -65,12 +56,30 @@ struct RoadElements
 class OGRXODRLayer : public OGRLayer
 {
   private:
-    VSILFILE *file;
-    XODRLayerType layerType;
-    RoadElements roadElements;
-    OGRSpatialReference *spatialRef;
-    bool dissolveSurface;
+    virtual void ResetReading() override;
 
+    virtual OGRFeatureDefn *GetLayerDefn() override
+    {
+        return featureDefn;
+    }
+
+    virtual int TestCapability(const char *) override
+    {
+        return FALSE;
+    }
+
+    /**
+     * Initializes XODR road elements and iterators.
+    */
+    void resetRoadElementIterators();
+
+  protected:
+    VSILFILE *file;
+    RoadElements roadElements;
+    OGRSpatialReference spatialRef;
+    bool dissolveSurface;  
+    OGRFeatureDefn *featureDefn;
+    
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
 
@@ -90,30 +99,11 @@ class OGRXODRLayer : public OGRLayer
     std::vector<odr::RoadObject>::iterator roadObjectIter;
     std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
 
-    OGRFeatureDefn *featureDefn;
-
-    virtual void ResetReading() override;
-    virtual OGRFeature *GetNextFeature() override;
-
-    virtual OGRFeatureDefn *GetLayerDefn() override
-    {
-        return featureDefn;
-    }
-    virtual int TestCapability(const char *) override
-    {
-        return FALSE;
-    }
-
-    /**
-     * Initializes XODR road elements and iterators.
-    */
-    void resetRoadElementIterators();
-
     /**
      * Completes feature class definition with all specific attributes and geometry type
      * according to layer type.
     */
-    void defineFeatureClass();
+    virtual void defineFeatureClass() = 0;
 
     /**
      * Builds an ordinary TIN from libOpenDRIVE's mesh.
@@ -127,12 +117,75 @@ class OGRXODRLayer : public OGRLayer
      * Only applicable for layer types derived from meshes: XODRLayerType::RoadMark, 
      * XODRLayerType::RoadObject, XODRLayerType::Lane.
     */
-    OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
+    OGRXODRLayer(VSILFILE *filePtr,
                  RoadElements xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface = false);
     ~OGRXODRLayer();
+};
 
-    static const std::map<XODRLayerType, std::string> layerTypeToString;
+class OGRXODRLayerReferenceLine : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+  public:
+    const std::string FEATURE_CLASS_NAME = "ReferenceLine";
+
+    OGRXODRLayerReferenceLine(VSILFILE *filePtr,
+                              RoadElements xodrRoadElements, std::string proj4Defn,
+                              bool dissolveTriangulatedSurface = false);
+};
+
+class OGRXODRLayerLaneBorder : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+  public:
+    const std::string FEATURE_CLASS_NAME = "LaneBorder";
+    
+    OGRXODRLayerLaneBorder(VSILFILE *filePtr,
+                          RoadElements xodrRoadElements, std::string proj4Defn,
+                          bool dissolveTriangulatedSurface = false);
+};
+
+class OGRXODRLayerRoadMark : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+  public:
+    const std::string FEATURE_CLASS_NAME = "RoadMark";
+    
+    OGRXODRLayerRoadMark(VSILFILE *filePtr,
+                          RoadElements xodrRoadElements, std::string proj4Defn,
+                          bool dissolveTriangulatedSurface = false);
+};
+
+class OGRXODRLayerRoadObject : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+  public:
+    const std::string FEATURE_CLASS_NAME = "RoadObject";
+    
+    OGRXODRLayerRoadObject(VSILFILE *filePtr,
+                          RoadElements xodrRoadElements, std::string proj4Defn,
+                          bool dissolveTriangulatedSurface = false);
+};
+
+class OGRXODRLayerLane : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+  public:
+    const std::string FEATURE_CLASS_NAME = "Lane";
+    
+    OGRXODRLayerLane(VSILFILE *filePtr,
+                          RoadElements xodrRoadElements, std::string proj4Defn,
+                          bool dissolveTriangulatedSurface = false);
 };
 
 /*--------------------------------------------------------------------*/
