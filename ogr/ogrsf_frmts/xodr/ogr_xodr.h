@@ -52,6 +52,7 @@ class OGRXODRLayer : public OGRLayer
     XODRLayerType layerType;
     std::vector<odr::Road> roads;
     OGRSpatialReference *spatialRef;
+    bool dissolveSurface;
 
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
@@ -125,8 +126,15 @@ class OGRXODRLayer : public OGRLayer
     RoadElements createRoadElements(const double eps = 0.5);
 
   public:
+    /**
+     * \param dissolveTriangulatedSurface True if original triangulated surface meshes from 
+     * libOpenDRIVE are to be dissolved into single polygons.
+     * Only applicable for layer types derived from meshes: XODRLayerType::RoadMark, 
+     * XODRLayerType::RoadObject, XODRLayerType::Lane.
+    */
     OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
-                 std::vector<odr::Road> xodrRoads, std::string proj4Defn);
+                 std::vector<odr::Road> xodrRoads, std::string proj4Defn,
+                 bool dissolveTriangulatedSurface = false);
     ~OGRXODRLayer();
 
     static const std::map<XODRLayerType, std::string> layerTypeToString;

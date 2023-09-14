@@ -47,11 +47,13 @@ const std::map<XODRLayerType, std::string> OGRXODRLayer::layerTypeToString = {
     {XODRLayerType::Lane, "Lane"}};
 
 OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
-                           std::vector<odr::Road> xodrRoads, std::string proj4Defn): 
+                           std::vector<odr::Road> xodrRoads, std::string proj4Defn,
+                           bool dissolveTriangulatedSurface): 
     file(filePtr),
     layerType(xodrLayerType),
     roads(xodrRoads),
-    spatialRef(nullptr)
+    spatialRef(nullptr),
+    dissolveSurface(dissolveTriangulatedSurface)
 {
     roadElements = createRoadElements();
 
@@ -149,52 +151,48 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
     {
         if (roadMarkIter != roadElements.roadMarks.end())
         {
+            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+            
             odr::RoadMark roadMark = *roadMarkIter;        
             odr::Mesh3D roadMarkMesh = *roadMarkMeshIter;
             
-            OGRLineString lineStringEven;
-            OGRLineString lineStringOdd;
+            std::vector<odr::Vec3D> meshVertices = roadMarkMesh.vertices;
+            std::vector<uint32_t> meshIndices = roadMarkMesh.indices;
 
-            feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+            OGRTriangulatedSurface tin;
+            const size_t numIndices = meshIndices.size();
+            // Build triangles from mesh vertices.
+            // Each triple of mesh indices defines which vertices form a triangle.
+            for (std::size_t idx = 0; idx < numIndices; idx += 3) {
+                uint32_t vertexIdx = meshIndices[idx];
+                odr::Vec3D vertexP = meshVertices[vertexIdx];
+                OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);
 
-            std::vector<odr::Vec3D> roadMarkVertices = roadMarkMesh.vertices;
-            for (std::size_t iVertex = 0; iVertex < roadMarkVertices.size(); iVertex++)
-            {
-                odr::Vec3D roadMarkVertex = roadMarkVertices[iVertex];
-                if (iVertex % 2 != 0)
-                {
-                    lineStringEven.addPoint(roadMarkVertex[0], roadMarkVertex[1]);
-                }
-                else
-                {
-                    lineStringOdd.addPoint(roadMarkVertex[0], roadMarkVertex[1]);
-                }
+                vertexIdx = meshIndices[idx + 1];
+                odr::Vec3D vertexQ = meshVertices[vertexIdx];
+                OGRPoint q(vertexQ[0], vertexQ[1], vertexQ[2]);
+
+                vertexIdx = meshIndices[idx + 2];
+                odr::Vec3D vertexR = meshVertices[vertexIdx];
+                OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
+
+                OGRTriangle triangle(p, q, r);
+                tin.addGeometry(&triangle);
             }
 
-            OGRLinearRing ring;
-            ring.addSubLineString(&lineStringOdd);
-            lineStringEven.reversePoints();
-            ring.addSubLineString(&lineStringEven);
-            // Close the ring
-            OGRPoint startPoint;
-            ring.getPoint(0, &startPoint);
-            ring.addPoint(startPoint.getX(), startPoint.getY());
-
-            std::unique_ptr<OGRPolygon> polygon(new OGRPolygon());
-            polygon->addRing(&ring);
-            std::unique_ptr<OGRGeometry> geometry(polygon->MakeValid());
-
-            // TODO move out to separate function and combine with lane and road object polygon check
-            std::string geomType = geometry->getGeometryName();
-            if (strcmp(geomType.c_str(), "POLYGON") != 0) {
-                // Function MakeValid() destroyed the initial Polygon
-                // TODO Filter out dangling parts
-                // TODO Use OGRGeometryFactory::removeLowerDimensionSubGeoms at first
-                std::printf("%s::%d: Geometry of road mark is supposed to be POLYGON but is this instead: %s\n", 
-                            __FILE__, __LINE__, geometry->exportToWkt().c_str());
+            if (dissolveSurface) {
+                OGRGeometry* dissolvedPolygon = tin.UnaryUnion();
+                bool isSimple = dissolvedPolygon->IsSimple();
+                if(!isSimple) {
+                    CPLError(CE_Warning, CPLE_WrongFormat,
+                             "Dissolved road mark polygon of road(%s):lane(%d) is not simple",
+                             roadMark.road_id.c_str(), roadMark.lane_id);
+                }
+                feature->SetGeometry(dissolvedPolygon);
+            } else {
+                //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+                feature->SetGeometry(&tin);
             }
-
-            feature->SetGeometry(geometry.get());
             feature->SetField(featureDefn->GetFieldIndex("RoadID"), roadMark.road_id.c_str());
             feature->SetField(featureDefn->GetFieldIndex("LaneID"), roadMark.lane_id);
             feature->SetField(featureDefn->GetFieldIndex("Type"), roadMark.type.c_str());
@@ -351,8 +349,12 @@ void OGRXODRLayer::defineFeatureClass()
     }
     else if (layerType == XODRLayerType::RoadMark)
     {
-        featureDefn->SetGeomType(wkbPolygon);
-
+        if (dissolveSurface) {
+            featureDefn->SetGeomType(wkbPolygon);  
+        } else {
+            featureDefn->SetGeomType(wkbTINZ);
+        }
+        
         OGRFieldDefn oFieldRoadID("RoadID", OFTString);
         featureDefn->AddFieldDefn(&oFieldRoadID);
 
