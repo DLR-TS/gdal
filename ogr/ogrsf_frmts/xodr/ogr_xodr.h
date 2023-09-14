@@ -39,6 +39,25 @@ enum XODRLayerType
     Lane
 };
 
+struct RoadElements
+{
+    std::vector<odr::Road> roads;
+
+    std::vector<odr::Lane> lanes;
+    std::vector<odr::LaneSection> laneSections;
+    std::vector<std::string> laneRoadIDs;
+    std::vector<odr::Mesh3D> laneMeshes;
+
+    std::vector<odr::Line3D> laneLinesInner;
+    std::vector<odr::Line3D> laneLinesOuter;
+
+    std::vector<odr::RoadMark> roadMarks;
+    std::vector<odr::Mesh3D> roadMarkMeshes;
+
+    std::vector<odr::RoadObject> roadObjects;
+    std::vector<odr::Mesh3D> roadObjectMeshes;
+};
+
 /*--------------------------------------------------------------------*/
 /*---------------------  Layer declarations  -------------------------*/
 /*--------------------------------------------------------------------*/
@@ -48,30 +67,12 @@ class OGRXODRLayer : public OGRLayer
   private:
     VSILFILE *file;
     XODRLayerType layerType;
-    std::vector<odr::Road> roads;
+    RoadElements roadElements;
     OGRSpatialReference *spatialRef;
     bool dissolveSurface;
 
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
-
-    struct RoadElements
-    {
-        std::vector<odr::Lane> lanes;
-        std::vector<odr::LaneSection> laneSections;
-        std::vector<std::string> laneRoadIDs;
-        std::vector<odr::Mesh3D> laneMeshes;
-
-        std::vector<odr::Line3D> laneLinesInner;
-        std::vector<odr::Line3D> laneLinesOuter;
-
-        std::vector<odr::RoadMark> roadMarks;
-        std::vector<odr::Mesh3D> roadMarkMeshes;
-
-        std::vector<odr::RoadObject> roadObjects;
-        std::vector<odr::Mesh3D> roadObjectMeshes;
-    };
-    RoadElements roadElements;
 
     std::vector<odr::Road>::iterator roadIter;
 
@@ -115,15 +116,6 @@ class OGRXODRLayer : public OGRLayer
     void defineFeatureClass();
 
     /**
-     * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
-     * 
-     * \param xodrRoads Roads of the dataset.
-     * \param eps Approximation factor for sampling of continuous geometry functions into discrete
-     * OGC Simple Feature geometries.
-    */
-    RoadElements createRoadElements(const double eps = 0.5);
-
-    /**
      * Builds an ordinary TIN from libOpenDRIVE's mesh.
     */
     OGRTriangulatedSurface triangulateSurface(odr::Mesh3D mesh);
@@ -136,7 +128,7 @@ class OGRXODRLayer : public OGRLayer
      * XODRLayerType::RoadObject, XODRLayerType::Lane.
     */
     OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
-                 std::vector<odr::Road> xodrRoads, std::string proj4Defn,
+                 RoadElements xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface = false);
     ~OGRXODRLayer();
 
@@ -152,6 +144,15 @@ class OGRXODRDataSource : public GDALDataset
   private:
     OGRXODRLayer **layers;
     int nLayers;
+
+    /**
+     * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
+     * 
+     * \param roads Roads of the dataset.
+     * \param eps Approximation factor for sampling of continuous geometry functions into discrete
+     * OGC Simple Feature geometries.
+    */
+    RoadElements createRoadElements(const std::vector<odr::Road> roads, const double eps = 0.5);
 
   public:
     OGRXODRDataSource();

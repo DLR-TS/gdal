@@ -73,13 +73,14 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     odr::OpenDriveMap xodr(fileName, false);
     std::string proj4Defn = xodr.proj4;
     std::vector<odr::Road> roads = xodr.get_roads();
+    RoadElements roadElements = createRoadElements(roads);
 
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
-    layers[0] = new OGRXODRLayer(file, XODRLayerType::ReferenceLine, roads, proj4Defn);
-    layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roads, proj4Defn);
-    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roads, proj4Defn, false);
-    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roads, proj4Defn, false);
-    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roads, proj4Defn, false);
+    layers[0] = new OGRXODRLayer(file, XODRLayerType::ReferenceLine, roadElements, proj4Defn);
+    layers[1] = new OGRXODRLayer(file, XODRLayerType::LaneBorder, roadElements, proj4Defn);
+    layers[2] = new OGRXODRLayer(file, XODRLayerType::RoadMark, roadElements, proj4Defn, false);
+    layers[3] = new OGRXODRLayer(file, XODRLayerType::RoadObject, roadElements, proj4Defn, false);
+    layers[4] = new OGRXODRLayer(file, XODRLayerType::Lane, roadElements, proj4Defn, false);
 
     return TRUE;
 }
@@ -101,4 +102,54 @@ int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
     else if (EQUAL(capability, ODsCZGeometries))
         return TRUE;
     return FALSE;
+}
+
+RoadElements OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads,
+                                                   const double eps)
+{
+    RoadElements elements;
+
+    for (odr::Road road : roads)
+    {
+        elements.roads.push_back(road);
+
+        for (odr::LaneSection laneSection : road.get_lanesections())
+        {
+            elements.laneSections.push_back(laneSection);
+
+            for (odr::Lane lane : laneSection.get_lanes())
+            {
+                elements.laneRoadIDs.push_back(road.id);
+
+                elements.lanes.push_back(lane);
+
+                odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
+                elements.laneMeshes.push_back(laneMesh);
+
+                odr::Line3D laneLineOuter = road.get_lane_border_line(lane, eps, true);
+                elements.laneLinesOuter.push_back(laneLineOuter);
+                
+                odr::Line3D laneLineInner = road.get_lane_border_line(lane, eps, false);
+                elements.laneLinesInner.push_back(laneLineInner);
+
+                for (odr::RoadMark roadMark : lane.get_roadmarks(
+                         laneSection.s0, road.get_lanesection_end(laneSection)))
+                {
+                    elements.roadMarks.push_back(roadMark);
+
+                    odr::Mesh3D roadMarkMesh = road.get_roadmark_mesh(lane, roadMark, eps);
+                    elements.roadMarkMeshes.push_back(roadMarkMesh);
+                }
+            }
+        }
+
+        for (odr::RoadObject roadObject : road.get_road_objects())
+        {
+            elements.roadObjects.push_back(roadObject);
+
+            odr::Mesh3D roadObjectMesh = road.get_road_object_mesh(roadObject, eps);
+            elements.roadObjectMeshes.push_back(roadObjectMesh);
+        }
+    }
+    return elements;
 }

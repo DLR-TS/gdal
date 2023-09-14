@@ -43,16 +43,14 @@ const std::map<XODRLayerType, std::string> OGRXODRLayer::layerTypeToString = {
     {XODRLayerType::Lane, "Lane"}};
 
 OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr, XODRLayerType xodrLayerType,
-                           std::vector<odr::Road> xodrRoads, std::string proj4Defn,
+                           RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface): 
     file(filePtr),
     layerType(xodrLayerType),
-    roads(xodrRoads),
+    roadElements(xodrRoadElements), // TODO For lower memory consumption maybe better pass by reference?
     spatialRef(nullptr),
     dissolveSurface(dissolveTriangulatedSurface)
 {
-    roadElements = createRoadElements();
-
     std::string layerName = layerTypeToString.at(layerType);
     this->featureDefn = new OGRFeatureDefn(layerName.c_str());
     SetDescription(featureDefn->GetName());
@@ -85,7 +83,7 @@ OGRFeature *OGRXODRLayer::GetNextFeature()
 
     if (layerType == XODRLayerType::ReferenceLine)
     {
-        if (roadIter != roads.end())
+        if (roadIter != roadElements.roads.end())
         {
             feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
 
@@ -355,7 +353,7 @@ void OGRXODRLayer::defineFeatureClass()
 
 void OGRXODRLayer::resetRoadElementIterators()
 {
-    roadIter = roads.begin();
+    roadIter = roadElements.roads.begin();
 
     laneIter = roadElements.lanes.begin();
     laneSectionIter = roadElements.laneSections.begin();
@@ -370,54 +368,6 @@ void OGRXODRLayer::resetRoadElementIterators()
 
     roadObjectIter = roadElements.roadObjects.begin();
     roadObjectMeshesIter = roadElements.roadObjectMeshes.begin();
-}
-
-OGRXODRLayer::RoadElements OGRXODRLayer::createRoadElements(const double eps)
-{
-    RoadElements elements;
-
-    for (odr::Road road : roads)
-    {
-        for (odr::LaneSection laneSection : road.get_lanesections())
-        {
-            elements.laneSections.push_back(laneSection);
-
-            for (odr::Lane lane : laneSection.get_lanes())
-            {
-                elements.laneRoadIDs.push_back(road.id);
-
-                elements.lanes.push_back(lane);
-
-                odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
-                elements.laneMeshes.push_back(laneMesh);
-
-                odr::Line3D laneLineOuter = road.get_lane_border_line(lane, eps, true);
-                elements.laneLinesOuter.push_back(laneLineOuter);
-                
-                odr::Line3D laneLineInner = road.get_lane_border_line(lane, eps, false);
-                elements.laneLinesInner.push_back(laneLineInner);
-
-                for (odr::RoadMark roadMark : lane.get_roadmarks(
-                         laneSection.s0, road.get_lanesection_end(laneSection)))
-                {
-                    elements.roadMarks.push_back(roadMark);
-
-                    odr::Mesh3D roadMarkMesh = road.get_roadmark_mesh(lane, roadMark, eps);
-                    elements.roadMarkMeshes.push_back(roadMarkMesh);
-                }
-            }
-        }
-
-        for (odr::RoadObject roadObject : road.get_road_objects())
-        {
-            elements.roadObjects.push_back(roadObject);
-
-            odr::Mesh3D roadObjectMesh =
-                road.get_road_object_mesh(roadObject, eps);
-            elements.roadObjectMeshes.push_back(roadObjectMesh);
-        }
-    }
-    return elements;
 }
 
 OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh) {
