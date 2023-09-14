@@ -76,11 +76,11 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     RoadElements roadElements = createRoadElements(roads);
 
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers); //TODO update this to our new different classes
-    layers[0] = new OGRXODRLayerReferenceLine(file, roadElements, proj4Defn);
-    layers[1] = new OGRXODRLayerLaneBorder(file, roadElements, proj4Defn);
-    layers[2] = new OGRXODRLayerRoadMark(file, roadElements, proj4Defn, false);
-    layers[3] = new OGRXODRLayerRoadObject(file, roadElements, proj4Defn, false);
-    layers[4] = new OGRXODRLayerLane(file, roadElements, proj4Defn, false);
+    layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
+    layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
+    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, false);
+    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, false);
+    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, false);
 
     return TRUE;
 }

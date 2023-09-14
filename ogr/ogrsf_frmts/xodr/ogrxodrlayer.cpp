@@ -35,10 +35,8 @@
 using namespace odr;
 using namespace std;
 
-OGRXODRLayer::OGRXODRLayer(VSILFILE *filePtr,
-                           RoadElements xodrRoadElements, std::string proj4Defn,
+OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface): 
-    file(filePtr),
     roadElements(xodrRoadElements), // TODO For lower memory consumption maybe better pass by reference?
     dissolveSurface(dissolveTriangulatedSurface)
 {
@@ -56,7 +54,6 @@ OGRXODRLayer::~OGRXODRLayer()
 
 void OGRXODRLayer::ResetReading()
 {
-    VSIFSeekL(file, 0, SEEK_SET);
     nNextFID = 0;
     resetRoadElementIterators();
 }

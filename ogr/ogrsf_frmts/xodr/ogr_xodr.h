@@ -117,8 +117,7 @@ class OGRXODRLayer : public OGRLayer
      * Only applicable for layer types derived from meshes: XODRLayerType::RoadMark, 
      * XODRLayerType::RoadObject, XODRLayerType::Lane.
     */
-    OGRXODRLayer(VSILFILE *filePtr,
-                 RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface = false);
     ~OGRXODRLayer();
 };
@@ -131,8 +130,7 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
-    OGRXODRLayerReferenceLine(VSILFILE *filePtr,
-                              RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements, std::string proj4Defn,
                               bool dissolveTriangulatedSurface = false);
 };
 
@@ -144,9 +142,8 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
     
-    OGRXODRLayerLaneBorder(VSILFILE *filePtr,
-                          RoadElements xodrRoadElements, std::string proj4Defn,
-                          bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements, std::string proj4Defn,
+                           bool dissolveTriangulatedSurface = false);
 };
 
 class OGRXODRLayerRoadMark : public OGRXODRLayer
@@ -157,9 +154,8 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadMark";
     
-    OGRXODRLayerRoadMark(VSILFILE *filePtr,
-                          RoadElements xodrRoadElements, std::string proj4Defn,
-                          bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerRoadMark(RoadElements xodrRoadElements, std::string proj4Defn,
+                         bool dissolveTriangulatedSurface = false);
 };
 
 class OGRXODRLayerRoadObject : public OGRXODRLayer
@@ -170,9 +166,8 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
     
-    OGRXODRLayerRoadObject(VSILFILE *filePtr,
-                          RoadElements xodrRoadElements, std::string proj4Defn,
-                          bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn,
+                           bool dissolveTriangulatedSurface = false);
 };
 
 class OGRXODRLayerLane : public OGRXODRLayer
@@ -183,9 +178,8 @@ class OGRXODRLayerLane : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "Lane";
     
-    OGRXODRLayerLane(VSILFILE *filePtr,
-                          RoadElements xodrRoadElements, std::string proj4Defn,
-                          bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerLane(RoadElements xodrRoadElements, std::string proj4Defn,
+                     bool dissolveTriangulatedSurface = false);
 };
 
 /*--------------------------------------------------------------------*/

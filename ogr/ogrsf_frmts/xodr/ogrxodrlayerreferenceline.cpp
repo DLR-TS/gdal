@@ -6,9 +6,9 @@ using namespace odr;
 using namespace std;
 
 OGRXODRLayerReferenceLine::OGRXODRLayerReferenceLine(
-    VSILFILE *filePtr, RoadElements xodrRoadElements, std::string proj4Defn,
+    RoadElements xodrRoadElements, std::string proj4Defn,
     bool dissolveTriangulatedSurface)
-    : OGRXODRLayer(filePtr, xodrRoadElements, proj4Defn,
+    : OGRXODRLayer(xodrRoadElements, proj4Defn,
                    dissolveTriangulatedSurface)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
