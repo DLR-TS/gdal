@@ -73,13 +73,23 @@ In such a case set the following environment variables:
 To convert reference lines of an OpenDRIVE file into, e.g., an ESRI Shapefile, use the provided app `ogr2ogr`:
 
 ```bash
-ogr2ogr -f "ESRI Shapefile" CulDeSac.shp CulDeSac.xodr referenceLine
+ogr2ogr -f "ESRI Shapefile" CulDeSac.shp CulDeSac.xodr ReferenceLine
 ```
 
-To convert the wohle OpenDRIVE file with all its different layers into a Geopackage:
+To convert the whole OpenDRIVE file with all its different layers into a GeoPackage:
 
 ```bash
 ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr
 ```
 
 > **_NOTE:_**  By default, OpenDRIVE XML files are opened by GDAL always in UTF-8 encoding, see [`cpl_vsil.cpp`](https://github.com/OSGeo/gdal/blob/00b47acb383cacfec3199636a21294e098114778/port/cpl_vsil.cpp#L1837).
+
+## Currently implemented OpenDRIVE layer types
+
+- ReferenceLine: `OGRLineString` geometry of the plan view geometry.
+- LaneBorder: `OGRLineString` geometry of the outer lane border.
+- Lane: `OGRTriangulatedSurface` of the lane mesh (TIN).
+- RoadMark: `OGRTriangulatedSurface` of the road mark mesh (TIN).
+- RoadObject: `OGRTriangulatedSurface` of the road object mesh (TIN).
+
+All TIN layers can be simplified to single, simple `OGRPolygon` geometries by setting the layer creation parameter `dissolveTriangulatedSurface = true`. This performs a `UnaryUnion()` which dissolves boundaries of all touching triangle patches.
