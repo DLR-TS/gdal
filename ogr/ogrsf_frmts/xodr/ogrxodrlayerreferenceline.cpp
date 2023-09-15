@@ -29,8 +29,7 @@
 OGRXODRLayerReferenceLine::OGRXODRLayerReferenceLine(
     RoadElements xodrRoadElements, std::string proj4Defn,
     bool dissolveTriangulatedSurface)
-    : OGRXODRLayer(xodrRoadElements, proj4Defn,
-                   dissolveTriangulatedSurface)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());

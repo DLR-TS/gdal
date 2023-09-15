@@ -75,7 +75,9 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
 
-    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers); //TODO update this to our new different classes
+    //TODO Do we have to update this, taking into account all different layer subclasses?
+    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
+
     layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
     layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
     layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, false);
@@ -104,8 +106,9 @@ int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
     return FALSE;
 }
 
-RoadElements OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads,
-                                                   const double eps)
+RoadElements
+OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads,
+                                      const double eps)
 {
     RoadElements elements;
 
@@ -126,10 +129,12 @@ RoadElements OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> 
                 odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
                 elements.laneMeshes.push_back(laneMesh);
 
-                odr::Line3D laneLineOuter = road.get_lane_border_line(lane, eps, true);
+                odr::Line3D laneLineOuter =
+                    road.get_lane_border_line(lane, eps, true);
                 elements.laneLinesOuter.push_back(laneLineOuter);
-                
-                odr::Line3D laneLineInner = road.get_lane_border_line(lane, eps, false);
+
+                odr::Line3D laneLineInner =
+                    road.get_lane_border_line(lane, eps, false);
                 elements.laneLinesInner.push_back(laneLineInner);
 
                 for (odr::RoadMark roadMark : lane.get_roadmarks(
@@ -137,7 +142,8 @@ RoadElements OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> 
                 {
                     elements.roadMarks.push_back(roadMark);
 
-                    odr::Mesh3D roadMarkMesh = road.get_roadmark_mesh(lane, roadMark, eps);
+                    odr::Mesh3D roadMarkMesh =
+                        road.get_roadmark_mesh(lane, roadMark, eps);
                     elements.roadMarkMeshes.push_back(roadMarkMesh);
                 }
             }
@@ -147,7 +153,8 @@ RoadElements OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> 
         {
             elements.roadObjects.push_back(roadObject);
 
-            odr::Mesh3D roadObjectMesh = road.get_road_object_mesh(roadObject, eps);
+            odr::Mesh3D roadObjectMesh =
+                road.get_road_object_mesh(roadObject, eps);
             elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
     }

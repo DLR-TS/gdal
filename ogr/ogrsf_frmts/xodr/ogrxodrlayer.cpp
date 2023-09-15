@@ -34,9 +34,9 @@
 #include <typeinfo>
 
 OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface): 
-    roadElements(xodrRoadElements), // TODO For lower memory consumption maybe better pass by reference?
-    dissolveSurface(dissolveTriangulatedSurface)
+                           bool dissolveTriangulatedSurface)
+    : roadElements(xodrRoadElements),
+      dissolveSurface(dissolveTriangulatedSurface)
 {
     spatialRef.importFromProj4(proj4Defn.c_str());
     ResetReading();
@@ -75,7 +75,8 @@ void OGRXODRLayer::resetRoadElementIterators()
     roadObjectMeshesIter = roadElements.roadObjectMeshes.begin();
 }
 
-OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh) {
+OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
+{
     std::vector<odr::Vec3D> meshVertices = mesh.vertices;
     std::vector<uint32_t> meshIndices = mesh.indices;
 
@@ -83,7 +84,8 @@ OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh) {
     const size_t numIndices = meshIndices.size();
     // Build triangles from mesh vertices.
     // Each triple of mesh indices defines which vertices form a triangle.
-    for (std::size_t idx = 0; idx < numIndices; idx += 3) {
+    for (std::size_t idx = 0; idx < numIndices; idx += 3)
+    {
         uint32_t vertexIdx = meshIndices[idx];
         odr::Vec3D vertexP = meshVertices[vertexIdx];
         OGRPoint p(vertexP[0], vertexP[1], vertexP[2]);

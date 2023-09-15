@@ -77,9 +77,9 @@ class OGRXODRLayer : public OGRLayer
     VSILFILE *file;
     RoadElements roadElements;
     OGRSpatialReference spatialRef;
-    bool dissolveSurface;  
+    bool dissolveSurface;
     OGRFeatureDefn *featureDefn;
-    
+
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
 
@@ -117,6 +117,7 @@ class OGRXODRLayer : public OGRLayer
      * Only applicable for layer types derived from meshes: XODRLayerType::RoadMark, 
      * XODRLayerType::RoadObject, XODRLayerType::Lane.
     */
+   // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface = false);
     ~OGRXODRLayer();
@@ -127,10 +128,12 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer
   protected:
     virtual void defineFeatureClass() override;
     virtual OGRFeature *GetNextFeature() override;
+
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
-    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements,
+                              std::string proj4Defn,
                               bool dissolveTriangulatedSurface = false);
 };
 
@@ -139,9 +142,10 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer
   protected:
     virtual void defineFeatureClass() override;
     virtual OGRFeature *GetNextFeature() override;
+
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
-    
+
     OGRXODRLayerLaneBorder(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface = false);
 };
@@ -151,9 +155,10 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer
   protected:
     virtual void defineFeatureClass() override;
     virtual OGRFeature *GetNextFeature() override;
+
   public:
     const std::string FEATURE_CLASS_NAME = "RoadMark";
-    
+
     OGRXODRLayerRoadMark(RoadElements xodrRoadElements, std::string proj4Defn,
                          bool dissolveTriangulatedSurface = false);
 };
@@ -163,9 +168,10 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
   protected:
     virtual void defineFeatureClass() override;
     virtual OGRFeature *GetNextFeature() override;
+
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
-    
+
     OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface = false);
 };
@@ -175,9 +181,10 @@ class OGRXODRLayerLane : public OGRXODRLayer
   protected:
     virtual void defineFeatureClass() override;
     virtual OGRFeature *GetNextFeature() override;
+
   public:
     const std::string FEATURE_CLASS_NAME = "Lane";
-    
+
     OGRXODRLayerLane(RoadElements xodrRoadElements, std::string proj4Defn,
                      bool dissolveTriangulatedSurface = false);
 };
@@ -199,7 +206,8 @@ class OGRXODRDataSource : public GDALDataset
      * \param eps Approximation factor for sampling of continuous geometry functions into discrete
      * OGC Simple Feature geometries.
     */
-    RoadElements createRoadElements(const std::vector<odr::Road> roads, const double eps = 0.5);
+    RoadElements createRoadElements(const std::vector<odr::Road> roads,
+                                    const double eps = 0.5);
 
   public:
     OGRXODRDataSource();

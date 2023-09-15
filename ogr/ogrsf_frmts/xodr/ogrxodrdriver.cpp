@@ -26,7 +26,8 @@
 #include "cpl_conv.h"
 #include "cpl_error.h"
 
-CPL_CVSID("$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
+CPL_CVSID(
+    "$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
 
 extern "C" void CPL_DLL RegisterOGRXODR();
 
