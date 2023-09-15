@@ -992,7 +992,7 @@ def test_transformer_no_reverse_method():
     assert pnt[0] == pytest.approx(141270.54731856665, abs=1e-3), pnt
     assert pnt[1] == pytest.approx(4656605.104980032, abs=1e-3), pnt
 
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         (success, pnt) = tr.TransformPoint(1, 2, 49)
     assert not success
 
@@ -1074,3 +1074,54 @@ def test_transformer_dem_overrride_srs():
     ), "got wrong reverse transform result."
 
     gdal.Unlink("/vsimem/dem.tif")
+
+
+###############################################################################
+# Test gdal.SuggestedWarpOutput
+
+
+def test_transformer_SuggestedWarpOutput_from_Transformer():
+
+    ds = gdal.Open("data/byte.tif")
+    tr = gdal.Transformer(ds, None, ["DST_SRS=EPSG:4267"])
+    res = gdal.SuggestedWarpOutput(ds, tr)
+    assert res.width == 22
+    assert res.height == 18
+    assert (res.xmin, res.ymin, res.xmax, res.ymax) == pytest.approx(
+        (-117.64116862079689, 33.8916535473944, -117.62801015859763, 33.902419561921064)
+    )
+    assert res.geotransform == pytest.approx(
+        (
+            -117.64116862079689,
+            0.0005981119181481631,
+            0.0,
+            33.902419561921064,
+            0.0,
+            -0.0005981119181481631,
+        )
+    )
+
+
+###############################################################################
+# Test gdal.SuggestedWarpOutput
+
+
+def test_transformer_SuggestedWarpOutput_from_options():
+
+    ds = gdal.Open("data/byte.tif")
+    res = gdal.SuggestedWarpOutput(ds, ["DST_SRS=EPSG:4267"])
+    assert res.width == 22
+    assert res.height == 18
+    assert (res.xmin, res.ymin, res.xmax, res.ymax) == pytest.approx(
+        (-117.64116862079689, 33.8916535473944, -117.62801015859763, 33.902419561921064)
+    )
+    assert res.geotransform == pytest.approx(
+        (
+            -117.64116862079689,
+            0.0005981119181481631,
+            0.0,
+            33.902419561921064,
+            0.0,
+            -0.0005981119181481631,
+        )
+    )

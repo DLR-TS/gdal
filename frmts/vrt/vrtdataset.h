@@ -201,6 +201,7 @@ class CPL_DLL VRTDataset CPL_NON_FINAL : public GDALDataset
     // when it is cheap to do it, or explicitly.
     std::vector<GDALDataset *> m_apoOverviews{};
     std::vector<GDALDataset *> m_apoOverviewsBak{};
+    CPLStringList m_aosOverviewList{};  // only temporarily set during Open()
     CPLString m_osOverviewResampling{};
     std::vector<int> m_anOverviewFactors{};
 
@@ -1039,6 +1040,11 @@ class CPL_DLL VRTSimpleSource CPL_NON_FINAL : public VRTSource
     void SetSrcMaskBand(GDALRasterBand *);
     void SetSrcWindow(double, double, double, double);
     void SetDstWindow(double, double, double, double);
+    void GetDstWindow(double &, double &, double &, double &);
+    const std::string &GetSourceDatasetName() const
+    {
+        return m_osSrcDSName;
+    }
     const CPLString &GetResampling() const
     {
         return m_osResampling;
@@ -1180,12 +1186,12 @@ class CPL_DLL VRTComplexSource CPL_NON_FINAL : public VRTSimpleSource
     double GetAdjustedNoDataValue() const;
 
     template <class WorkingDT>
-    CPLErr RasterIOInternal(int nReqXOff, int nReqYOff, int nReqXSize,
-                            int nReqYSize, void *pData, int nOutXSize,
-                            int nOutYSize, GDALDataType eBufType,
-                            GSpacing nPixelSpace, GSpacing nLineSpace,
-                            GDALRasterIOExtraArg *psExtraArg,
-                            GDALDataType eWrkDataType);
+    CPLErr
+    RasterIOInternal(GDALDataType eBandDataType, int nReqXOff, int nReqYOff,
+                     int nReqXSize, int nReqYSize, void *pData, int nOutXSize,
+                     int nOutYSize, GDALDataType eBufType, GSpacing nPixelSpace,
+                     GSpacing nLineSpace, GDALRasterIOExtraArg *psExtraArg,
+                     GDALDataType eWrkDataType);
 
   public:
     VRTComplexSource();

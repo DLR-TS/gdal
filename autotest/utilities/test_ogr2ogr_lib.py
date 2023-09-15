@@ -29,11 +29,15 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
+import collections
+import json
+import pathlib
 import tempfile
 
 import gdaltest
 import ogrtest
 import pytest
+import test_cli_utilities
 
 from osgeo import gdal, ogr, osr
 
@@ -316,7 +320,7 @@ def test_ogr2ogr_lib_14():
 def test_ogr2ogr_lib_15():
 
     srcDS = gdal.OpenEx("../ogr/data/poly.shp")
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         ds = gdal.VectorTranslate("", srcDS, format="Memory", zField="foo")
     lyr = ds.GetLayer(0)
     assert lyr.GetGeomType() == ogr.wkbPolygon
@@ -1185,7 +1189,7 @@ def test_ogr2ogr_lib_clipsrc_invalid_polygon():
     clip_ds = None
 
     # Intersection of above geometry with clipSrc bounding box is a point
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         ds = gdal.VectorTranslate("", srcDS, format="Memory", clipSrc=clip_path)
     lyr = ds.GetLayer(0)
     assert lyr.GetFeatureCount() == 1
@@ -1226,7 +1230,7 @@ def test_ogr2ogr_lib_clipsrc_3d_polygon():
     clip_layer.CreateFeature(f)
     clip_ds = None
 
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         ds = gdal.VectorTranslate("", srcDS, format="Memory", clipSrc=clip_path)
     lyr = ds.GetLayer(0)
     assert lyr.GetFeatureCount() == 2
@@ -1553,7 +1557,7 @@ def test_ogr2ogr_lib_dateTimeTo():
     f = ogr.Feature(src_lyr.GetLayerDefn())
     src_lyr.CreateFeature(f)
 
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         with pytest.raises(Exception):
             gdal.VectorTranslate("", src_ds, options="-f Memory -dateTimeTo")
         with pytest.raises(Exception):
@@ -1832,3 +1836,137 @@ def test_width_precision_flags(
             assert f.GetFieldAsDouble(field_idx) == -12.34
         else:
             assert f.GetFieldAsDouble(field_idx) == -12.3
+
+
+###############################################################################
+def test_ogr2ogr_lib_nlt_GEOMETRY_nlt_CURVE_TO_LINEAR():
+
+    src_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
+    src_lyr = src_ds.CreateLayer("test", geom_type=ogr.wkbMultiCurve)
+    f = ogr.Feature(src_lyr.GetLayerDefn())
+    f.SetGeometry(ogr.CreateGeometryFromWkt("MULTICURVE(CIRCULARSTRING(0 0,1 1,2 0))"))
+    src_lyr.CreateFeature(f)
+    f = None
+
+    dst_ds = gdal.VectorTranslate(
+        "", src_ds, format="Memory", geometryType=["GEOMETRY", "CONVERT_TO_LINEAR"]
+    )
+    dst_lyr = dst_ds.GetLayer(0)
+    assert dst_lyr.GetGeomType() == ogr.wkbUnknown
+    f = dst_lyr.GetNextFeature()
+    assert f.GetGeometryRef().GetGeometryType() == ogr.wkbMultiLineString
+
+
+###############################################################################
+@pytest.mark.parametrize(
+    "nlt_value",
+    [
+        ["NONE", "POINT"],
+        ["GEOMETRY", "POINT"],
+        ["CONVERT_TO_LINEAR", "CONVERT_TO_CURVE"],
+        ["CONVERT_TO_CURVE", "CONVERT_TO_LINEAR"],
+        # Not supported but could likely make sense
+        ["PROMOTE_TO_MULTI", "CONVERT_TO_CURVE"],
+        # Not supported but could likely make sense
+        ["CONVERT_TO_CURVE", "PROMOTE_TO_MULTI"],
+        ["POINT", "LINESTRING"],
+    ],
+)
+def test_ogr2ogr_lib_invalid_nlt_combinations(nlt_value):
+
+    src_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
+    src_ds.CreateLayer("test", geom_type=ogr.wkbMultiCurve)
+    with pytest.raises(Exception, match="Unsupported combination of -nlt arguments"):
+        gdal.VectorTranslate("", src_ds, format="Memory", geometryType=nlt_value)
+
+
+###############################################################################
+# Just check we don't reject them
+
+
+@pytest.mark.parametrize(
+    "nlt_value",
+    [
+        ["GEOMETRY", "CONVERT_TO_LINEAR"],
+        ["CONVERT_TO_LINEAR", "GEOMETRY"],
+        ["LINESTRING", "CONVERT_TO_LINEAR"],
+        ["CONVERT_TO_CURVE", "MULTICURVE"],
+        ["MULTICURVE", "CONVERT_TO_CURVE"],
+        ["CONVERT_TO_LINEAR", "PROMOTE_TO_MULTI"],
+        ["PROMOTE_TO_MULTI", "CONVERT_TO_LINEAR"],
+    ],
+)
+def test_ogr2ogr_lib_valid_nlt_combinations(nlt_value):
+
+    src_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
+    src_ds.CreateLayer("test", geom_type=ogr.wkbMultiCurve)
+    assert (
+        gdal.VectorTranslate("", src_ds, format="Memory", geometryType=nlt_value)
+        is not None
+    )
+
+
+###############################################################################
+# Check fix for https://github.com/OSGeo/gdal/issues/8033
+
+
+@pytest.mark.require_driver("GeoJSON")
+@pytest.mark.skipif(
+    test_cli_utilities.get_ogrinfo_path() is None, reason="ogrinfo not available"
+)
+def test_ogr2ogr_lib_geojson_output(tmp_path):
+
+    tmpfilename = tmp_path / "out.geojson"
+    out_ds = gdal.VectorTranslate(tmpfilename, pathlib.Path("../ogr/data/poly.shp"))
+
+    # Check that the file can be read at that point. Use an external process
+    # to check flushes are done correctly
+    ogrinfo_path = test_cli_utilities.get_ogrinfo_path()
+    ret = gdaltest.runexternal(ogrinfo_path + f" {tmpfilename} -al -so -json")
+    assert json.loads(ret)["layers"][0]["featureCount"] == 10
+
+    # Add a new feature after synchronization has been done
+    out_lyr = out_ds.GetLayer(0)
+    out_lyr.CreateFeature(ogr.Feature(out_lyr.GetLayerDefn()))
+
+    # Now close output dataset
+    del out_ds
+
+    with ogr.Open(tmpfilename) as ds:
+        lyr = ds.GetLayer(0)
+        assert lyr.GetFeatureCount() == 11
+
+
+###############################################################################
+# Test option argument handling
+
+
+def test_ogr2ogr_lib_dict_arguments():
+
+    opt = gdal.VectorTranslateOptions(
+        "__RETURN_OPTION_LIST__",
+        datasetCreationOptions=collections.OrderedDict(
+            (("GEOMETRY_ENCODING", "WKT"), ("FORMAT", "NC4"))
+        ),
+        layerCreationOptions=collections.OrderedDict(
+            (("RECORD_DIM_NAME", "record"), ("STRING_DEFAULT_WIDTH", 10))
+        ),
+    )
+
+    dsco_idx = opt.index("-dsco")
+
+    assert opt[dsco_idx : dsco_idx + 4] == [
+        "-dsco",
+        "GEOMETRY_ENCODING=WKT",
+        "-dsco",
+        "FORMAT=NC4",
+    ]
+
+    lco_idx = opt.index("-lco")
+
+    assert opt[lco_idx : lco_idx + 4] == [
+        "-lco",
+        "RECORD_DIM_NAME=record",
+        "-lco",
+        "STRING_DEFAULT_WIDTH=10",
+    ]

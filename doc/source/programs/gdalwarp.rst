@@ -15,7 +15,7 @@ Synopsis
 
 .. code-block::
 
-    gdalwarp [--help-general] [--formats]
+    gdalwarp [--help] [--help-general] [--formats]
         [-b|-srcband n]* [-dstband n]*
         [-s_srs srs_def] [-t_srs srs_def] [-ct string]
         [-to "NAME=VALUE"]* [-vshift | -novshift]
@@ -44,6 +44,8 @@ and can also apply GCPs stored with the image if the image is "raw"
 with control information.
 
 .. program:: gdalwarp
+
+.. include:: options/help_and_help_general.rst
 
 .. option:: -b <n>
 
@@ -147,6 +149,10 @@ with control information.
     or a urn:ogc:def:coordinateOperation:EPSG::XXXX URN overriding the default
     transformation from the source to the target CRS. It must take into account the
     axis order of the source and target CRS.
+    When creating a new output file, using :option:`-t_srs` is still necessary
+    to have the target CRS written in the metadata of the output file,
+    but the parameters of the CoordinateOperation will override those of the
+    standard transformation.
 
     .. versionadded:: 3.0
 

@@ -31,6 +31,7 @@
 
 import os
 import shutil
+import sys
 
 import gdaltest
 import ogrtest
@@ -251,9 +252,9 @@ def ogr_openfilegdb_make_test_data():
             feat.SetField("real", 4.56)
             feat.SetField("adate", "2013/12/26 12:34:56")
             feat.SetField("guid", "{12345678-9abc-DEF0-1234-567890ABCDEF}")
-            feat.SetFieldBinaryFromHexString("binary", "00FF7F")
+            feat.SetField("binary", b"\x00\xFF\x7F")
             feat.SetField("xml", "<foo></foo>")
-            feat.SetFieldBinaryFromHexString("binary2", "123456")
+            feat.SetField("binary2", b"\x12\x34\x56")
             lyr.CreateFeature(feat)
 
         if data[0] == "none":
@@ -1207,7 +1208,7 @@ def test_ogr_openfilegdb_10():
         ]:
             for offset in offsets:
                 backup = fuzz(filename, offset)
-                with gdaltest.error_handler():
+                with gdal.quiet_errors():
                     gdal.ErrorReset()
                     ds = ogr.Open("tmp/testopenfilegdb_fuzzed.gdb")
                     error_msg = gdal.GetLastErrorMsg()
@@ -1266,7 +1267,7 @@ def test_ogr_openfilegdb_10():
             for offset in offsets:
                 # print(offset)
                 backup = fuzz(filename, offset)
-                with gdaltest.error_handler():
+                with gdal.quiet_errors():
                     gdal.ErrorReset()
                     ds = ogr.Open("tmp/testopenfilegdb_fuzzed.gdb")
                     error_msg = gdal.GetLastErrorMsg()
@@ -1568,7 +1569,7 @@ def test_ogr_openfilegdb_read_broken_spx_wrong_index_depth():
     ds = ogr.Open(dirname)
     lyr = ds.GetLayer(0)
     lyr.SetSpatialFilterRect(0.5, 0.5, 48.5, 48.5)
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         assert lyr.GetFeatureCount() == 48 * 48
     assert (
         "Cannot use /vsimem/test_ogr_openfilegdb_read_broken_spx_wrong_index_depth.gdb/a00000009.spx"
@@ -1731,6 +1732,7 @@ def test_ogr_openfilegdb_17():
 # Read curves
 
 
+@pytest.mark.require_driver("CSV")
 def test_ogr_openfilegdb_18():
 
     ds = ogr.Open("data/filegdb/curves.gdb")
@@ -1774,6 +1776,7 @@ def test_ogr_openfilegdb_19():
 # one of the starting point (#7017)
 
 
+@pytest.mark.require_driver("CSV")
 def test_ogr_openfilegdb_20():
 
     ds = ogr.Open("data/filegdb/filegdb_polygonzm_m_not_closing_with_curves.gdb")
@@ -1935,7 +1938,7 @@ def _check_domains(ds):
         "SpeedLimit",
     }
 
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         assert ds.GetFieldDomain("i_dont_exist") is None
     lyr = ds.GetLayer(0)
     lyr_defn = lyr.GetLayerDefn()
@@ -1997,7 +2000,7 @@ def test_ogr_openfilegdb_write_domains_from_other_gdb():
     assert ds.TestCapability(ogr.ODsCDeleteFieldDomain) == 1
     assert ds.TestCapability(ogr.ODsCUpdateFieldDomain) == 1
 
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         assert not ds.DeleteFieldDomain("not_existing")
 
     domain = ogr.CreateCodedFieldDomain(
@@ -2462,6 +2465,47 @@ def test_ogr_openfilegdb_read_relationships():
     assert rel.GetForwardPathLabel() == "attachment"
     assert rel.GetBackwardPathLabel() == "object"
     assert rel.GetRelatedTableType() == "media"
+
+
+###############################################################################
+# Test opening a read-only database in update mode
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Incorrect platform")
+def test_ogr_openfilegdb_read_readonly_in_update_mode():
+
+    if os.getuid() == 0:
+        pytest.skip("running as root... skipping")
+
+    shutil.copytree("data/filegdb/Domains.gdb", "tmp/testreadonly.gdb")
+    os.chmod("tmp/testreadonly.gdb", 0o555)
+    for f in os.listdir("tmp/testreadonly.gdb"):
+        os.chmod("tmp/testreadonly.gdb/" + f, 0o555)
+
+    try:
+        with pytest.raises(Exception):
+            ogr.Open("tmp/testreadonly.gdb", update=1)
+
+        assert ogr.Open("tmp/testreadonly.gdb")
+
+        # Only turn on a few system tables in read-write mode, but not the
+        # layer of interest
+        for f in os.listdir("tmp/testreadonly.gdb"):
+            if f.startswith("a00000001.") or f.startswith("a00000004."):
+                os.chmod("tmp/testreadonly.gdb/" + f, 0o755)
+        ds = ogr.Open("tmp/testreadonly.gdb", update=1)
+        lyr = ds.GetLayer(0)
+        with pytest.raises(
+            Exception, match="Cannot open Roads in update mode, but only in read-only"
+        ):
+            lyr.TestCapability(ogr.OLCSequentialWrite)
+        assert lyr.TestCapability(ogr.OLCSequentialWrite) == 0
+
+    finally:
+        os.chmod("tmp/testreadonly.gdb", 0o755)
+        for f in os.listdir("tmp/testreadonly.gdb"):
+            os.chmod("tmp/testreadonly.gdb/" + f, 0o755)
+        shutil.rmtree("tmp/testreadonly.gdb")
 
 
 ###############################################################################

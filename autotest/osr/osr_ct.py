@@ -52,7 +52,7 @@ def test_osr_ct_1():
     ll_srs.SetWellKnownGeogCS("WGS84")
 
     try:
-        with gdaltest.error_handler():
+        with gdal.quiet_errors():
             ct = osr.CoordinateTransformation(ll_srs, utm_srs)
         if gdal.GetLastErrorMsg().find("Unable to load PROJ.4") != -1:
             pytest.skip("PROJ.4 missing, transforms not available.")
@@ -88,6 +88,21 @@ def test_osr_ct_2():
         result[0] == pytest.approx(452772.06, abs=0.01)
         and result[1] == pytest.approx(3540544.89, abs=0.01)
         and result[2] == pytest.approx(0.0, abs=0.01)
+    ), "Wrong LL to UTM result"
+
+    result = ct.TransformPoint([32.0, -117.5, 10.0])
+    assert (
+        result[0] == pytest.approx(452772.06, abs=0.01)
+        and result[1] == pytest.approx(3540544.89, abs=0.01)
+        and result[2] == 10
+    ), "Wrong LL to UTM result"
+
+    result = ct.TransformPoint([32.0, -117.5, 10.0, 2000.0])
+    assert (
+        result[0] == pytest.approx(452772.06, abs=0.01)
+        and result[1] == pytest.approx(3540544.89, abs=0.01)
+        and result[2] == 10
+        and result[3] == 2000
     ), "Wrong LL to UTM result"
 
 
@@ -544,7 +559,7 @@ def test_osr_ct_options_accuracy():
     t.SetFromUserInput("EPSG:4258")  # ETRS89
     options = osr.CoordinateTransformationOptions()
     options.SetDesiredAccuracy(0.05)
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         with osr.ExceptionMgr(useExceptions=False):
             ct = osr.CoordinateTransformation(s, t, options)
     with pytest.raises(Exception):
@@ -563,7 +578,7 @@ def test_osr_ct_options_ballpark_disallowed():
     t.SetFromUserInput("EPSG:4258")  # ETRS89
     options = osr.CoordinateTransformationOptions()
     options.SetBallparkAllowed(False)
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         with osr.ExceptionMgr(useExceptions=False):
             ct = osr.CoordinateTransformation(s, t, options)
     with pytest.raises(Exception):
@@ -654,7 +669,7 @@ def test_osr_ct_take_into_account_srs_coordinate_epoch():
     assert y == pytest.approx(150, abs=1e-10)
 
     # Not properly supported currently
-    with gdaltest.error_handler():
+    with gdal.quiet_errors():
         osr.CoordinateTransformation(t_2020, t_2030)
 
 

@@ -47,6 +47,7 @@
 #include "cpl_error.h"
 #include "cpl_error_internal.h"
 #include "cpl_http.h"
+#include "cpl_json.h"
 #include "cpl_multiproc.h"
 #include "cpl_string.h"
 #include "cpl_vsi.h"
@@ -1634,6 +1635,7 @@ OGRErr OGRSpatialReference::exportToWkt(char **ppszResult,
     }
     else if (pszFormat[0] == '\0')
     {
+        // cppcheck-suppress knownConditionTrueFalse
         if (IsDerivedGeographic())
         {
             wktFormat = PJ_WKT2_2018;
@@ -4479,7 +4481,21 @@ OGRErr OGRSpatialReference::importFromCRSURL(const char *pszURL)
         return OGRERR_CORRUPT_DATA;
     }
 
-    auto obj = proj_create(d->getPROJContext(), pszURL);
+    PJ *obj;
+#if !PROJ_AT_LEAST_VERSION(9, 2, 0)
+    if (STARTS_WITH(pszURL, "http://www.opengis.net/def/crs/IAU/0/"))
+    {
+        obj = proj_create(
+            d->getPROJContext(),
+            CPLSPrintf("IAU:%s",
+                       pszURL +
+                           strlen("http://www.opengis.net/def/crs/IAU/0/")));
+    }
+    else
+#endif
+    {
+        obj = proj_create(d->getPROJContext(), pszURL);
+    }
     if (!obj)
     {
         return OGRERR_FAILURE;
@@ -5487,7 +5503,7 @@ OGRSpatialReference::GetWKT2ProjectionMethod(const char **ppszMethodName,
  *
  * This method is the same as the C function OSRSetProjParm().
  *
- * Please check http://www.remotesensing.org/geotiff/proj_list pages for
+ * Please check https://gdal.org/proj_list pages for
  * legal parameter names for specific projections.
  *
  *
@@ -7870,7 +7886,8 @@ OGRErr OGRSpatialReference::SetDerivedGeogCRSWithPoleRotationGRIBConvention(
     SetExtension(
         "PROJCS", "PROJ4",
         CPLSPrintf("+proj=ob_tran +lon_0=%.18g +o_proj=longlat +o_lon_p=%.18g "
-                   "+o_lat_p=%.18g +a=%.18g +b=%.18g +to_meter=0.0174532925199 "
+                   "+o_lat_p=%.18g +a=%.18g +b=%.18g "
+                   "+to_meter=0.0174532925199433 "
                    "+wktext",
                    dfSouthPoleLon, dfAxisRotation == 0 ? 0 : -dfAxisRotation,
                    dfSouthPoleLat == 0 ? 0 : -dfSouthPoleLat,
@@ -7910,7 +7927,8 @@ OGRErr OGRSpatialReference::SetDerivedGeogCRSWithPoleRotationNetCDFCFConvention(
     SetExtension(
         "PROJCS", "PROJ4",
         CPLSPrintf("+proj=ob_tran +o_proj=longlat +lon_0=%.18g +o_lon_p=%.18g "
-                   "+o_lat_p=%.18g +a=%.18g +b=%.18g +to_meter=0.0174532925199 "
+                   "+o_lat_p=%.18g +a=%.18g +b=%.18g "
+                   "+to_meter=0.0174532925199433 "
                    "+wktext",
                    180.0 + dfGridNorthPoleLon, dfNorthPoleGridLon,
                    dfGridNorthPoleLat, GetSemiMajor(nullptr),
@@ -8107,6 +8125,36 @@ OGRSpatialReference::GetAuthorityCode(const char *pszTargetKey) const
         }
     }
 
+    // Special key for that context
+    else if (EQUAL(pszTargetKey, "HORIZCRS") &&
+             d->m_pjType == PJ_TYPE_COMPOUND_CRS)
+    {
+        auto ctxt = d->getPROJContext();
+        auto crs = proj_crs_get_sub_crs(ctxt, d->m_pj_crs, 0);
+        if (crs)
+        {
+            const char *ret = proj_get_id_code(crs, 0);
+            if (ret)
+                ret = CPLSPrintf("%s", ret);
+            proj_destroy(crs);
+            return ret;
+        }
+    }
+    else if (EQUAL(pszTargetKey, "VERTCRS") &&
+             d->m_pjType == PJ_TYPE_COMPOUND_CRS)
+    {
+        auto ctxt = d->getPROJContext();
+        auto crs = proj_crs_get_sub_crs(ctxt, d->m_pj_crs, 1);
+        if (crs)
+        {
+            const char *ret = proj_get_id_code(crs, 0);
+            if (ret)
+                ret = CPLSPrintf("%s", ret);
+            proj_destroy(crs);
+            return ret;
+        }
+    }
+
     /* -------------------------------------------------------------------- */
     /*      Find the node below which the authority should be put.          */
     /* -------------------------------------------------------------------- */
@@ -8207,6 +8255,36 @@ OGRSpatialReference::GetAuthorityName(const char *pszTargetKey) const
         d->undoDemoteFromBoundCRS();
         if (ret != nullptr || pszTargetKey == nullptr)
         {
+            return ret;
+        }
+    }
+
+    // Special key for that context
+    else if (EQUAL(pszTargetKey, "HORIZCRS") &&
+             d->m_pjType == PJ_TYPE_COMPOUND_CRS)
+    {
+        auto ctxt = d->getPROJContext();
+        auto crs = proj_crs_get_sub_crs(ctxt, d->m_pj_crs, 0);
+        if (crs)
+        {
+            const char *ret = proj_get_id_auth_name(crs, 0);
+            if (ret)
+                ret = CPLSPrintf("%s", ret);
+            proj_destroy(crs);
+            return ret;
+        }
+    }
+    else if (EQUAL(pszTargetKey, "VERTCRS") &&
+             d->m_pjType == PJ_TYPE_COMPOUND_CRS)
+    {
+        auto ctxt = d->getPROJContext();
+        auto crs = proj_crs_get_sub_crs(ctxt, d->m_pj_crs, 1);
+        if (crs)
+        {
+            const char *ret = proj_get_id_auth_name(crs, 0);
+            if (ret)
+                ret = CPLSPrintf("%s", ret);
+            proj_destroy(crs);
             return ret;
         }
     }
@@ -11205,12 +11283,11 @@ OGRSpatialReference::FindMatches(char **papszOptions, int *pnEntries,
  *
  * Since GDAL 3.0, this method is identical to importFromEPSG().
  *
- * Before GDAL 3.0.3, this method try to attach a 3-parameter or 7-parameter
- * Helmert transformation to WGS84 when there is one and only one such method
- * available for the CRS.
- * This behavior might not always be desirable, so starting with GDAL 3.0.3,
- * this is no longer done. However the OSR_ADD_TOWGS84_ON_IMPORT_FROM_EPSG
- * configuration option can be set to YES to enable past behavior.
+ * Before GDAL 3.0.3, this method would try to attach a 3-parameter or
+ * 7-parameter Helmert transformation to WGS84 when there is one and only one
+ * such method available for the CRS. This behavior might not always be
+ * desirable, so starting with GDAL 3.0.3, this is no longer done unless
+ * the OSR_ADD_TOWGS84_ON_IMPORT_FROM_EPSG configuration option is set to YES.
  * The AddGuessedTOWGS84() method can also be used for that purpose.
  *
  * The method will also by default substitute a deprecated EPSG code by its
@@ -11402,11 +11479,11 @@ OGRErr CPL_STDCALL OSRImportFromEPSGA(OGRSpatialReferenceH hSRS, int nCode)
  *
  * This method is the same as the C function OSRImportFromEPSG().
  *
- * This method try to attach a 3-parameter or 7-parameter Helmert transformation
- * to WGS84 when there is one and only one such method available for the CRS.
- * This behavior might not always be desirable, so starting with GDAL 3.0.3,
- * the OSR_ADD_TOWGS84_ON_IMPORT_FROM_EPSG configuration option can be set to
- * NO to disable this behavior.
+ * Before GDAL 3.0.3, this method would try to attach a 3-parameter or
+ * 7-parameter Helmert transformation to WGS84 when there is one and only one
+ * such method available for the CRS. This behavior might not always be
+ * desirable, so starting with GDAL 3.0.3, this is no longer done unless
+ * the OSR_ADD_TOWGS84_ON_IMPORT_FROM_EPSG configuration option is set to YES.
  *
  * @param nCode a GCS or PCS code from the horizontal coordinate system table.
  *

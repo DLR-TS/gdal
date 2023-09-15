@@ -16,7 +16,8 @@ Synopsis
 
 .. code-block::
 
-    ogrinfo [--help-general] [-json] [-ro] [-q] [-where restricted_where|@filename]
+    ogrinfo [--help] [--help-general]
+            [-json] [-ro] [-q] [-where restricted_where|@filename]
             [-spat xmin ymin xmax ymax] [-geomfield field] [-fid fid]
             [-sql statement|@filename] [-dialect dialect] [-al] [-rl]
             [-so|-features] [-fields={YES/NO}]
@@ -34,6 +35,8 @@ source to stdout (the terminal). By executing SQL statements it is also possible
 edit data.
 
 .. program:: ogrinfo
+
+.. include:: options/help_and_help_general.rst
 
 .. option:: -json
 
@@ -124,7 +127,7 @@ edit data.
     fact the 'fid' is a special field recognized by OGR SQL. So, `-where "fid in (1,3,5)"`
     would select features 1, 3 and 5.
 
-.. option:: -fields YES|NO:
+.. option:: -fields=YES|NO:
 
     If set to ``NO``, the feature dump will not display field values. Default value
     is ``YES``.
@@ -135,7 +138,7 @@ edit data.
 
     Display details about a field domain.
 
-.. option:: -geom YES|NO|SUMMARY|WKT|ISO_WKT
+.. option:: -geom=YES|NO|SUMMARY|WKT|ISO_WKT
 
     If set to ``NO``, the feature dump will not display the geometry. If set to
     ``SUMMARY``, only a summary of the geometry will be displayed. If set to
@@ -176,9 +179,7 @@ edit data.
 
     .. versionadded:: 3.1
 
-.. option:: --formats
-
-    List the format drivers that are enabled.
+.. include:: options/formats_vector.rst
 
 .. option:: -wkt_format <format>
 

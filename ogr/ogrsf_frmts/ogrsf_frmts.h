@@ -158,7 +158,8 @@ class CPL_DLL OGRLayer : public GDALMajorObject
     CreateSchemaForWKBGeometryColumn(const OGRGeomFieldDefn *poFieldDefn,
                                      const char *pszArrowFormat = "z");
 
-    bool CanPostFilterArrowArray(const struct ArrowSchema *schema) const;
+    virtual bool
+    CanPostFilterArrowArray(const struct ArrowSchema *schema) const;
     void PostFilterArrowArray(const struct ArrowSchema *schema,
                               struct ArrowArray *array) const;
 
@@ -344,6 +345,12 @@ class CPL_DLL OGRLayer : public GDALMajorObject
     {
         return reinterpret_cast<OGRLayer *>(hLayer);
     }
+
+    //! @cond Doxygen_Suppress
+    bool FilterWKBGeometry(const GByte *pabyWKB, size_t nWKBSize,
+                           bool bEnvelopeAlreadySet,
+                           OGREnvelope &sEnvelope) const;
+    //! @endcond
 
   protected:
     //! @cond Doxygen_Suppress
@@ -661,6 +668,8 @@ void CPL_DLL RegisterOGRHANA();
 void CPL_DLL RegisterOGRParquet();
 void CPL_DLL RegisterOGRArrow();
 void CPL_DLL RegisterOGRGTFS();
+void CPL_DLL RegisterOGRPMTiles();
+void CPL_DLL RegisterOGRJSONFG();
 // @endcond
 
 CPL_C_END

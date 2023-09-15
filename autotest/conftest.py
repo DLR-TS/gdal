@@ -29,9 +29,6 @@ collect_ignore = [
 ]
 collect_ignore_glob = ["pymod/*.py"]
 
-# we set ECW to not resolve projection and datum strings to get 3.x behavior.
-gdal.SetConfigOption("ECW_DO_NOT_RESOLVE_DATUM_PROJECTION", "YES")
-
 if "APPLY_LOCALE" in os.environ:
     import locale
 
@@ -226,6 +223,20 @@ def pytest_configure(config):
         )
 
 
+def list_loaded_dlls():
+    try:
+        import psutil
+    except ImportError:
+        return None
+    process = psutil.Process()
+    loaded_dlls = []
+    for dll in process.memory_maps():
+        if os.path.exists(dll.path):
+            loaded_dlls.append(dll.path)
+    loaded_dlls = sorted(loaded_dlls)
+    return "\n".join(loaded_dlls)
+
+
 def pytest_report_header(config):
     gdal_header_info = "GDAL Build Info:"
     for item in gdal.VersionInfo("BUILD_INFO").strip().split("\n"):
@@ -247,4 +258,28 @@ def pytest_report_header(config):
     if not gdaltest.run_slow_tests():
         gdal_header_info += ' (tests marked as "slow" will be skipped)'
 
+    if gdal.GetConfigOption("CI"):
+        loaded_dlls = list_loaded_dlls()
+        if loaded_dlls:
+            gdal_header_info += "\nLoaded shared objects:\n" + loaded_dlls
+
     return gdal_header_info
+
+
+@pytest.fixture()
+def tmp_vsimem(request):
+    import pathlib
+    import re
+
+    # sanitize test name using same method as pytest's tmp_path
+    subdir = re.sub(r"[\W]", "_", request.node.name)
+
+    # return a pathlib object so that behavior matches tmp_path
+    # and we can easily switch between the two
+    path = pathlib.PurePosixPath("/vsimem") / subdir
+
+    gdal.Mkdir(str(path), 0o755)
+
+    yield path
+
+    gdal.RmdirRecursive(str(path))

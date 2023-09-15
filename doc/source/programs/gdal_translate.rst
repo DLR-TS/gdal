@@ -16,7 +16,7 @@ Synopsis
 .. code-block::
 
 
-    gdal_translate [--help-general]
+    gdal_translate [--help] [--help-general]
         [-ot {Byte/Int8/Int16/UInt16/UInt32/Int32/UInt64/Int64/Float32/Float64/
                 CInt16/CInt32/CFloat32/CFloat64}] [-strict]
         [-if format]* [-of format]
@@ -29,6 +29,7 @@ Synopsis
         [-projwin ulx uly lrx lry] [-projwin_srs srs_def]
         [-a_srs srs_def] [-a_coord_epoch <epoch>]
         [-a_ullr ulx uly lrx lry] [-a_nodata value]
+        [-a_gt gt0 gt1 gt2 gt3 gt4 gt5]
         [-a_scale value] [-a_offset value]
         [-nogcp] [-gcp pixel line easting northing [elevation]]*
         |-colorinterp{_bn} {red|green|blue|alpha|gray|undefined}]
@@ -46,6 +47,8 @@ different formats, potentially performing some operations like subsettings,
 resampling, and rescaling pixels in the process.
 
 .. program:: gdal_translate
+
+.. include:: options/help_and_help_general.rst
 
 .. include:: options/ot.rst
 
@@ -95,7 +98,7 @@ resampling, and rescaling pixels in the process.
 
     set target resolution. The values must be expressed in georeferenced units.
     Both must be positive values. This is mutually exclusive with
-    :option:`-outsize` and :option:`-a_ullr`.
+    :option:`-outsize`, :option:`-a_ullr`, and :option:`-a_gt`.
 
 .. option:: -ovr <level|AUTO|AUTO-n|NONE>
 
@@ -225,7 +228,7 @@ resampling, and rescaling pixels in the process.
 .. option:: -a_srs <srs_def>
 
     Override the projection for the output file. Can be used with
-    :option:`-a_ullr` to specify the extent in this projection.
+    :option:`-a_ullr` or :option:`-a_gt` to specify the extent in this projection.
 
     .. include:: options/srs_def.rst
 
@@ -266,6 +269,17 @@ resampling, and rescaling pixels in the process.
     georeferenced bounds to the output file, ignoring what would have been
     derived from the source file. So this does not cause reprojection to the
     specified SRS.
+    This is mutually exclusive with :option:`-a_gt`
+
+.. option:: -a_gt <gt(0)> <gt(1)> <gt(2)> <gt(3)> <gt(4)> <gt(5)>
+
+    Assign/override the geotransform :ref:`geotransforms_tut` of the output file.
+    This assigns the geotransform to the output file, ignoring what would have been
+    derived from the source file. So this does not cause reprojection to the
+    specified SRS.
+    This is mutually exclusive with :option:`-a_ullr`
+
+    .. versionadded:: 3.8
 
 .. option:: -a_nodata <value>
 
@@ -293,7 +307,61 @@ resampling, and rescaling pixels in the process.
 
     Passes a metadata key and value to set on the output dataset if possible.
 
-.. include:: options/co.rst
+.. option:: -co <NAME=VALUE>
+
+    .. WARNING: if modifying the 2 below paragraphs, please edit options/co.rst too
+
+    Many formats have one or more optional creation options that can be
+    used to control particulars about the file created. For instance,
+    the GeoTIFF driver supports creation options to control compression,
+    and whether the file should be tiled.
+
+    The creation options available vary by format driver, and some
+    simple formats have no creation options at all. A list of options
+    supported for a format can be listed with the
+    :ref:`--formats <raster_common_options_formats>`
+    command line option but the documentation for the format is the
+    definitive source of information on driver creation options.
+    See :ref:`raster_drivers` format
+    specific documentation for legal creation options for each format.
+
+    In addition to the driver-specific creation options, gdal_translate
+    (and :cpp:func:`GDALTranslate` and :cpp:func:`GDALCreateCopy`) recognize
+    the following options:
+
+    - .. co:: APPEND_SUBDATASET
+         :choices: YES, NO
+         :default: NO
+
+      Can be specified to YES to avoid prior destruction of existing dataset,
+      for drivers that support adding several subdatasets (e.g. GTIFF, NITF)
+
+    - .. co:: COPY_SRC_MDD
+         :choices: AUTO, YES, NO
+         :default: AUTO
+         :since: 3.8
+
+      Defines if metadata domains of the source dataset should be copied to the
+      destination dataset.
+      In the default AUTO mode, only "safe" domains will be copied, which
+      include the default metadata domain (some drivers may include other
+      domains such as IMD, RPC, GEOLOCATION).
+      When setting YES, all domains will be copied (but a few reserved ones like
+      IMAGE_STRUCTURE or DERIVED_SUBDATASETS).
+      Currently only recognized by the GTiff, COG, VRT, PNG and JPEG drivers.
+
+      When setting NO, no source metadata will be copied.
+
+    - .. co:: SRC_MDD
+         :choices: <domain_name>
+         :since: 3.8
+
+      Defines which source metadata domain should be copied.
+      This option restricts the list of source metadata domains to be copied
+      (it implies COPY_SRC_MDD=YES if it is not set). This option may be specified
+      as many times as they are source domains. The default metadata domain is the
+      empty string "" ("_DEFAULT_") may also be used when empty string is not practical).
+      Currently only recognized by the GTiff, COG, VRT, PNG and JPEG drivers.
 
 .. option:: -nogcp
 

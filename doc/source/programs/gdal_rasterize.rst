@@ -15,7 +15,7 @@ Synopsis
 
 .. code-block::
 
-    gdal_rasterize [-b band]* [-i] [-at]
+    gdal_rasterize [--help] [--help-general] [-b band]* [-i] [-at]
         [-oo NAME=VALUE]*
         {[-burn value]* | [-a attribute_name] | [-3d]} [-add]
         [-l layername]* [-where expression] [-sql select_statement|@filename]
@@ -38,6 +38,8 @@ Note that on the fly reprojection of vector data to the coordinate system of the
 raster data is only supported since GDAL 2.1.0.
 
 .. program:: gdal_rasterize
+
+.. include:: options/help_and_help_general.rst
 
 .. option:: -b <band>
 
@@ -192,9 +194,7 @@ raster data is only supported since GDAL 2.1.0.
 .. option:: <dst_filename>
 
     The GDAL supported output file.  Must support update mode access.
-    This file will be created (or overwritten if it already exists):option:`-of`,
-    :option:`-a_nodata`, :option:`-init`, :option:`-a_srs`, :option:`-co`, :option:`-te`,
-    :option:`-tr`, :option:`-tap`, :option:`-ts`, or :option:`-ot` options are used.
+    This file will be created (or overwritten if it already exists).
 
 The program create a new target raster image when any of the :option:`-of`,
 :option:`-a_nodata`, :option:`-init`, :option:`-a_srs`, :option:`-co`, :option:`-te`,

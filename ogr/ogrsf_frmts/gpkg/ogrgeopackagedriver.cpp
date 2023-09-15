@@ -320,6 +320,12 @@ static GDALDataset *OGRGeoPackageDriverCreate(const char *pszFilename,
 static CPLErr OGRGeoPackageDriverDelete(const char *pszFilename)
 
 {
+    std::string osAuxXml(pszFilename);
+    osAuxXml += ".aux.xml";
+    VSIStatBufL sStat;
+    if (VSIStatL(osAuxXml.c_str(), &sStat) == 0)
+        CPL_IGNORE_RET_VAL(VSIUnlink(osAuxXml.c_str()));
+
     if (VSIUnlink(pszFilename) == 0)
         return CE_None;
     else
@@ -465,6 +471,11 @@ void GDALGPKGDriver::InitializeCreationOptionList()
         "description='Whether to add a gpkg_ogr_contents table to keep feature "
         "count' default='YES'/>"
 #endif
+        "  <Option name='CRS_WKT_EXTENSION' type='boolean' "
+        "description='Whether to create the database with the crs_wkt "
+        "extension'/>"
+        "  <Option name='METADATA_TABLES' type='boolean' "
+        "description='Whether to create the metadata related system tables'/>"
         "</CreationOptionList>";
 
     std::string osOptions(pszCOBegin);
@@ -590,6 +601,14 @@ void RegisterOGRGeoPackage()
         "     <Value>GPKG_ATTRIBUTES</Value>"
         "     <Value>NOT_REGISTERED</Value>"
         "  </Option>"
+        "  <Option name='DATETIME_PRECISION' type='string-select' "
+        "description='Number of components of datetime fields' "
+        "default='AUTO'>"
+        "     <Value>AUTO</Value>"
+        "     <Value>MILLISECOND</Value>"
+        "     <Value>SECOND</Value>"
+        "     <Value>MINUTE</Value>"
+        "  </Option>"
         "</LayerCreationOptionList>");
 
     poDriver->SetMetadataItem(GDAL_DMD_CREATIONFIELDDATATYPES,
@@ -615,6 +634,8 @@ void RegisterOGRGeoPackage()
     poDriver->SetMetadataItem(GDAL_DCAP_CREATE_RELATIONSHIP, "YES");
     poDriver->SetMetadataItem(GDAL_DCAP_DELETE_RELATIONSHIP, "YES");
     poDriver->SetMetadataItem(GDAL_DCAP_UPDATE_RELATIONSHIP, "YES");
+    poDriver->SetMetadataItem(GDAL_DCAP_FLUSHCACHE_CONSISTENT_STATE, "YES");
+
     poDriver->SetMetadataItem(GDAL_DMD_RELATIONSHIP_FLAGS,
                               "ManyToMany Association");
 
