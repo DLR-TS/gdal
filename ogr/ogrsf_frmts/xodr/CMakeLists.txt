@@ -9,6 +9,7 @@ add_gdal_driver(
           ogrxodrlayerreferenceline.cpp
           ogrxodrlayerroadmark.cpp
           ogrxodrlayerroadobject.cpp
+          ogrxodrlayerroadsignal.cpp
   PLUGIN_CAPABLE)
 
 gdal_standard_includes(ogr_XODR)

@@ -45,7 +45,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
     CPLFree(layers);
 }
 
-int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
+int OGRXODRDataSource::Open(const char *fileName, char **papszOpenOptionsIn, int bUpdate)
 {
     VSILFILE *file = nullptr;
 
@@ -73,17 +73,30 @@ int OGRXODRDataSource::Open(const char *fileName, int bUpdate)
     odr::OpenDriveMap xodr(fileName, false);
     std::string proj4Defn = xodr.proj4;
     std::vector<odr::Road> roads = xodr.get_roads();
-    RoadElements roadElements = createRoadElements(roads);
+    pszOptionValue = CSLFetchNameValueDef(papszOpenOptionsIn, "EPS", "1.0");
+  
+    eps = CPLAtof(pszOptionValue);
+    RoadElements roadElements = createRoadElements(roads, eps);
+
+    mesh = CPLTestBool(
+        CSLFetchNameValueDef(papszOpenOptionsIn, "TIN", "YES"));
+
+    if(mesh)
+    {
+        tin = false;
+    }else{
+        tin = true;
+    }
 
     //TODO Do we have to update this, taking into account all different layer subclasses?
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
 
     layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
     layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
-    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, false);
-    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, false);
-    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, false);
-
+    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, tin);
+    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, tin);
+    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, tin);
+    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, tin);
     return TRUE;
 }
 
@@ -157,6 +170,16 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads,
                 road.get_road_object_mesh(roadObject, eps);
             elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
+
+        for(odr::RoadSignal roadSignal : road.get_road_signals()){
+            elements.roadSignals.push_back(roadSignal);
+      
+            odr::Mesh3D roadSignalMesh = 
+                road.get_road_signal_mesh(roadSignal);
+            elements.roadSignalMeshes.push_back(roadSignalMesh);
+
+        }
+        
     }
     return elements;
 }

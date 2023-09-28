@@ -47,6 +47,9 @@ struct RoadElements
 
     std::vector<odr::RoadObject> roadObjects;
     std::vector<odr::Mesh3D> roadObjectMeshes;
+
+    std::vector<odr::RoadSignal> roadSignals;
+    std::vector<odr::Mesh3D> roadSignalMeshes;
 };
 
 /*--------------------------------------------------------------------*/
@@ -98,6 +101,9 @@ class OGRXODRLayer : public OGRLayer
 
     std::vector<odr::RoadObject>::iterator roadObjectIter;
     std::vector<odr::Mesh3D>::iterator roadObjectMeshesIter;
+
+    std::vector<odr::RoadSignal>::iterator roadSignalIter;
+    std::vector<odr::Mesh3D>::iterator roadSignalMeshesIter;
 
     /**
      * Completes feature class definition with all specific attributes and geometry type
@@ -176,6 +182,19 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
                            bool dissolveTriangulatedSurface = false);
 };
 
+class OGRXODRLayerRoadSignal : public OGRXODRLayer
+{
+  protected:
+    virtual void defineFeatureClass() override;
+    virtual OGRFeature *GetNextFeature() override;
+
+  public:
+    const std::string FEATURE_CLASS_NAME = "RoadSignal";
+
+    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn,
+                           bool dissolveTriangulatedSurface = true);
+};
+
 class OGRXODRLayerLane : public OGRXODRLayer
 {
   protected:
@@ -213,7 +232,12 @@ class OGRXODRDataSource : public GDALDataset
     OGRXODRDataSource();
     ~OGRXODRDataSource();
 
-    int Open(const char *fileName, int bUpdate);
+    bool mesh;
+    bool tin;
+    const char *pszOptionValue;
+    double eps;
+
+    int Open(const char *fileName, char **papszOpenOptions, int bUpdate );
 
     int GetLayerCount() override
     {

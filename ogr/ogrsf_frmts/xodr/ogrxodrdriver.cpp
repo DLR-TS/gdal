@@ -38,7 +38,7 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *openInfo)
 
     OGRXODRDataSource *dataSource = new OGRXODRDataSource();
 
-    if (!dataSource->Open(openInfo->pszFilename, FALSE))
+    if (!dataSource->Open(openInfo->pszFilename, openInfo->papszOpenOptions, FALSE))
     {
         delete dataSource;
         dataSource = nullptr;
@@ -64,7 +64,12 @@ void RegisterOGRXODR()
         GDAL_DMD_LONGNAME,
         "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     driver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
-
+    driver->SetMetadataItem(GDAL_DS_LAYER_CREATIONOPTIONLIST,//Layer creation option -- test 
+    "<LayerCreationOptionList>"
+    "  <Option name='TIN' type='boolean' description='MESHED' default= 'YES'/>"
+    "  <Option name='EPS' type='string' description='Value for linear approximation' default='1.0'/>"
+    "</LayerCreationOptionList>"
+    );
     driver->pfnOpen = OGRXODRDriverOpen;
     driver->pfnIdentify = OGRXODRDriverIdentity;
 

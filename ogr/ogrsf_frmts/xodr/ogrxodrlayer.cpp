@@ -73,6 +73,9 @@ void OGRXODRLayer::resetRoadElementIterators()
 
     roadObjectIter = roadElements.roadObjects.begin();
     roadObjectMeshesIter = roadElements.roadObjectMeshes.begin();
+
+    roadSignalIter = roadElements.roadSignals.begin();
+    roadSignalMeshesIter = roadElements.roadSignalMeshes.begin();
 }
 
 OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
