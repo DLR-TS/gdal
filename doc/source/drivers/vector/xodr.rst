@@ -60,6 +60,13 @@ Examples
 
     ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr
 
+- Convert the whole OpenDRIVE dataset with custom parameters into a :ref:`GeoPackage <vector.gpkg>`:
+  - TIN: Triangular Irregular Network, Boolean (Default : NO)
+  - Epsilon: Value for linear approximation, Double (Default : 1.0)
+  ::
+
+    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -lco TIN=YES -lco EPS=0.9
+
 Limitations
 -----------
 

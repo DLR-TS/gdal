@@ -64,11 +64,11 @@ void RegisterOGRXODR()
         GDAL_DMD_LONGNAME,
         "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     driver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
-    driver->SetMetadataItem(GDAL_DS_LAYER_CREATIONOPTIONLIST,//Layer creation option -- test 
-    "<LayerCreationOptionList>"
+    driver->SetMetadataItem(GDAL_DS_LAYER_CREATIONOPTIONLIST,//Layer creation option -- Doesn!t work for gpkg creation? 
+    "<OpenOptionList>"
     "  <Option name='TIN' type='boolean' description='MESHED' default= 'YES'/>"
     "  <Option name='EPS' type='string' description='Value for linear approximation' default='1.0'/>"
-    "</LayerCreationOptionList>"
+    "</OpenOptionList>"
     );
     driver->pfnOpen = OGRXODRDriverOpen;
     driver->pfnIdentify = OGRXODRDriverIdentity;

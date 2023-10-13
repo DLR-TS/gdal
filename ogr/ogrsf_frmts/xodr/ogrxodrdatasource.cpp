@@ -69,7 +69,7 @@ int OGRXODRDataSource::Open(const char *fileName, char **papszOpenOptionsIn, int
         return CE_Failure;
     }
 
-    nLayers = 5;
+    nLayers = 6;
     odr::OpenDriveMap xodr(fileName, false);
     std::string proj4Defn = xodr.proj4;
     std::vector<odr::Road> roads = xodr.get_roads();
