@@ -65,7 +65,7 @@ Examples
   - Epsilon: Value for linear approximation, Double (Default : 1.0)
   ::
 
-    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -lco TIN=YES -lco EPS=0.9
+    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo TIN=YES -oo EPS=0.9
 
 Limitations
 -----------
