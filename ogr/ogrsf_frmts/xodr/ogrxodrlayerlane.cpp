@@ -62,7 +62,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
         OGRTriangulatedSurface tin = triangulateSurface(laneMesh);
 
-        if (dissolveSurface)
+        if (dissolveTIN)
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
             feature->SetGeometry(dissolvedPolygon);
@@ -102,7 +102,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
 void OGRXODRLayerLane::defineFeatureClass()
 {
-    if (dissolveSurface)
+    if (dissolveTIN)
     {
         featureDefn->SetGeomType(wkbPolygon);
     }

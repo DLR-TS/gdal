@@ -27,9 +27,8 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerReferenceLine::OGRXODRLayerReferenceLine(
-    RoadElements xodrRoadElements, std::string proj4Defn,
-    bool dissolveTriangulatedSurface)
-    : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
+    RoadElements xodrRoadElements, std::string proj4Defn)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
@@ -47,18 +46,15 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
     {
         feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
 
-        const double eps = 0.9;
         odr::Road road = *roadIter;
-        odr::RefLine refLine = road.ref_line;
-        std::set<double> sVals =
-            refLine.approximate_linear(eps, 0.0, road.length);
+        odr::Line3D refLine = *referenceLineIter;
 
         OGRLineString lineString;
-        for (const double &s : sVals)
+        for (auto vertexIter = refLine.begin();
+             vertexIter != refLine.end(); ++vertexIter)
         {
-            odr::Vec3D refLineVertex = refLine.get_xyz(s);
-            lineString.addPoint(refLineVertex[0], refLineVertex[1],
-                                refLineVertex[2]);
+            odr::Vec3D refLineVertex = *vertexIter;
+            lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
 
@@ -69,6 +65,7 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
         feature->SetFID(nNextFID++);
 
         roadIter++;
+        referenceLineIter++;
     }
 
     if (feature)

@@ -33,6 +33,7 @@
 struct RoadElements
 {
     std::vector<odr::Road> roads;
+    std::vector<odr::Line3D> referenceLines;
 
     std::vector<odr::Lane> lanes;
     std::vector<odr::LaneSection> laneSections;
@@ -80,13 +81,14 @@ class OGRXODRLayer : public OGRLayer
     VSILFILE *file;
     RoadElements roadElements;
     OGRSpatialReference spatialRef;
-    bool dissolveSurface;
+    bool dissolveTIN;
     OGRFeatureDefn *featureDefn;
 
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
 
     std::vector<odr::Road>::iterator roadIter;
+    std::vector<odr::Line3D>::iterator referenceLineIter;
 
     std::vector<odr::Lane>::iterator laneIter;
     std::vector<odr::LaneSection>::iterator laneSectionIter;
@@ -120,12 +122,12 @@ class OGRXODRLayer : public OGRLayer
     /**
      * \param dissolveTriangulatedSurface True if original triangulated surface meshes from 
      * libOpenDRIVE are to be dissolved into single polygons.
-     * Only applicable for layer types derived from meshes: XODRLayerType::RoadMark, 
-     * XODRLayerType::RoadObject, XODRLayerType::Lane.
+     * Only applicable for layer types derived from meshes.
     */
    // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
+    OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn);
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
-                 bool dissolveTriangulatedSurface = false);
+                 bool dissolveTriangulatedSurface);                 
     ~OGRXODRLayer();
 };
 
@@ -138,9 +140,7 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
-    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements,
-                              std::string proj4Defn,
-                              bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements, std::string proj4Defn);
 };
 
 class OGRXODRLayerLaneBorder : public OGRXODRLayer
@@ -152,8 +152,7 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
 
-    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface = false);
+    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements, std::string proj4Defn);
 };
 
 class OGRXODRLayerRoadMark : public OGRXODRLayer
@@ -166,7 +165,7 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer
     const std::string FEATURE_CLASS_NAME = "RoadMark";
 
     OGRXODRLayerRoadMark(RoadElements xodrRoadElements, std::string proj4Defn,
-                         bool dissolveTriangulatedSurface = false);
+                         bool dissolveTriangulatedSurface);
 };
 
 class OGRXODRLayerRoadObject : public OGRXODRLayer
@@ -179,7 +178,7 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
     const std::string FEATURE_CLASS_NAME = "RoadObject";
 
     OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface = false);
+                           bool dissolveTriangulatedSurface);
 };
 
 class OGRXODRLayerRoadSignal : public OGRXODRLayer
@@ -192,7 +191,7 @@ class OGRXODRLayerRoadSignal : public OGRXODRLayer
     const std::string FEATURE_CLASS_NAME = "RoadSignal";
 
     OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface = true);
+                           bool dissolveTriangulatedSurface);
 };
 
 class OGRXODRLayerLane : public OGRXODRLayer
@@ -205,7 +204,7 @@ class OGRXODRLayerLane : public OGRXODRLayer
     const std::string FEATURE_CLASS_NAME = "Lane";
 
     OGRXODRLayerLane(RoadElements xodrRoadElements, std::string proj4Defn,
-                     bool dissolveTriangulatedSurface = false);
+                     bool dissolveTriangulatedSurface);
 };
 
 /*--------------------------------------------------------------------*/
@@ -222,22 +221,25 @@ class OGRXODRDataSource : public GDALDataset
      * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
      * 
      * \param roads Roads of the dataset.
-     * \param eps Approximation factor for sampling of continuous geometry functions into discrete
-     * OGC Simple Feature geometries.
     */
-    RoadElements createRoadElements(const std::vector<odr::Road> roads,
-                                    const double eps = 0.5);
+    RoadElements createRoadElements(const std::vector<odr::Road> roads);
 
   public:
     OGRXODRDataSource();
     ~OGRXODRDataSource();
 
-    bool mesh;
-    bool tin;
-    const char *pszOptionValue;
+    /**
+     * Approximation factor for sampling of continuous geometry functions into discrete
+     * OGC Simple Feature geometries.
+    */
     double eps;
 
-    int Open(const char *fileName, char **papszOpenOptions, int bUpdate );
+    /**
+     * Whether to dissolve triangulated surfaces which are created from libOpenDRIVE's meshes.
+    */
+    bool dissolveTIN;
+
+    int Open(const char *fileName, char **openOptions, int bUpdate );
 
     int GetLayerCount() override
     {

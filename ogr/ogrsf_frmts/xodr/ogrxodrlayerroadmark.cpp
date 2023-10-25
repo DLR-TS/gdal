@@ -52,7 +52,7 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
 
         OGRTriangulatedSurface tin = triangulateSurface(roadMarkMesh);
 
-        if (dissolveSurface)
+        if (dissolveTIN)
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
             feature->SetGeometry(dissolvedPolygon);
@@ -87,7 +87,7 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
 
 void OGRXODRLayerRoadMark::defineFeatureClass()
 {
-    if (dissolveSurface)
+    if (dissolveTIN)
     {
         featureDefn->SetGeomType(wkbPolygon);
     }

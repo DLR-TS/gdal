@@ -45,7 +45,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
     CPLFree(layers);
 }
 
-int OGRXODRDataSource::Open(const char *fileName, char **papszOpenOptionsIn, int bUpdate)
+int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdate)
 {
     VSILFILE *file = nullptr;
 
@@ -68,35 +68,26 @@ int OGRXODRDataSource::Open(const char *fileName, char **papszOpenOptionsIn, int
                  "Failed to load OpenDRIVE file %s.", fileName);
         return CE_Failure;
     }
+    
+    const char * openOptionValue = CSLFetchNameValueDef(openOptions, "EPS", "1.0");
+    eps = CPLAtof(openOptionValue);
+    openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
+    dissolveTIN = CPLTestBool(openOptionValue);
 
-    nLayers = 6;
     odr::OpenDriveMap xodr(fileName, false);
     std::string proj4Defn = xodr.proj4;
     std::vector<odr::Road> roads = xodr.get_roads();
-    pszOptionValue = CSLFetchNameValueDef(papszOpenOptionsIn, "EPS", "1.0");
-  
-    eps = CPLAtof(pszOptionValue);
-    RoadElements roadElements = createRoadElements(roads, eps);
+    RoadElements roadElements = createRoadElements(roads);
 
-    mesh = CPLTestBool(
-        CSLFetchNameValueDef(papszOpenOptionsIn, "TIN", "YES"));
-
-    if(mesh)
-    {
-        tin = false;
-    }else{
-        tin = true;
-    }
-
+    nLayers = 6;
     //TODO Do we have to update this, taking into account all different layer subclasses?
     layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
-
     layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
     layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
-    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, tin);
-    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, tin);
-    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, tin);
-    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, tin);
+    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, dissolveTIN);
+    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, dissolveTIN);
+    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, dissolveTIN);
+    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
     return TRUE;
 }
 
@@ -120,14 +111,16 @@ int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 }
 
 RoadElements
-OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads,
-                                      const double eps)
+OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads)
 {
     RoadElements elements;
 
     for (odr::Road road : roads)
     {
         elements.roads.push_back(road);
+
+        odr::Line3D referenceLine = road.ref_line.get_line(0.0, road.length, eps);
+        elements.referenceLines.push_back(referenceLine);
 
         for (odr::LaneSection laneSection : road.get_lanesections())
         {

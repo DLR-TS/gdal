@@ -33,10 +33,15 @@
 #include <string>
 #include <typeinfo>
 
+OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn, false)
+{
+}
+
 OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface)
     : roadElements(xodrRoadElements),
-      dissolveSurface(dissolveTriangulatedSurface)
+      dissolveTIN(dissolveTriangulatedSurface)
 {
     spatialRef.importFromProj4(proj4Defn.c_str());
     ResetReading();
@@ -59,6 +64,7 @@ void OGRXODRLayer::ResetReading()
 void OGRXODRLayer::resetRoadElementIterators()
 {
     roadIter = roadElements.roads.begin();
+    referenceLineIter = roadElements.referenceLines.begin();
 
     laneIter = roadElements.lanes.begin();
     laneSectionIter = roadElements.laneSections.begin();

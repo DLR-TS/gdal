@@ -9,25 +9,24 @@ XODR -- OpenDRIVE Road Description Format
 
 This driver provides read access to road network elements of an OpenDRIVE dataset.
 
-`OpenDRIVE <https://www.asam.net/standards/detail/opendrive/>`_ is an open industry format for lane-detailed description of road networks, commonly used in applications of the automotive and transportation systems domains. It bundles mathematical, continuous track geometry modelling with all necessary topological links and semantic information from traffic-regulating infrastructure (signs and traffic lights).
+`OpenDRIVE <https://www.asam.net/standards/detail/opendrive/>`_ is an open industry format for lane-detailed description of road networks, commonly used in applications of the automotive and transportation systems domains. It bundles polynomial, continuous road geometry modelling with all necessary topological links and semantic information from traffic-regulating infrastructure (signs and traffic lights).
 
 Specification version
 ---------------------
 
-The currently supported OpenDRIVE version is 1.4 and basically depends on what is provided by libOpenDRIVE.
+The currently supported OpenDRIVE version is 1.4 and basically depends on what is provided by `libOpenDRIVE <https://github.com/pageldev/libOpenDRIVE/>`_. 
 
 Supported OpenDRIVE elements
 +++++++++++++++++++++++++++++
 
 The XODR driver exposes OpenDRIVE's different road elements as separate layers by converting geometric elements into 3-dimensional OGR geometry types. The following _`layer types` are currently implemented:
 
-* *ReferenceLine*: Road reference line as :cpp:class:`OGRLineString`.
+* *ReferenceLine*: Road reference line (``<planView>``) as :cpp:class:`OGRLineString`.
 * *LaneBorder*: Outer road lane border as :cpp:class:`OGRLineString`.
 * *Lane*: Polygonal surface (TIN) of the lane mesh as :cpp:class:`OGRTriangulatedSurface`.
 * *RoadMark*: Polygonal surface (TIN) of the road mark mesh as :cpp:class:`OGRTriangulatedSurface`.
 * *RoadObject*: Polygonal surface (TIN) of the road object mesh as :cpp:class:`OGRTriangulatedSurface`.
-
-All TIN layers of geometry type :cpp:class:`OGRTriangulatedSurface` can be simplified to single, simple :cpp:class:`OGRPolygon` geometries by setting the layer creation parameter `dissolveTriangulatedSurface = true`. This performs a :cpp:func:`UnaryUnion` which dissolves boundaries of all touching triangle patches.
+* *RoadSignal*: Polygonal surface (TIN) of the road signal mesh as :cpp:class:`OGRTriangulatedSurface`.
 
 Spatial reference
 -----------------
@@ -42,8 +41,23 @@ By definition, OpenDRIVE geometries are always referenced in a Cartesian coordin
 
 The XODR driver uses this PROJ definition as spatial reference for creation of all OGR geometry layers. 
 
-Layer creation options
+Open options
 ----------------------
+
+The following open options can be specified
+(typically with the ``-oo name=value`` parameters of :program:`ogrinfo` or :program:`ogr2ogr`):
+
+-  .. oo:: EPS
+      :choices: <float>
+      :default: 1.0
+
+      Epsilon value for linear approximation of continuous OpenDRIVE geometries. A smaller value results in a finer sampling. This parameter is internally forwarded to libOpenDRIVE.
+
+-  .. oo:: DISSOLVE_TIN
+      :choices: YES, NO
+      :default: NO
+
+      Whether to dissolve triangulated surfaces. All TIN layers of geometry type :cpp:class:`OGRTriangulatedSurface` can be simplified to single, simple :cpp:class:`OGRPolygon` geometries by setting this option to YES. This performs a :cpp:func:`UnaryUnion` which dissolves boundaries of all touching triangle patches.
 
 Examples
 --------
@@ -60,12 +74,11 @@ Examples
 
     ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr
 
-- Convert the whole OpenDRIVE dataset with custom parameters into a :ref:`GeoPackage <vector.gpkg>`:
-  - TIN: Triangular Irregular Network, Boolean (Default : NO)
-  - Epsilon: Value for linear approximation, Double (Default : 1.0)
+- Convert the whole OpenDRIVE dataset with custom parameters :oo:`EPS` and :oo:`DISSOLVE_TIN` into a :ref:`GeoPackage <vector.gpkg>`:
+
   ::
 
-    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo TIN=YES -oo EPS=0.9
+    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo EPS=0.9 -oo DISSOLVE_TIN=YES
 
 Limitations
 -----------

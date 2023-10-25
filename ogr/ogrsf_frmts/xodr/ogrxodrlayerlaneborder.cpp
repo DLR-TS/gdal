@@ -27,9 +27,8 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(RoadElements xodrRoadElements,
-                                               std::string proj4Defn,
-                                               bool dissolveTriangulatedSurface)
-    : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
+                                               std::string proj4Defn)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
@@ -52,10 +51,10 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
         std::string laneRoadID = *laneRoadIDIter;
 
         OGRLineString lineString;
-        for (auto laneOuterIter = laneOuter.begin();
-             laneOuterIter != laneOuter.end(); ++laneOuterIter)
+        for (auto vertexIter = laneOuter.begin();
+             vertexIter != laneOuter.end(); ++vertexIter)
         {
-            odr::Vec3D laneVertex = *laneOuterIter;
+            odr::Vec3D laneVertex = *vertexIter;
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
