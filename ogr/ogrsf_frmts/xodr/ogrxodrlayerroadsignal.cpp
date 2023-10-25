@@ -2,7 +2,7 @@
  * $Id$
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of RoadObject layer.
+ * Purpose:  Implementation of RoadSignal layer.
  * Author:   Michael Scholz, German Aerospace Center (DLR)
  *           Gülsen Bardak, German Aerospace Center (DLR)        
  *
