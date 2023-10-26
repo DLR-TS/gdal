@@ -84,6 +84,7 @@ class OGRParquetLayer final : public OGRParquetLayerBase
     std::vector<int> m_anMapGeomFieldIndexToParquetColumn{};
     bool m_bHasMissingMappingToParquet = false;
 
+    std::vector<int64_t> m_anSelectedGroupsStartFeatureIdx{};
     std::vector<int> m_anRequestedParquetColumns{};  // only valid when
                                                      // m_bIgnoredFields is set
 #ifdef DEBUG
@@ -269,6 +270,8 @@ class OGRParquetWriterLayer final : public OGRArrowWriterLayer
     virtual bool
     IsSupportedGeometryType(OGRwkbGeometryType eGType) const override;
 
+    virtual void FixupWKBGeometryBeforeWriting(GByte *pabyWKB,
+                                               size_t nLen) override;
     virtual void FixupGeometryBeforeWriting(OGRGeometry *poGeom) override;
     virtual bool IsSRSRequired() const override
     {
@@ -286,11 +289,39 @@ class OGRParquetWriterLayer final : public OGRArrowWriterLayer
     ~OGRParquetWriterLayer() override;
 
     bool SetOptions(CSLConstList papszOptions,
-                    OGRSpatialReference *poSpatialRef,
+                    const OGRSpatialReference *poSpatialRef,
                     OGRwkbGeometryType eGType);
 
     OGRErr CreateGeomField(OGRGeomFieldDefn *poField,
                            int bApproxOK = TRUE) override;
+
+    int TestCapability(const char *pszCap) override;
+#if PARQUET_VERSION_MAJOR <= 10
+    // Parquet <= 10 doesn't support the WriteRecordBatch() API
+    bool IsArrowSchemaSupported(const struct ArrowSchema *schema,
+                                CSLConstList papszOptions,
+                                std::string &osErrorMsg) const override
+    {
+        return OGRLayer::IsArrowSchemaSupported(schema, papszOptions,
+                                                osErrorMsg);
+    }
+    bool
+    CreateFieldFromArrowSchema(const struct ArrowSchema *schema,
+                               CSLConstList papszOptions = nullptr) override
+    {
+        return OGRLayer::CreateFieldFromArrowSchema(schema, papszOptions);
+    }
+    bool WriteArrowBatch(const struct ArrowSchema *schema,
+                         struct ArrowArray *array,
+                         CSLConstList papszOptions = nullptr) override
+    {
+        return OGRLayer::WriteArrowBatch(schema, array, papszOptions);
+    }
+#else
+    bool WriteArrowBatch(const struct ArrowSchema *schema,
+                         struct ArrowArray *array,
+                         CSLConstList papszOptions = nullptr) override;
+#endif
 };
 
 /************************************************************************/
@@ -324,7 +355,7 @@ class OGRParquetWriterDataset final : public GDALPamDataset
 
   protected:
     OGRLayer *ICreateLayer(const char *pszName,
-                           OGRSpatialReference *poSpatialRef = nullptr,
+                           const OGRSpatialReference *poSpatialRef = nullptr,
                            OGRwkbGeometryType eGType = wkbUnknown,
                            char **papszOptions = nullptr) override;
 };

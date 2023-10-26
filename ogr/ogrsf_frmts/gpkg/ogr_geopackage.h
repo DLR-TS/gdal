@@ -45,6 +45,7 @@
 #include <vector>
 #include <set>
 #include <thread>
+#include <cctype>
 
 #define UNKNOWN_SRID -2
 #define DEFAULT_SRID 0
@@ -100,6 +101,7 @@ struct OGRGPKGTableLayerFillArrowArray
     std::unique_ptr<OGRArrowArrayHelper> psHelper{};
     int nCountRows = 0;
     bool bErrorOccurred = false;
+    std::string osErrorMsg{};
     OGRFeatureDefn *poFeatureDefn = nullptr;
     OGRGeoPackageLayer *poLayer = nullptr;
     struct tm brokenDown
@@ -278,9 +280,6 @@ class GDALGeoPackageDataset final : public OGRSQLiteBaseDataSource,
     bool ValidateRelationship(const GDALRelationship *poRelationship,
                               std::string &failureReason);
 
-    bool m_bIsGeometryTypeAggregateInterrupted = false;
-    std::string m_osGeometryTypeAggregateResult{};
-
     // Used by GDALGeoPackageDataset::GetRasterLayerDataset()
     std::map<std::string, std::unique_ptr<GDALDataset>> m_oCachedRasterDS{};
 
@@ -325,7 +324,7 @@ class GDALGeoPackageDataset final : public OGRSQLiteBaseDataSource,
     OGRLayer *GetLayer(int iLayer) override;
     OGRErr DeleteLayer(int iLayer) override;
     OGRLayer *ICreateLayer(const char *pszLayerName,
-                           OGRSpatialReference *poSpatialRef,
+                           const OGRSpatialReference *poSpatialRef,
                            OGRwkbGeometryType eGType,
                            char **papszOptions) override;
     int TestCapability(const char *) override;
@@ -403,25 +402,6 @@ class GDALGeoPackageDataset final : public OGRSQLiteBaseDataSource,
                                    void *pProgressData);
 
     static std::string GetCurrentDateEscapedSQL();
-
-    bool IsGeometryTypeAggregateInterrupted() const
-    {
-        return m_bIsGeometryTypeAggregateInterrupted;
-    }
-    void SetGeometryTypeAggregateInterrupted(bool b)
-    {
-        m_bIsGeometryTypeAggregateInterrupted = b;
-        if (b)
-            sqlite3_interrupt(hDB);
-    }
-    void SetGeometryTypeAggregateResult(const std::string &s)
-    {
-        m_osGeometryTypeAggregateResult = s;
-    }
-    const std::string &GetGeometryTypeAggregateResult() const
-    {
-        return m_osGeometryTypeAggregateResult;
-    }
 
     GDALDataset *GetRasterLayerDataset(const char *pszLayerName);
 
@@ -578,6 +558,8 @@ class OGRGeoPackageLayer CPL_NON_FINAL : public OGRLayer,
     {
         return m_poDS;
     }
+    virtual bool GetArrowStream(struct ArrowArrayStream *out_stream,
+                                CSLConstList papszOptions = nullptr) override;
     virtual int GetNextArrowArray(struct ArrowArrayStream *,
                                   struct ArrowArray *out_array) override;
 
@@ -758,6 +740,7 @@ class OGRGeoPackageTableLayer final : public OGRGeoPackageLayer
         bool m_bArrayReady = false;
         bool m_bFetchRows = false;
         bool m_bStop = false;
+        std::string m_osErrorMsg{};
         std::unique_ptr<GDALGeoPackageDataset> m_poDS{};
         OGRGeoPackageTableLayer *m_poLayer{};
         GIntBig m_iStartShapeId = 0;
@@ -773,7 +756,8 @@ class OGRGeoPackageTableLayer final : public OGRGeoPackageLayer
 
     virtual int GetNextArrowArray(struct ArrowArrayStream *,
                                   struct ArrowArray *out_array) override;
-    int GetNextArrowArrayInternal(struct ArrowArray *out_array);
+    int GetNextArrowArrayInternal(struct ArrowArray *out_array,
+                                  std::string &osErrorMsg);
     int GetNextArrowArrayAsynchronous(struct ArrowArray *out_array);
     void GetNextArrowArrayAsynchronousWorker();
     void CancelAsyncNextArrowArray();

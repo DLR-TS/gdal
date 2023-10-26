@@ -776,8 +776,6 @@ def test_ogr_sql_28():
         "SELECT MAX(foo) FROM my_layer",
         "SELECT SUM(foo) FROM my_layer",
         "SELECT AVG(foo) FROM my_layer",
-        "SELECT MIN(strfield) FROM my_layer",
-        "SELECT MAX(strfield) FROM my_layer",
         "SELECT SUM(strfield) FROM my_layer",
         "SELECT AVG(strfield) FROM my_layer",
         "SELECT AVG(intfield, intfield) FROM my_layer",
@@ -1523,3 +1521,33 @@ def test_ogr_sql_attribute_filter_on_top_of_non_forward_where_clause(dialect):
     ) as sql_lyr:
         sql_lyr.SetAttributeFilter("0")
         assert sql_lyr.GetFeatureCount() == 0
+
+
+###############################################################################
+# Test min/max on string fields
+
+
+def test_ogr_sql_min_max_string_field(data_ds):
+
+    mem_ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    mem_lyr = mem_ds.CreateLayer("test")
+    mem_lyr.CreateField(ogr.FieldDefn("str_field"))
+
+    with mem_ds.ExecuteSQL(
+        "select min(str_field), max(str_field) from test"
+    ) as sql_lyr:
+        feat = sql_lyr.GetNextFeature()
+        assert feat["MIN_str_field"] is None
+        assert feat["MAX_str_field"] is None
+
+    for v in ("z", "b", "ab"):
+        f = ogr.Feature(mem_lyr.GetLayerDefn())
+        f["str_field"] = v
+        mem_lyr.CreateFeature(f)
+
+    with mem_ds.ExecuteSQL(
+        "select min(str_field), max(str_field) from test"
+    ) as sql_lyr:
+        feat = sql_lyr.GetNextFeature()
+        assert feat["MIN_str_field"] == "ab"
+        assert feat["MAX_str_field"] == "z"

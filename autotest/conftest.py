@@ -18,6 +18,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "pymod"))
 # put the autotest dir on the path too. This lets us import all test modules
 sys.path.insert(1, os.path.dirname(__file__))
 
+# import fixtures that need to be used outside the test module where they were defined
+from ogr.ogr_pg import (  # noqa
+    pg_autotest_ds,
+    pg_ds,
+    pg_has_postgis,
+    pg_postgis_version,
+    use_postgis,
+)
 
 # These files may be non-importable, and don't contain tests anyway.
 # So we skip searching them during test collection.
@@ -283,3 +291,17 @@ def tmp_vsimem(request):
     yield path
 
     gdal.RmdirRecursive(str(path))
+
+
+# Fixture to run a test function with pytest_benchmark
+@pytest.fixture(scope="function")
+def decorate_with_benchmark(request, benchmark):
+    def run_under_benchmark(f, benchmark):
+        def test_with_benchmark_fixture(*args, **kwargs):
+            @benchmark
+            def do():
+                f(*args, **kwargs)
+
+        return test_with_benchmark_fixture
+
+    request.node.obj = run_under_benchmark(request.node.obj, benchmark)

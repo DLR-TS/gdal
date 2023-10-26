@@ -1349,7 +1349,20 @@ GDALDataset *VRTDataset::OpenVRTProtocol(const char *pszSpec)
                     argv.AddString("-nogcp");
                 }
             }
-
+            else if (EQUAL(pszKey, "epo"))
+            {
+                if (CPLTestBool(pszValue))
+                {
+                    argv.AddString("-epo");
+                }
+            }
+            else if (EQUAL(pszKey, "eco"))
+            {
+                if (CPLTestBool(pszValue))
+                {
+                    argv.AddString("-eco");
+                }
+            }
             else
             {
                 CPLError(CE_Failure, CPLE_NotSupported, "Unknown option: %s",
@@ -2125,7 +2138,11 @@ CPLErr VRTDataset::IRasterIO(GDALRWFlag eRWFlag, int nXOff, int nYOff,
     }
 
     // If resampling with non-nearest neighbour, we need to be careful
-    // if the VRT band exposes a nodata value, but the sources do not have it
+    // if the VRT band exposes a nodata value, but the sources do not have it.
+    // To also avoid edge effects on sources when downsampling, use the
+    // base implementation of IRasterIO() (that is acquiring sources at their
+    // nominal resolution, and then downsampling), but only if none of the
+    // contributing sources have overviews.
     if (bLocalCompatibleForDatasetIO && eRWFlag == GF_Read &&
         (nXSize != nBufXSize || nYSize != nBufYSize) &&
         psExtraArg->eResampleAlg != GRIORA_NearestNeighbour)
@@ -2134,31 +2151,12 @@ CPLErr VRTDataset::IRasterIO(GDALRWFlag eRWFlag, int nXOff, int nYOff,
         {
             VRTSourcedRasterBand *poBand = static_cast<VRTSourcedRasterBand *>(
                 GetRasterBand(panBandMap[iBandIndex]));
-            int bHasNoData = FALSE;
-            const double dfNoDataValue = poBand->GetNoDataValue(&bHasNoData);
-            if (bHasNoData)
+            if (!poBand->CanIRasterIOBeForwardedToEachSource(
+                    eRWFlag, nXOff, nYOff, nXSize, nYSize, nBufXSize, nBufYSize,
+                    psExtraArg))
             {
-                for (int i = 0; i < poBand->nSources; i++)
-                {
-                    VRTSimpleSource *poSource =
-                        static_cast<VRTSimpleSource *>(poBand->papoSources[i]);
-                    int bSrcHasNoData = FALSE;
-                    auto l_poBand = poSource->GetRasterBand();
-                    if (!l_poBand)
-                    {
-                        bLocalCompatibleForDatasetIO = false;
-                        break;
-                    }
-                    const double dfSrcNoData =
-                        l_poBand->GetNoDataValue(&bSrcHasNoData);
-                    if (!bSrcHasNoData || dfSrcNoData != dfNoDataValue)
-                    {
-                        bLocalCompatibleForDatasetIO = false;
-                        break;
-                    }
-                }
-                if (!bLocalCompatibleForDatasetIO)
-                    break;
+                bLocalCompatibleForDatasetIO = false;
+                break;
             }
         }
     }
@@ -2649,6 +2647,40 @@ CPLErr VRTDataset::ReadCompressedData(const char *pszFormat, int nXOff,
     return poSrcDataset->ReadCompressedData(
         pszFormat, nSrcXOff, nSrcYOff, nXSize, nYSize, nBandCount, panBandList,
         ppBuffer, pnBufferSize, ppszDetailedFormat);
+}
+
+/************************************************************************/
+/*                          ClearStatistics()                           */
+/************************************************************************/
+
+void VRTDataset::ClearStatistics()
+{
+    for (int i = 1; i <= nBands; ++i)
+    {
+        bool bChanged = false;
+        GDALRasterBand *poBand = GetRasterBand(i);
+        char **papszOldMD = poBand->GetMetadata();
+        char **papszNewMD = nullptr;
+        for (char **papszIter = papszOldMD; papszIter && papszIter[0];
+             ++papszIter)
+        {
+            if (STARTS_WITH_CI(*papszIter, "STATISTICS_"))
+            {
+                bChanged = true;
+            }
+            else
+            {
+                papszNewMD = CSLAddString(papszNewMD, *papszIter);
+            }
+        }
+        if (bChanged)
+        {
+            poBand->SetMetadata(papszNewMD);
+        }
+        CSLDestroy(papszNewMD);
+    }
+
+    GDALDataset::ClearStatistics();
 }
 
 /*! @endcond */

@@ -90,7 +90,8 @@ void OGRParquetLayerBase::LoadGeoMetadata(
                 const auto osVersion = oRoot.GetString("version");
                 if (osVersion != "0.1.0" && osVersion != "0.2.0" &&
                     osVersion != "0.3.0" && osVersion != "0.4.0" &&
-                    osVersion != "1.0.0-beta.1")
+                    osVersion != "1.0.0-beta.1" && osVersion != "1.0.0-rc.1" &&
+                    osVersion != "1.0.0")
                 {
                     CPLDebug(
                         "PARQUET",
@@ -1048,6 +1049,8 @@ bool OGRParquetLayer::ReadNextBatch()
 
     if (m_poRecordBatchReader == nullptr)
     {
+        m_anSelectedGroupsStartFeatureIdx.clear();
+
         bool bIterateEverything = false;
         std::vector<int> anSelectedGroups;
         const bool bUSEBBOXFields =
@@ -1072,11 +1075,14 @@ bool OGRParquetLayer::ReadNextBatch()
             OGRFieldType eType = OFTMaxType;
             OGRFieldSubType eSubType = OFSTNone;
             std::string osMinTmp, osMaxTmp;
+            GIntBig nFeatureIdx = 0;
 
             for (int iRowGroup = 0;
                  iRowGroup < nNumGroups && !bIterateEverything; ++iRowGroup)
             {
                 bool bSelectGroup = true;
+                auto poRowGroup =
+                    GetReader()->parquet_reader()->RowGroup(iRowGroup);
 
                 if (bUSEBBOXFields)
                 {
@@ -1144,11 +1150,20 @@ bool OGRParquetLayer::ReadNextBatch()
                         if (constraint.nOperation != SWQ_ISNULL &&
                             constraint.nOperation != SWQ_ISNOTNULL)
                         {
-                            if (!GetMinMaxForField(iRowGroup, iOGRField, true,
-                                                   sMin, bFoundMin, true, sMax,
-                                                   bFoundMax, eType, eSubType,
-                                                   osMinTmp, osMaxTmp) ||
-                                !bFoundMin || !bFoundMax)
+                            if (iOGRField == OGR_FID_INDEX &&
+                                m_iFIDParquetColumn < 0)
+                            {
+                                sMin.Integer64 = nFeatureIdx;
+                                sMax.Integer64 =
+                                    nFeatureIdx +
+                                    poRowGroup->metadata()->num_rows() - 1;
+                                eType = OFTInteger64;
+                            }
+                            else if (!GetMinMaxForField(
+                                         iRowGroup, iOGRField, true, sMin,
+                                         bFoundMin, true, sMax, bFoundMax,
+                                         eType, eSubType, osMinTmp, osMaxTmp) ||
+                                     !bFoundMin || !bFoundMax)
                             {
                                 bIterateEverything = true;
                                 break;
@@ -1245,9 +1260,6 @@ bool OGRParquetLayer::ReadNextBatch()
                                           [iOGRField];
                             if (iCol >= 0)
                             {
-                                auto poRowGroup =
-                                    m_poArrowReader->parquet_reader()->RowGroup(
-                                        iRowGroup);
                                 const auto metadata =
                                     m_poArrowReader->parquet_reader()
                                         ->metadata();
@@ -1300,13 +1312,17 @@ bool OGRParquetLayer::ReadNextBatch()
                 if (bSelectGroup)
                 {
                     // CPLDebug("PARQUET", "Selecting row group %d", iRowGroup);
+                    m_anSelectedGroupsStartFeatureIdx.push_back(nFeatureIdx);
                     anSelectedGroups.push_back(iRowGroup);
                 }
+
+                nFeatureIdx += poRowGroup->metadata()->num_rows();
             }
         }
 
         if (bIterateEverything)
         {
+            m_anSelectedGroupsStartFeatureIdx.clear();
             if (!CreateRecordBatchReader(0))
                 return false;
         }
@@ -1346,6 +1362,13 @@ bool OGRParquetLayer::ReadNextBatch()
             else
                 m_poBatch.reset();
             return false;
+        }
+        if (!m_anSelectedGroupsStartFeatureIdx.empty())
+        {
+            CPLAssert(
+                m_iRecordBatch <
+                static_cast<int>(m_anSelectedGroupsStartFeatureIdx.size()));
+            m_nFeatureIdx = m_anSelectedGroupsStartFeatureIdx[m_iRecordBatch];
         }
     } while (poNextBatch->num_rows() == 0);
 
@@ -2190,12 +2213,14 @@ bool OGRParquetLayer::GetMinMaxForField(int iRowGroup,  // -1 for all
         if (bFoundMin)
         {
             const int64_t timestamp = sMin.Integer64;
-            OGRArrowLayer::TimestampToOGR(timestamp, timestampType, &sMin);
+            OGRArrowLayer::TimestampToOGR(timestamp, timestampType,
+                                          poFieldDefn->GetTZFlag(), &sMin);
         }
         if (bFoundMax)
         {
             const int64_t timestamp = sMax.Integer64;
-            OGRArrowLayer::TimestampToOGR(timestamp, timestampType, &sMax);
+            OGRArrowLayer::TimestampToOGR(timestamp, timestampType,
+                                          poFieldDefn->GetTZFlag(), &sMax);
         }
         eType = OFTDateTime;
     }

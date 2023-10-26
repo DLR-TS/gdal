@@ -284,8 +284,23 @@ inline bool OGRArrowLayer::MapArrowTypeToOGR(
             break;
 
         case arrow::Type::TIMESTAMP:
+        {
+            const auto timestampType =
+                static_cast<arrow::TimestampType *>(type.get());
             eType = OFTDateTime;
+            const auto osTZ = timestampType->timezone();
+            int nTZFlag = OGRTimezoneToTZFlag(osTZ.c_str(), false);
+            if (nTZFlag == OGR_TZFLAG_UNKNOWN && !osTZ.empty())
+            {
+                CPLDebug(GetDriverUCName().c_str(),
+                         "Field %s has unrecognized timezone %s. "
+                         "UTC datetime will be used instead.",
+                         field->name().c_str(), osTZ.c_str());
+                nTZFlag = OGR_TZFLAG_UTC;
+            }
+            oField.SetTZFlag(nTZFlag);
             break;
+        }
 
         case arrow::Type::TIME32:
             eType = OFTTime;
@@ -1413,7 +1428,7 @@ static SetPointsOfLineType GetSetPointsOfLine(bool bHasZ, bool bHasM)
 inline void
 OGRArrowLayer::TimestampToOGR(int64_t timestamp,
                               const arrow::TimestampType *timestampType,
-                              OGRField *psField)
+                              int nTZFlag, OGRField *psField)
 {
     const auto unit = timestampType->unit();
     double floatingPart = 0;
@@ -1432,32 +1447,10 @@ OGRArrowLayer::TimestampToOGR(int64_t timestamp,
         floatingPart = (timestamp % (1000 * 1000 * 1000)) / 1e9;
         timestamp /= 1000 * 1000 * 1000;
     }
-    int nTZFlag = 0;
-    const auto osTZ = timestampType->timezone();
-    if (osTZ == "UTC" || osTZ == "Etc/UTC")
+    if (nTZFlag > OGR_TZFLAG_MIXED_TZ)
     {
-        nTZFlag = 100;
-    }
-    else if (osTZ.size() == 6 && (osTZ[0] == '+' || osTZ[0] == '-') &&
-             osTZ[3] == ':')
-    {
-        int nTZHour = atoi(osTZ.c_str() + 1);
-        int nTZMin = atoi(osTZ.c_str() + 4);
-        if (nTZHour >= 0 && nTZHour <= 14 && nTZMin >= 0 && nTZMin < 60 &&
-            (nTZMin % 15) == 0)
-        {
-            nTZFlag = (nTZHour * 4) + (nTZMin / 15);
-            if (osTZ[0] == '+')
-            {
-                nTZFlag = 100 + nTZFlag;
-                timestamp += nTZHour * 3600 + nTZMin * 60;
-            }
-            else
-            {
-                nTZFlag = 100 - nTZFlag;
-                timestamp -= nTZHour * 3600 + nTZMin * 60;
-            }
-        }
+        const int TZOffset = (nTZFlag - OGR_TZFLAG_UTC) * 15;
+        timestamp += TZOffset * 60;
     }
     struct tm dt;
     CPLUnixTimeToYMDHMS(timestamp, &dt);
@@ -1733,7 +1726,9 @@ inline OGRFeature *OGRArrowLayer::ReadFeature(
                 sField.Set.nMarker1 = OGRUnsetMarker;
                 sField.Set.nMarker2 = OGRUnsetMarker;
                 sField.Set.nMarker3 = OGRUnsetMarker;
-                TimestampToOGR(timestamp, timestampType, &sField);
+                TimestampToOGR(timestamp, timestampType,
+                               m_poFeatureDefn->GetFieldDefn(i)->GetTZFlag(),
+                               &sField);
                 poFeature->SetField(i, &sField);
                 break;
             }
@@ -2424,6 +2419,8 @@ inline void OGRArrowLayer::ComputeConstraintsArrayIdx()
             if (constraint.iField == m_poFeatureDefn->GetFieldCount() + SPF_FID)
             {
                 constraint.iArrayIdx = m_nRequestedFIDColumn;
+                if (constraint.iArrayIdx < 0 && m_osFIDColumn.empty())
+                    return;
             }
             else
             {
@@ -2437,8 +2434,7 @@ inline void OGRArrowLayer::ComputeConstraintsArrayIdx()
                          "it being ignored",
                          constraint.iField ==
                                  m_poFeatureDefn->GetFieldCount() + SPF_FID
-                             ? (m_osFIDColumn.empty() ? "FID"
-                                                      : m_osFIDColumn.c_str())
+                             ? m_osFIDColumn.c_str()
                              : m_poFeatureDefn->GetFieldDefn(constraint.iField)
                                    ->GetNameRef());
             }
@@ -2448,12 +2444,11 @@ inline void OGRArrowLayer::ComputeConstraintsArrayIdx()
             if (constraint.iField == m_poFeatureDefn->GetFieldCount() + SPF_FID)
             {
                 constraint.iArrayIdx = m_iFIDArrowColumn;
-                if (constraint.iArrayIdx < 0)
+                if (constraint.iArrayIdx < 0 && !m_osFIDColumn.empty())
                 {
                     CPLDebug(GetDriverUCName().c_str(),
                              "Constraint on field %s cannot be applied",
-                             m_osFIDColumn.empty() ? "FID"
-                                                   : m_osFIDColumn.c_str());
+                             m_osFIDColumn.c_str());
                 }
             }
             else
@@ -2755,10 +2750,24 @@ inline bool OGRArrowLayer::SkipToNextFeatureDueToAttributeFilter() const
     {
         if (constraint.iArrayIdx < 0)
         {
-            // can happen if ignoring a field that is needed by the
-            // attribute filter. ComputeConstraintsArrayIdx() will have
-            // warned about that
-            continue;
+            if (constraint.iField ==
+                    m_poFeatureDefn->GetFieldCount() + SPF_FID &&
+                m_osFIDColumn.empty())
+            {
+                if (!ConstraintEvaluator(constraint,
+                                         static_cast<GIntBig>(m_nFeatureIdx)))
+                {
+                    return true;
+                }
+                continue;
+            }
+            else
+            {
+                // can happen if ignoring a field that is needed by the
+                // attribute filter. ComputeConstraintsArrayIdx() will have
+                // warned about that
+                continue;
+            }
         }
 
         const arrow::Array *array =
@@ -3405,6 +3414,14 @@ inline void OGRArrowLayer::SetSpatialFilter(int iGeomField,
                                             OGRGeometry *poGeomIn)
 
 {
+    if (iGeomField < 0 || (iGeomField >= GetLayerDefn()->GetGeomFieldCount() &&
+                           !(iGeomField == 0 && poGeomIn == nullptr)))
+    {
+        CPLError(CE_Failure, CPLE_AppDefined,
+                 "Invalid geometry field index : %d", iGeomField);
+        return;
+    }
+
     // When changing filters, we need to invalidate cached batches, as
     // PostFilterArrowArray() has potentially modified array contents
     if (m_poFilterGeom)
@@ -3665,6 +3682,16 @@ static void OverrideArrowRelease(OGRArrowDataset *poDS, T *obj)
         std::shared_ptr<arrow::MemoryPool> poMemoryPool{};
         void (*pfnPreviousRelease)(T *) = nullptr;
         void *pPreviousPrivateData = nullptr;
+
+        static void release(T *l_obj)
+        {
+            OverriddenPrivate *myPrivate =
+                static_cast<OverriddenPrivate *>(l_obj->private_data);
+            l_obj->private_data = myPrivate->pPreviousPrivateData;
+            l_obj->release = myPrivate->pfnPreviousRelease;
+            l_obj->release(l_obj);
+            delete myPrivate;
+        }
     };
 
     auto overriddenPrivate = new OverriddenPrivate();
@@ -3672,15 +3699,7 @@ static void OverrideArrowRelease(OGRArrowDataset *poDS, T *obj)
     overriddenPrivate->pPreviousPrivateData = obj->private_data;
     overriddenPrivate->pfnPreviousRelease = obj->release;
 
-    obj->release = [](T *l_obj)
-    {
-        OverriddenPrivate *myPrivate =
-            static_cast<OverriddenPrivate *>(l_obj->private_data);
-        l_obj->private_data = myPrivate->pPreviousPrivateData;
-        l_obj->release = myPrivate->pfnPreviousRelease;
-        l_obj->release(l_obj);
-        delete myPrivate;
-    };
+    obj->release = OverriddenPrivate::release;
     obj->private_data = overriddenPrivate;
 }
 
@@ -3876,9 +3895,11 @@ OGRArrowLayer::GetArrowSchemaInternal(struct ArrowSchema *out_schema) const
                         m_poFeatureDefn->GetGeomFieldDefn(iGeomField);
                     CPLAssert(strcmp(out_schema->children[i]->name,
                                      poGeomFieldDefn->GetNameRef()) == 0);
+                    auto poSchema =
+                        CreateSchemaForWKBGeometryColumn(poGeomFieldDefn, "z");
                     out_schema->children[i]->release(out_schema->children[i]);
-                    out_schema->children[j] =
-                        CreateSchemaForWKBGeometryColumn(poGeomFieldDefn);
+                    *(out_schema->children[j]) = *poSchema;
+                    CPLFree(poSchema);
                 }
                 else if (m_aeGeomEncoding[iGeomField] !=
                          OGRArrowGeomEncoding::WKB)
@@ -3913,14 +3934,16 @@ OGRArrowLayer::GetArrowSchemaInternal(struct ArrowSchema *out_schema) const
                     // Set ARROW:extension:name = ogc:wkb
                     auto poSchema = CreateSchemaForWKBGeometryColumn(
                         poGeomFieldDefn, pszFormat);
-                    out_schema->children[j]->release(out_schema->children[j]);
-                    out_schema->children[j] = poSchema;
+                    out_schema->children[i]->release(out_schema->children[i]);
+                    *(out_schema->children[j]) = *poSchema;
+                    CPLFree(poSchema);
                 }
             }
 
             ++j;
         }
     }
+
     out_schema->n_children = j;
 
     OverrideArrowRelease(m_poArrowDS, out_schema);
@@ -3993,7 +4016,8 @@ inline int OGRArrowLayer::GetNextArrowArray(struct ArrowArrayStream *stream,
                         if (targetArray)
                         {
                             sourceArray->release(sourceArray);
-                            out_array->children[nArrayIdx] = targetArray;
+                            *(out_array->children[nArrayIdx]) = *targetArray;
+                            CPLFree(targetArray);
                         }
                         else
                         {
@@ -4014,16 +4038,30 @@ inline int OGRArrowLayer::GetNextArrowArray(struct ArrowArrayStream *stream,
 
         OverrideArrowRelease(m_poArrowDS, out_array);
 
+        const auto nFeatureIdxCur = m_nFeatureIdx;
+        m_nFeatureIdx += m_nIdxInBatch;
+
         if (m_poAttrQuery || m_poFilterGeom)
         {
-            PostFilterArrowArray(&m_sCachedSchema, out_array);
+            CPLStringList aosOptions;
+            if (m_iFIDArrowColumn < 0)
+                aosOptions.SetNameValue(
+                    "BASE_SEQUENTIAL_FID",
+                    CPLSPrintf(CPL_FRMT_GIB,
+                               static_cast<GIntBig>(nFeatureIdxCur)));
+            PostFilterArrowArray(&m_sCachedSchema, out_array,
+                                 aosOptions.List());
             if (out_array->length == 0)
             {
+                if (out_array->release)
+                    out_array->release(out_array);
+                memset(out_array, 0, sizeof(*out_array));
                 // If there are no records after filtering, start again
                 // with a new batch
                 continue;
             }
         }
+
         break;
     }
 
