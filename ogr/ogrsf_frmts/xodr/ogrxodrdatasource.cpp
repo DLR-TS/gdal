@@ -102,7 +102,7 @@ OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
 int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 {
     if (EQUAL(capability, ODsCCreateLayer))
-        return TRUE;
+        return FALSE;
     else if (EQUAL(capability, ODsCDeleteLayer))
         return FALSE;
     else if (EQUAL(capability, ODsCZGeometries))
