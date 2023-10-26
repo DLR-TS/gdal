@@ -57,7 +57,7 @@ The following open options can be specified
       :choices: YES, NO
       :default: NO
 
-      Whether to dissolve triangulated surfaces. All TIN layers of geometry type :cpp:class:`OGRTriangulatedSurface` can be simplified to single, simple :cpp:class:`OGRPolygon` geometries by setting this option to YES. This performs a :cpp:func:`UnaryUnion` which dissolves boundaries of all touching triangle patches.
+      Whether to dissolve triangulated surfaces. By setting this option to YES, all TIN layers of geometry type :cpp:class:`OGRTriangulatedSurface` will be simplified to single, simple :cpp:class:`OGRPolygon` geometries. This performs a :cpp:func:`UnaryUnion` which dissolves boundaries of all touching triangle patches and thus yields a slimmer dataset which often suffices for basic GIS usage. Be aware that this dissolving step increases processing time significantly.
 
 Examples
 --------
