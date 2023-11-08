@@ -32,52 +32,124 @@ from osgeo import gdal, ogr
 pytestmark = pytest.mark.require_driver("XODR")
 ###############################################################################
 #!TODO :
-# check GetSpatialRef 
 # add check for empty geometries when DISSOLVE_TIN == YES
 ###############################################################################
-# Basic tests
+############################################################################
 
-def test_ogr_xodr_1():
+xodr_data_path = ["data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr"]
+
+################################    TEST-1    ############################################
+## Test:
+## - Driver availablity
+## - Data source
+## - Layer count 
+
+@pytest.mark.parametrize("xodr_file_path", xodr_data_path)
+
+def test_ogr_xodr_1(xodr_file_path):
     drv = ogr.GetDriverByName("XODR")
     if drv is None:
-        pytest.skip()
+        pytest.skip("XODR driver not available")
     
-    ## Data Source test 
-    ds = ogr.Open("data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr")
-    assert ds is not None, "cannot open dataset"
+    # Data Source test
+    ds = ogr.Open(xodr_file_path)
+    assert ds is not None, f"Cannot open dataset for file: {xodr_file_path}"
 
-    assert ds.TestCapability("foo") == 0 #TODO  should we do something in TestCapability? 
+    assert ds.TestCapability("foo") == 0  # TODO: Should we do something in TestCapability?
 
-    assert ds.GetLayerCount() == 6, "bad layer count"
+    assert ds.GetLayerCount() == 6, f"Bad layer count for file: {xodr_file_path}"
 
+################################    TEST-2    ############################################
+## Test:
+## - DISSOLVE_TIN = NO  
+## - EPS = 1.0
+## ogr_xodr_check_layer(datasource: ds, layer_index: i, dissolve_tin: False, eps: 1.0): 
 
-def test_ogr_xodr_2():
+test_ogr_xodr_option_2 = ["DISSOLVE_TIN=NO", "EPS=1.0"]
+
+@pytest.mark.parametrize("xodr_file_path, options", [(xodr_data_path[0], test_ogr_xodr_option_2)])
+
+def test_ogr_xodr_2(xodr_file_path, options):
     ds = gdal.OpenEx(
-        "data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr",
+        xodr_file_path,
         gdal.OF_VECTOR,
-        open_options=["DISSOLVE_TIN=NO", "EPS=1.0"],
+        open_options=options,
     )
     for i in range(ds.GetLayerCount()):
-        ogr_xodr_check_layer(ds, i, False)
+        ogr_xodr_check_layer(ds, i, False, 1.0)
 
+################################    TEST-3    ############################################
+## Test:
+## - DISSOLVE_TIN = YES  
+## - EPS = 1.0
+## ogr_xodr_check_layer(datasource: ds, layer_index: i, dissolve_tin: True, eps: 1.0): 
 
-def test_ogr_xodr_3():
+test_ogr_xodr_option_3 = ["DISSOLVE_TIN=YES", "EPS=1.0"]
+
+@pytest.mark.parametrize("xodr_file_path, options", [(xodr_data_path[0], test_ogr_xodr_option_3)])
+
+def test_ogr_xodr_3(xodr_file_path, options):
     ds = gdal.OpenEx(
-        "data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr",
+        xodr_file_path,
         gdal.OF_VECTOR,
-        open_options=["DISSOLVE_TIN=YES", "EPS=1.0"],
+        open_options=options,
     )
     for i in range(ds.GetLayerCount()):
-        ogr_xodr_check_layer(ds, i, True)
+        ogr_xodr_check_layer(ds, i, True, 1.0)
 
+################################    TEST-4    ############################################
+## Test:
+## - DISSOLVE_TIN = NO  
+## - EPS = 0.1
+## ogr_xodr_check_layer(datasource: ds, layer_index: i, dissolve_tin: False, eps: 1.0): 
 
-def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
+test_ogr_xodr_option_4 = ["DISSOLVE_TIN=NO", "EPS=0.1"]
+
+@pytest.mark.parametrize("xodr_file_path, options", [(xodr_data_path[0], test_ogr_xodr_option_4)])
+
+def test_ogr_xodr_4(xodr_file_path, options):
+    """Test geometry output for EPS=0.1
+    """ 
+    
+    ds = gdal.OpenEx(
+        xodr_file_path,
+        gdal.OF_VECTOR,
+        open_options= options,
+    )
+    ogr_xodr_check_layer(ds, 0, False, 0.1)
+
+################################    TEST-5   ############################################
+## Test:
+## Check spatial reference system for each layer 
+
+@pytest.mark.parametrize("xodr_file_path", xodr_data_path)
+
+def test_ogr_xodr_5(xodr_file_path):
+    ds = ogr.Open(xodr_file_path)
+    for i in range(ds.GetLayerCount()):
+        lyr = ds.GetLayer(i)
+        srs_wkt = lyr.GetSpatialRef().ExportToWkt()
+        expected_wkt = 'PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on GRS80 ellipsoid using towgs84=0,0,0,0,0,0,0",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+        assert srs_wkt == expected_wkt, "bad spatial ref" 
+
+##################### ogr_xodr_check_layer ##################################
+## Default function to set value for each condition in test cases
+## ds : datasource (string)
+## lyrInd : layer index (integer)
+## dissolve_tin : dissolve triangulated surfaces (boolean)
+## eps: value for linear approximation (float)
+
+def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin, eps):
     if lyrInd == 0:
         ## Layer 0 : Reference Line 
         lyr = ds.GetLayer(0)
         assert lyr.GetName() == "ReferenceLine", "bad layer name"
         assert lyr.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"            
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref"
+        #################################
+        #srs_wkt = lyr.GetSpatialRef().ExportToWkt()
+        #expected_wkt = 'PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on GRS80 ellipsoid using towgs84=0,0,0,0,0,0,0",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+        #assert srs_wkt == expected_wkt, "bad spatial ref" 
+        #################################
         assert lyr.GetFeatureCount() == 41
         assert lyr.GetLayerDefn().GetFieldCount() == 3
         assert (
@@ -89,7 +161,11 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
         # Test geometry output for EPS=1.0
         lyr.ResetReading()
         feat = lyr.GetNextFeature()
-        assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
+        if(eps == 1.0):
+            assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
+        # Test geometry output for EPS=0.1
+        elif(eps == 0.1):
+            assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618257.937110798 5809506.62607284 102.364759846201,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
         lyr.ResetReading()
 
     elif lyrInd == 1: 
@@ -97,7 +173,6 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
         lyr = ds.GetLayer(1)
         assert lyr.GetName() == "LaneBorder", "bad layer name"
         assert lyr.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"            
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref"
         assert lyr.GetFeatureCount() == 230
         assert lyr.GetLayerDefn().GetFieldCount() == 5
         assert (
@@ -116,7 +191,6 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
             assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option       
         else:
             assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref" 
         assert lyr.GetFeatureCount() == 424
         assert lyr.GetLayerDefn().GetFieldCount() == 3
         assert (
@@ -132,7 +206,7 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
             assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option
         else:
             assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref" 
+
         assert lyr.GetFeatureCount() == 273
         assert lyr.GetLayerDefn().GetFieldCount() == 4
         assert (
@@ -149,7 +223,7 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
             assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option       
         else:
             assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref" 
+
         assert lyr.GetFeatureCount() == 174
         assert lyr.GetLayerDefn().GetFieldCount() == 5
         assert (
@@ -167,7 +241,7 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
             assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option       
         else:
             assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-        #assert lyr.GetSpatialRef() is None, "bad spatial ref" 
+ 
         assert lyr.GetFeatureCount() == 50
         assert lyr.GetLayerDefn().GetFieldCount() == 4
         assert (
@@ -176,19 +250,3 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin):
             and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
             and lyr.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTString
         )
-
-
-def test_ogr_xodr_4():
-    """Test geometry output for EPS=0.1
-    """ 
-    
-    ds = gdal.OpenEx(
-        "data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr",
-        gdal.OF_VECTOR,
-        open_options=["DISSOLVE_TIN=NO", "EPS=0.1"],
-    )
-    lyr = ds.GetLayerByName("ReferenceLine")
-    lyr.ResetReading()
-    feat = lyr.GetNextFeature()
-    assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618257.937110798 5809506.62607284 102.364759846201,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
-    lyr.ResetReading()
