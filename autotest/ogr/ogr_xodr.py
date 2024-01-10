@@ -40,7 +40,7 @@ xodr_data_path = ["data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr"]
 
 ################################    TEST-1    ############################################
 ## Test:
-## - Driver availablity
+## - Driver availability
 ## - Data source
 ## - Layer count 
 
@@ -128,9 +128,9 @@ def test_ogr_xodr_5(xodr_file_path):
     ds = ogr.Open(xodr_file_path)
     for i in range(ds.GetLayerCount()):
         lyr = ds.GetLayer(i)
-        srs_wkt = lyr.GetSpatialRef().ExportToWkt()
-        expected_wkt = 'PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on GRS80 ellipsoid using towgs84=0,0,0,0,0,0,0",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
-        assert srs_wkt == expected_wkt, "bad spatial ref" 
+        srs_proj4 = lyr.GetSpatialRef().ExportToProj4()
+        expected_proj4 = '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
+        assert srs_proj4 == expected_proj4, "bad spatial ref" 
 
 ##################### ogr_xodr_check_layer ##################################
 ## Default function to set value for each condition in test cases
@@ -145,11 +145,6 @@ def ogr_xodr_check_layer(ds, lyrInd, dissolve_tin, eps):
         lyr = ds.GetLayer(0)
         assert lyr.GetName() == "ReferenceLine", "bad layer name"
         assert lyr.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"            
-        #################################
-        #srs_wkt = lyr.GetSpatialRef().ExportToWkt()
-        #expected_wkt = 'PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on GRS80 ellipsoid using towgs84=0,0,0,0,0,0,0",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
-        #assert srs_wkt == expected_wkt, "bad spatial ref" 
-        #################################
         assert lyr.GetFeatureCount() == 41
         assert lyr.GetLayerDefn().GetFieldCount() == 3
         assert (
