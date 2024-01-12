@@ -6,8 +6,8 @@
 # a new member or virtual function in a public C++ class, etc.
 # This will typically happen for each GDAL feature release (change of X or Y in
 # a X.Y.Z numbering scheme), but should not happen for a bugfix release (change of Z)
-# Previous value: 33 for GDAL 3.7
-set(GDAL_SOVERSION 33)
+# Previous value: 34 for GDAL 3.8
+set(GDAL_SOVERSION 34)
 
 # Switches to control build targets(cached)
 option(ENABLE_GNM "Build GNM (Geography Network Model) component" ON)
@@ -519,11 +519,6 @@ if (GDAL_USE_GEOTIFF_INTERNAL)
   option(RENAME_INTERNAL_GEOTIFF_SYMBOLS "Rename internal libgeotiff symbols" ON)
   mark_as_advanced(RENAME_INTERNAL_GEOTIFF_SYMBOLS)
   add_subdirectory(frmts/gtiff/libgeotiff)
-endif ()
-if (GDAL_USE_GIF_INTERNAL)
-  option(RENAME_INTERNAL_GIF_SYMBOLS "Rename internal giflib symbols" ON)
-  mark_as_advanced(RENAME_INTERNAL_GIF_SYMBOLS)
-  add_subdirectory(frmts/gif/giflib)
 endif ()
 if (GDAL_USE_PNG_INTERNAL)
   option(RENAME_INTERNAL_PNG_SYMBOLS "Rename internal libpng symbols" ON)

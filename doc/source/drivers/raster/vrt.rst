@@ -1902,10 +1902,14 @@ For example:
 
     vrt://my.tif?bands=2&ovr=4
 
+::
 
-The supported options currently are ``bands``, ``a_srs``, ``a_ullr``, ``ovr``, ``expand``,
+    vrt://my.nc?sd_name=sds
+
+
+The supported options currently are ``bands``, ``a_nodata``, ``a_srs``, ``a_ullr``, ``ovr``, ``expand``,
 ``a_scale``, ``a_offset``, ``ot``, ``gcp``, ``if``, ``scale``, ``exponent``, ``outsize``, ``projwin``,
-``projwin_srs``, ``tr``, ``r``, ``srcwin``, ``a_gt``, ``oo``, ``unscale``, ``a_coord_epoch``, ``nogcp``, ``epo``, and ``eco``.
+``projwin_srs``, ``tr``, ``r``, ``srcwin``, ``a_gt``, ``oo``, ``unscale``, ``a_coord_epoch``, ``nogcp``, ``epo``, ``eco``, ``sd_name``, and ``sd``.
 
 Other options may be added in the future.
 
@@ -1913,6 +1917,9 @@ The effect of the ``bands`` option is to change the band composition. The values
 are the source band numbers (between 1 and N), possibly out-of-order or with repetitions.
 The ``mask`` value can be used to specify the global mask band. This can also
 be seen as an equivalent of running `gdal_translate -of VRT -b num1 ... -b numN`.
+
+The effect of the ``a_nodata`` option (added in GDAL 3.9) is to assign (override) the nodata
+value of the source in the same way as (:ref:`gdal_translate`).
 
 The effect of the ``a_srs`` option (added in GDAL 3.7) is to assign (override) the coordinate
 reference system of the source in the same way as (:ref:`gdal_translate`), it may be missing,
@@ -1988,6 +1995,20 @@ use syntax ``nogcp=true``, or ``nogcp=false`` (which is the default if not speci
 The effect of the ``epo`` option (added in GDAL 3.8) is that ``srcwin`` or ``projwin`` values that fall partially outside the source raster extent will be considered as an error as per (:ref:`gdal_translate`). To apply this use syntax ``epo=true``, or ``epo=false`` (which is the default if not specified).
 
 The effect of the ``eco`` option (added in GDAL 3.8) is that ``srcwin`` or ``projwin`` values that fall completely outside the source raster extent will be considered as an error as per (:ref:`gdal_translate`). To apply this use syntax ``eco=true``, or ``eco=false`` (which is the default if not specified).
+
+The effect of the ``sd_name`` option (added in GDAL 3.9) is to choose an individual subdataset by
+name for sources that have multiple subdatasets. This means that rather than a fully-qualified description
+such as "NETCDF:myfile.nc:somearray" we may use "vrt://myfile.nc?sd_name=somearray". This option
+is mutually exclusive with ``sd``.
+
+The effect of the ``sd`` option (added in GDAL 3.9) is to choose an individual subdataset by
+number for sources that have multiple subdatasets. This means that rather than a fully-qualified
+description such as "NETCDF:myfile.nc:somearray" we may use "vrt://myfile.nc?sd=<n>" where "<n>"
+is between 1 and the number of subdatasets. Note that there is no guarantee of the order of the
+subdatasets within a source between GDAL versions (or in some cases between file series in datasets). This
+mode is for convenience only, please use ``sd_name`` to choose a subdataset by name explicitly.
+This option is mutually exclusive with ``sd_name``.
+
 
 The options may be chained together separated by '&'. (Beware the need for quoting to protect
 the ampersand).

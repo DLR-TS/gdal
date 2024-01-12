@@ -144,6 +144,12 @@ else ()
   check_function_exists(getrlimit HAVE_GETRLIMIT)
   check_symbol_exists(RLIMIT_AS "sys/resource.h" HAVE_RLIMIT_AS)
 
+  # For internal libjson-c
+  check_include_file(sys/random.h HAVE_SYS_RANDOM_H)
+  if (HAVE_SYS_RANDOM_H)
+    check_symbol_exists(getrandom "sys/random.h" HAVE_GETRANDOM)
+  endif()
+
   check_function_exists(ftell64 HAVE_FTELL64)
   if (HAVE_FTELL64)
     set(VSI_FTELL64 "ftell64")
@@ -358,6 +364,19 @@ else ()
     set(DONT_DEPRECATE_SPRINTF 1)
     add_definitions(-DDONT_DEPRECATE_SPRINTF)
   endif ()
+
+  check_cxx_source_compiles(
+    "
+    #include <shared_mutex>
+    int main(int argc, const char * argv[]) {
+        std::shared_mutex smtx;
+        smtx.lock_shared();
+        smtx.unlock_shared();
+        return 0;
+    }
+    "
+    HAVE_SHARED_MUTEX
+  )
 
   check_include_file("linux/userfaultfd.h" HAVE_USERFAULTFD_H)
 endif ()

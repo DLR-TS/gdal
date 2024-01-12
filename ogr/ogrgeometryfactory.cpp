@@ -2175,20 +2175,26 @@ OGRGeometry *OGRGeometryFactory::organizePolygons(OGRGeometry **papoPolygons,
  * The following GML2 elements are parsed : Point, LineString, Polygon,
  * MultiPoint, MultiLineString, MultiPolygon, MultiGeometry.
  *
- * (OGR >= 1.8.0) The following GML3 elements are parsed : Surface,
+ * The following GML3 elements are parsed : Surface,
  * MultiSurface, PolygonPatch, Triangle, Rectangle, Curve, MultiCurve,
  * LineStringSegment, Arc, Circle, CompositeSurface, OrientableSurface, Solid,
  * Tin, TriangulatedSurface.
  *
- * Arc and Circle elements are stroked to linestring, by using a
- * 4 degrees step, unless the user has overridden the value with the
- * OGR_ARC_STEPSIZE configuration variable.
+ * Arc and Circle elements are returned as curves by default. Stroking to
+ * linestrings can be done with
+ * OGR_G_ForceTo(hGeom, OGR_GT_GetLinear(OGR_G_GetGeometryType(hGeom)), NULL).
+ * A 4 degrees step is used by default, unless the user
+ * has overridden the value with the OGR_ARC_STEPSIZE configuration variable.
  *
  * The C function OGR_G_CreateFromGML() is the same as this method.
  *
  * @param pszData The GML fragment for the geometry.
  *
  * @return a geometry on success, or NULL on error.
+ *
+ * @see OGR_G_ForceTo()
+ * @see OGR_GT_GetLinear()
+ * @see OGR_G_GetGeometryType()
  */
 
 OGRGeometry *OGRGeometryFactory::createFromGML(const char *pszData)
@@ -2231,18 +2237,13 @@ OGRGeometry *OGRGeometryFactory::createFromGEOS(
         GEOSisEmpty_r(hGEOSCtxt, geosGeom))
         return new OGRPoint();
 
-#if GEOS_VERSION_MAJOR > 3 ||                                                  \
-    (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 3)
-    // GEOSGeom_getCoordinateDimension only available in GEOS 3.3.0.
     const int nCoordDim =
         GEOSGeom_getCoordinateDimension_r(hGEOSCtxt, geosGeom);
     GEOSWKBWriter *wkbwriter = GEOSWKBWriter_create_r(hGEOSCtxt);
     GEOSWKBWriter_setOutputDimension_r(hGEOSCtxt, wkbwriter, nCoordDim);
     pabyBuf = GEOSWKBWriter_write_r(hGEOSCtxt, wkbwriter, geosGeom, &nSize);
     GEOSWKBWriter_destroy_r(hGEOSCtxt, wkbwriter);
-#else
-    pabyBuf = GEOSGeomToWKB_buf_r(hGEOSCtxt, geosGeom, &nSize);
-#endif
+
     if (pabyBuf == nullptr || nSize == 0)
     {
         return nullptr;
@@ -2254,13 +2255,8 @@ OGRGeometry *OGRGeometryFactory::createFromGEOS(
     {
         poGeometry = nullptr;
     }
-    // Since GEOS 3.1.1, so we test 3.2.0.
-#if GEOS_CAPI_VERSION_MAJOR >= 2 ||                                            \
-    (GEOS_CAPI_VERSION_MAJOR == 1 && GEOS_CAPI_VERSION_MINOR >= 6)
+
     GEOSFree_r(hGEOSCtxt, pabyBuf);
-#else
-    free(pabyBuf);
-#endif
 
     return poGeometry;
 
@@ -2732,16 +2728,17 @@ static void SplitLineStringAtDateline(OGRGeometryCollection *poMulti,
                 const double dfRatio = (180 - dfX1) / (dfX2 - dfX1);
                 const double dfY = dfRatio * dfY2 + (1 - dfRatio) * dfY1;
                 const double dfZ = dfRatio * dfZ2 + (1 - dfRatio) * dfZ1;
-                if (bIs3D)
-                    poNewLS->addPoint(
-                        poLS->getX(i - 1) + dfXOffset > dfLeftBorderX ? 180
-                                                                      : -180,
-                        dfY, dfZ);
-                else
-                    poNewLS->addPoint(
-                        poLS->getX(i - 1) + dfXOffset > dfLeftBorderX ? 180
-                                                                      : -180,
-                        dfY);
+                double dfNewX =
+                    poLS->getX(i - 1) + dfXOffset > dfLeftBorderX ? 180 : -180;
+                if (poNewLS->getNumPoints() == 0 ||
+                    poNewLS->getX(poNewLS->getNumPoints() - 1) != dfNewX ||
+                    poNewLS->getY(poNewLS->getNumPoints() - 1) != dfY)
+                {
+                    if (bIs3D)
+                        poNewLS->addPoint(dfNewX, dfY, dfZ);
+                    else
+                        poNewLS->addPoint(dfNewX, dfY);
+                }
                 poNewLS = new OGRLineString();
                 if (bIs3D)
                     poNewLS->addPoint(
@@ -2838,17 +2835,22 @@ static void AddOffsetToLon(OGRGeometry *poGeom, double dfOffset)
     switch (wkbFlatten(poGeom->getGeometryType()))
     {
         case wkbPolygon:
+        {
+            for (auto poSubGeom : *(poGeom->toPolygon()))
+            {
+                AddOffsetToLon(poSubGeom, dfOffset);
+            }
+
+            break;
+        }
+
         case wkbMultiLineString:
         case wkbMultiPolygon:
         case wkbGeometryCollection:
         {
-            const int nSubGeomCount =
-                OGR_G_GetGeometryCount(OGRGeometry::ToHandle(poGeom));
-            for (int iGeom = 0; iGeom < nSubGeomCount; iGeom++)
+            for (auto poSubGeom : *(poGeom->toGeometryCollection()))
             {
-                AddOffsetToLon(OGRGeometry::FromHandle(OGR_G_GetGeometryRef(
-                                   OGRGeometry::ToHandle(poGeom), iGeom)),
-                               dfOffset);
+                AddOffsetToLon(poSubGeom, dfOffset);
             }
 
             break;
@@ -2897,15 +2899,8 @@ static void AddSimpleGeomToMulti(OGRGeometryCollection *poMulti,
         case wkbMultiPolygon:
         case wkbGeometryCollection:
         {
-            // TODO(schwehr): Can the const_casts be removed or improved?
-            const int nSubGeomCount = OGR_G_GetGeometryCount(
-                OGRGeometry::ToHandle(const_cast<OGRGeometry *>(poGeom)));
-            for (int iGeom = 0; iGeom < nSubGeomCount; iGeom++)
+            for (const auto poSubGeom : *(poGeom->toGeometryCollection()))
             {
-                OGRGeometry *poSubGeom = OGRGeometry::FromHandle(
-                    OGR_G_GetGeometryRef(OGRGeometry::ToHandle(
-                                             const_cast<OGRGeometry *>(poGeom)),
-                                         iGeom));
                 AddSimpleGeomToMulti(poMulti, poSubGeom);
             }
             break;
@@ -2918,6 +2913,22 @@ static void AddSimpleGeomToMulti(OGRGeometryCollection *poMulti,
 #endif  // #ifdef HAVE_GEOS
 
 /************************************************************************/
+/*                       WrapPointDateLine()                            */
+/************************************************************************/
+
+static void WrapPointDateLine(OGRPoint *poPoint)
+{
+    if (poPoint->getX() > 180)
+    {
+        poPoint->setX(fmod(poPoint->getX() + 180, 360) - 180);
+    }
+    else if (poPoint->getX() < -180)
+    {
+        poPoint->setX(-(fmod(-poPoint->getX() + 180, 360) - 180));
+    }
+}
+
+/************************************************************************/
 /*                 CutGeometryOnDateLineAndAddToMulti()                 */
 /************************************************************************/
 
@@ -2928,6 +2939,14 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
     const OGRwkbGeometryType eGeomType = wkbFlatten(poGeom->getGeometryType());
     switch (eGeomType)
     {
+        case wkbPoint:
+        {
+            auto poPoint = poGeom->toPoint()->clone();
+            WrapPointDateLine(poPoint);
+            poMulti->addGeometryDirectly(poPoint);
+            break;
+        }
+
         case wkbPolygon:
         case wkbLineString:
         {
@@ -2939,7 +2958,7 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
 
             // Naive heuristics... Place to improve.
 #ifdef HAVE_GEOS
-            OGRGeometry *poDupGeom = nullptr;
+            std::unique_ptr<OGRGeometry> poDupGeom;
             bool bWrapDateline = false;
 #endif
 
@@ -2968,24 +2987,12 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
                 {
                     double dfMaxSmallDiffLong = 0;
                     bool bHasBigDiff = false;
-                    // If one longitude is at +/- 180deg, assume that the
-                    // geometry was properly cut.
-                    bool bLongFoundAtPlusMinus180 =
-                        poLS->getNumPoints() > 0 &&
-                        (fabs(fabs(poLS->getX(0)) - 180) < 1e-10);
                     // Detect big gaps in longitude.
-                    for (int i = 1;
-                         !bLongFoundAtPlusMinus180 && i < poLS->getNumPoints();
-                         i++)
+                    for (int i = 1; i < poLS->getNumPoints(); i++)
                     {
                         const double dfPrevX = poLS->getX(i - 1) + dfXOffset;
                         const double dfX = poLS->getX(i) + dfXOffset;
                         const double dfDiffLong = fabs(dfX - dfPrevX);
-                        if (fabs(fabs(poLS->getX(i)) - 180) < 1e-10)
-                        {
-                            bLongFoundAtPlusMinus180 = true;
-                            break;
-                        }
 
                         if (dfDiffLong > dfDiffSpace &&
                             ((dfX > dfLeftBorderX &&
@@ -2995,8 +3002,7 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
                         else if (dfDiffLong > dfMaxSmallDiffLong)
                             dfMaxSmallDiffLong = dfDiffLong;
                     }
-                    if (bHasBigDiff && !bLongFoundAtPlusMinus180 &&
-                        dfMaxSmallDiffLong < dfDateLineOffset)
+                    if (bHasBigDiff && dfMaxSmallDiffLong < dfDateLineOffset)
                     {
                         if (eGeomType == wkbLineString)
                             bSplitLineStringAtDateline = true;
@@ -3006,10 +3012,13 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
                             CPLError(CE_Failure, CPLE_NotSupported,
                                      "GEOS support not enabled.");
 #else
-                            bWrapDateline = true;
-                            poDupGeom = poGeom->clone();
+                            poDupGeom.reset(poGeom->clone());
                             FixPolygonCoordinatesAtDateLine(
                                 poDupGeom->toPolygon(), dfDateLineOffset);
+
+                            OGREnvelope sEnvelope;
+                            poDupGeom->getEnvelope(&sEnvelope);
+                            bWrapDateline = sEnvelope.MinX != sEnvelope.MaxX;
 #endif
                         }
                     }
@@ -3025,7 +3034,8 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
 #ifdef HAVE_GEOS
             else if (bWrapDateline)
             {
-                const OGRGeometry *poWorkGeom = poDupGeom ? poDupGeom : poGeom;
+                const OGRGeometry *poWorkGeom =
+                    poDupGeom ? poDupGeom.get() : poGeom;
                 OGRGeometry *poRectangle1 = nullptr;
                 OGRGeometry *poRectangle2 = nullptr;
                 const char *pszWKT1 =
@@ -3041,25 +3051,24 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
                                                   &poRectangle1);
                 OGRGeometryFactory::createFromWkt(pszWKT2, nullptr,
                                                   &poRectangle2);
-                OGRGeometry *poGeom1 = poWorkGeom->Intersection(poRectangle1);
-                OGRGeometry *poGeom2 = poWorkGeom->Intersection(poRectangle2);
+                auto poGeom1 = std::unique_ptr<OGRGeometry>(
+                    poWorkGeom->Intersection(poRectangle1));
+                auto poGeom2 = std::unique_ptr<OGRGeometry>(
+                    poWorkGeom->Intersection(poRectangle2));
                 delete poRectangle1;
                 delete poRectangle2;
 
                 if (poGeom1 != nullptr && poGeom2 != nullptr)
                 {
-                    AddSimpleGeomToMulti(poMulti, poGeom1);
-                    AddOffsetToLon(poGeom2, !bAroundMinus180 ? -360.0 : 360.0);
-                    AddSimpleGeomToMulti(poMulti, poGeom2);
+                    AddSimpleGeomToMulti(poMulti, poGeom1.get());
+                    AddOffsetToLon(poGeom2.get(),
+                                   !bAroundMinus180 ? -360.0 : 360.0);
+                    AddSimpleGeomToMulti(poMulti, poGeom2.get());
                 }
                 else
                 {
                     AddSimpleGeomToMulti(poMulti, poGeom);
                 }
-
-                delete poGeom1;
-                delete poGeom2;
-                delete poDupGeom;
             }
 #endif
             else
@@ -3073,15 +3082,8 @@ static void CutGeometryOnDateLineAndAddToMulti(OGRGeometryCollection *poMulti,
         case wkbMultiPolygon:
         case wkbGeometryCollection:
         {
-            // TODO(schwehr): Fix the const_cast.
-            int nSubGeomCount = OGR_G_GetGeometryCount(
-                OGRGeometry::ToHandle(const_cast<OGRGeometry *>(poGeom)));
-            for (int iGeom = 0; iGeom < nSubGeomCount; iGeom++)
+            for (const auto poSubGeom : *(poGeom->toGeometryCollection()))
             {
-                OGRGeometry *poSubGeom = OGRGeometry::FromHandle(
-                    OGR_G_GetGeometryRef(OGRGeometry::ToHandle(
-                                             const_cast<OGRGeometry *>(poGeom)),
-                                         iGeom));
                 CutGeometryOnDateLineAndAddToMulti(poMulti, poSubGeom,
                                                    dfDateLineOffset);
             }
@@ -3931,19 +3933,18 @@ OGRGeometry *OGRGeometryFactory::transformWithOptions(
         }
         // TODO and we should probably also test that the axis order + data axis
         // mapping is long-lat...
-
         const OGRwkbGeometryType eType =
             wkbFlatten(poDstGeom->getGeometryType());
         if (eType == wkbPoint)
         {
             OGRPoint *poDstPoint = poDstGeom->toPoint();
-            if (poDstPoint->getX() > 180)
+            WrapPointDateLine(poDstPoint);
+        }
+        else if (eType == wkbMultiPoint)
+        {
+            for (auto *poDstPoint : *(poDstGeom->toMultiPoint()))
             {
-                poDstPoint->setX(fmod(poDstPoint->getX() + 180, 360) - 180);
-            }
-            else if (poDstPoint->getX() < -180)
-            {
-                poDstPoint->setX(-(fmod(-poDstPoint->getX() + 180, 360) - 180));
+                WrapPointDateLine(poDstPoint);
             }
         }
         else

@@ -107,7 +107,7 @@ OGRFeature *OGRXLSXLayer::GetNextFeature()
     return poFeature;
 }
 
-OGRErr OGRXLSXLayer::CreateField(OGRFieldDefn *poField, int bApproxOK)
+OGRErr OGRXLSXLayer::CreateField(const OGRFieldDefn *poField, int bApproxOK)
 {
     Init();
     if (GetLayerDefn()->GetFieldCount() >= 2000)
@@ -1055,6 +1055,8 @@ void OGRXLSXDataSource::endElementRow(CPL_UNUSED const char *pszNameIn)
                         {
                             poCurLayer->oSetFieldsOfUnknownType.erase(oIter);
 
+                            auto oTemporaryUnsealer(
+                                poFieldDefn->GetTemporaryUnsealer());
                             poFieldDefn->SetType(eValType);
                             poFieldDefn->SetSubType(eValSubType);
                         }

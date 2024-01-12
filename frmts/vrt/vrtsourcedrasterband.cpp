@@ -358,6 +358,7 @@ CPLErr VRTSourcedRasterBand::IRasterIO(
     /*      Overlay each source in turn over top this.                      */
     /* -------------------------------------------------------------------- */
     CPLErr eErr = CE_None;
+    VRTSource::WorkingState oWorkingState;
     for (int iSource = 0; eErr == CE_None && iSource < nSources; iSource++)
     {
         psExtraArg->pfnProgress = GDALScaledProgress;
@@ -369,7 +370,8 @@ CPLErr VRTSourcedRasterBand::IRasterIO(
 
         eErr = papoSources[iSource]->RasterIO(
             eDataType, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize,
-            nBufYSize, eBufType, nPixelSpace, nLineSpace, psExtraArg);
+            nBufYSize, eBufType, nPixelSpace, nLineSpace, psExtraArg,
+            l_poDS ? l_poDS->m_oWorkingState : oWorkingState);
 
         GDALDestroyScaledProgress(psExtraArg->pProgressData);
     }
@@ -536,6 +538,37 @@ CPLErr VRTSourcedRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff,
 }
 
 /************************************************************************/
+/*                        CPLGettimeofday()                             */
+/************************************************************************/
+
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <sys/timeb.h>
+
+namespace
+{
+struct CPLTimeVal
+{
+    time_t tv_sec; /* seconds */
+    long tv_usec;  /* and microseconds */
+};
+}  // namespace
+
+static int CPLGettimeofday(struct CPLTimeVal *tp, void * /* timezonep*/)
+{
+    struct _timeb theTime;
+
+    _ftime(&theTime);
+    tp->tv_sec = static_cast<time_t>(theTime.time);
+    tp->tv_usec = theTime.millitm * 1000;
+    return 0;
+}
+#else
+#include <sys/time.h> /* for gettimeofday() */
+#define CPLTimeVal timeval
+#define CPLGettimeofday(t, u) gettimeofday(t, u)
+#endif
+
+/************************************************************************/
 /*                    CanUseSourcesMinMaxImplementations()              */
 /************************************************************************/
 
@@ -552,6 +585,10 @@ bool VRTSourcedRasterBand::CanUseSourcesMinMaxImplementations()
     // on the filesystem, whose open time and GetMinimum()/GetMaximum()
     // implementations we hope to be fast enough.
     // In case of doubt return FALSE.
+    struct CPLTimeVal tvStart;
+    memset(&tvStart, 0, sizeof(CPLTimeVal));
+    if (nSources > 1)
+        CPLGettimeofday(&tvStart, nullptr);
     for (int iSource = 0; iSource < nSources; iSource++)
     {
         if (!(papoSources[iSource]->IsSimpleSource()))
@@ -572,7 +609,7 @@ bool VRTSourcedRasterBand::CanUseSourcesMinMaxImplementations()
         {
             if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
                   (ch >= '0' && ch <= '9') || ch == ':' || ch == '/' ||
-                  ch == '\\' || ch == ' ' || ch == '.'))
+                  ch == '\\' || ch == ' ' || ch == '.' || ch == '_'))
                 break;
         }
         if (ch != '\0')
@@ -581,6 +618,15 @@ bool VRTSourcedRasterBand::CanUseSourcesMinMaxImplementations()
             VSIStatBuf sStat;
             if (VSIStat(pszFilename, &sStat) != 0)
                 return false;
+            if (nSources > 1)
+            {
+                struct CPLTimeVal tvCur;
+                CPLGettimeofday(&tvCur, nullptr);
+                if (tvCur.tv_sec - tvStart.tv_sec +
+                        (tvCur.tv_usec - tvStart.tv_usec) * 1e-6 >
+                    1)
+                    return false;
+            }
         }
     }
     return true;
@@ -592,9 +638,6 @@ bool VRTSourcedRasterBand::CanUseSourcesMinMaxImplementations()
 
 double VRTSourcedRasterBand::GetMinimum(int *pbSuccess)
 {
-    if (!CanUseSourcesMinMaxImplementations())
-        return GDALRasterBand::GetMinimum(pbSuccess);
-
     const char *const pszValue = GetMetadataItem("STATISTICS_MINIMUM");
     if (pszValue != nullptr)
     {
@@ -603,6 +646,9 @@ double VRTSourcedRasterBand::GetMinimum(int *pbSuccess)
 
         return CPLAtofM(pszValue);
     }
+
+    if (!CanUseSourcesMinMaxImplementations())
+        return GDALRasterBand::GetMinimum(pbSuccess);
 
     const std::string osFctId("VRTSourcedRasterBand::GetMinimum");
     GDALAntiRecursionGuard oGuard(osFctId);
@@ -623,6 +669,10 @@ double VRTSourcedRasterBand::GetMinimum(int *pbSuccess)
         return 0;
     }
 
+    struct CPLTimeVal tvStart;
+    memset(&tvStart, 0, sizeof(CPLTimeVal));
+    if (nSources > 1)
+        CPLGettimeofday(&tvStart, nullptr);
     double dfMin = 0;
     for (int iSource = 0; iSource < nSources; iSource++)
     {
@@ -636,7 +686,22 @@ double VRTSourcedRasterBand::GetMinimum(int *pbSuccess)
         }
 
         if (iSource == 0 || dfSourceMin < dfMin)
+        {
             dfMin = dfSourceMin;
+            if (dfMin == 0 && eDataType == GDT_Byte)
+                break;
+        }
+        if (nSources > 1)
+        {
+            struct CPLTimeVal tvCur;
+            CPLGettimeofday(&tvCur, nullptr);
+            if (tvCur.tv_sec - tvStart.tv_sec +
+                    (tvCur.tv_usec - tvStart.tv_usec) * 1e-6 >
+                1)
+            {
+                return GDALRasterBand::GetMinimum(pbSuccess);
+            }
+        }
     }
 
     if (pbSuccess != nullptr)
@@ -651,9 +716,6 @@ double VRTSourcedRasterBand::GetMinimum(int *pbSuccess)
 
 double VRTSourcedRasterBand::GetMaximum(int *pbSuccess)
 {
-    if (!CanUseSourcesMinMaxImplementations())
-        return GDALRasterBand::GetMaximum(pbSuccess);
-
     const char *const pszValue = GetMetadataItem("STATISTICS_MAXIMUM");
     if (pszValue != nullptr)
     {
@@ -662,6 +724,9 @@ double VRTSourcedRasterBand::GetMaximum(int *pbSuccess)
 
         return CPLAtofM(pszValue);
     }
+
+    if (!CanUseSourcesMinMaxImplementations())
+        return GDALRasterBand::GetMaximum(pbSuccess);
 
     const std::string osFctId("VRTSourcedRasterBand::GetMaximum");
     GDALAntiRecursionGuard oGuard(osFctId);
@@ -682,6 +747,10 @@ double VRTSourcedRasterBand::GetMaximum(int *pbSuccess)
         return 0;
     }
 
+    struct CPLTimeVal tvStart;
+    memset(&tvStart, 0, sizeof(CPLTimeVal));
+    if (nSources > 1)
+        CPLGettimeofday(&tvStart, nullptr);
     double dfMax = 0;
     for (int iSource = 0; iSource < nSources; iSource++)
     {
@@ -695,7 +764,22 @@ double VRTSourcedRasterBand::GetMaximum(int *pbSuccess)
         }
 
         if (iSource == 0 || dfSourceMax > dfMax)
+        {
             dfMax = dfSourceMax;
+            if (dfMax == 255.0 && eDataType == GDT_Byte)
+                break;
+        }
+        if (nSources > 1)
+        {
+            struct CPLTimeVal tvCur;
+            CPLGettimeofday(&tvCur, nullptr);
+            if (tvCur.tv_sec - tvStart.tv_sec +
+                    (tvCur.tv_usec - tvStart.tv_usec) * 1e-6 >
+                1)
+            {
+                return GDALRasterBand::GetMaximum(pbSuccess);
+            }
+        }
     }
 
     if (pbSuccess != nullptr)
@@ -1151,23 +1235,32 @@ CPLErr VRTSourcedRasterBand::ComputeStatistics(int bApproxOK, double *pdfMin,
         if (poBand != nullptr && poBand != this)
         {
             auto l_poDS = dynamic_cast<VRTDataset *>(poDS);
+            CPLErr eErr;
             if (l_poDS && !l_poDS->m_apoOverviews.empty() &&
                 dynamic_cast<VRTSourcedRasterBand *>(poBand) != nullptr)
             {
                 auto apoTmpOverviews = std::move(l_poDS->m_apoOverviews);
                 l_poDS->m_apoOverviews.clear();
-                auto eErr = poBand->GDALRasterBand::ComputeStatistics(
+                eErr = poBand->GDALRasterBand::ComputeStatistics(
                     TRUE, pdfMin, pdfMax, pdfMean, pdfStdDev, pfnProgress,
                     pProgressData);
                 l_poDS->m_apoOverviews = std::move(apoTmpOverviews);
-                return eErr;
             }
             else
             {
-                return poBand->ComputeStatistics(TRUE, pdfMin, pdfMax, pdfMean,
+                eErr = poBand->ComputeStatistics(TRUE, pdfMin, pdfMax, pdfMean,
                                                  pdfStdDev, pfnProgress,
                                                  pProgressData);
             }
+            if (eErr == CE_None && pdfMin && pdfMax && pdfMean && pdfStdDev)
+            {
+                SetMetadataItem("STATISTICS_APPROXIMATE", "YES");
+                SetMetadataItem(
+                    "STATISTICS_VALID_PERCENT",
+                    poBand->GetMetadataItem("STATISTICS_VALID_PERCENT"));
+                SetStatistics(*pdfMin, *pdfMax, *pdfMean, *pdfStdDev);
+            }
+            return eErr;
         }
     }
 

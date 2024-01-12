@@ -34,6 +34,10 @@
 #include "cpl_string.h"
 #include "cpl_minixml.h"
 
+#ifdef JPEG_SUPPORTED
+#include "georaster_jpeg_vsidataio.h"
+#endif
+
 //  ---------------------------------------------------------------------------
 //                                                           GeoRasterWrapper()
 //  ---------------------------------------------------------------------------
@@ -3935,6 +3939,7 @@ void GeoRasterWrapper::PackNBits(GByte *pabyData) const
 }
 
 #ifdef JPEG_SUPPORTED
+
 //  ---------------------------------------------------------------------------
 //                                                             UncompressJpeg()
 //  ---------------------------------------------------------------------------

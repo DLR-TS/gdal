@@ -46,19 +46,13 @@
 #include "gdal_pam.h"
 #include "gdal_priv.h"
 #include "netcdf.h"
+#include "netcdfformatenum.h"
 #include "netcdfsg.h"
 #include "netcdfsgwriterutil.h"
 #include "ogr_spatialref.h"
 #include "ogrsf_frmts.h"
 #include "netcdfuffd.h"
 #include "netcdf_cf_constants.h"
-
-#if defined(DEBUG) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION) ||     \
-    defined(ALLOW_FORMAT_DUMPS)
-// Whether to support opening a ncdump file as a file dataset
-// Useful for fuzzing purposes
-#define ENABLE_NCDUMP
-#endif
 
 #if CPL_IS_LSB
 #define PLATFORM_HEADER 1
@@ -129,21 +123,6 @@ static const size_t NCDF_MAX_STR_LEN = 8192;
 #define NCDF_LONLAT "lon lat"
 #define NCDF_DIMNAME_RLON "rlon"  // rotated longitude
 #define NCDF_DIMNAME_RLAT "rlat"  // rotated latitude
-
-/* netcdf file types, as in libcdi/cdo and compat w/netcdf.h */
-typedef enum
-{
-    NCDF_FORMAT_NONE = 0, /* Not a netCDF file */
-    NCDF_FORMAT_NC = 1,   /* netCDF classic format */
-    NCDF_FORMAT_NC2 = 2,  /* netCDF version 2 (64-bit)  */
-    NCDF_FORMAT_NC4 = 3,  /* netCDF version 4 */
-    NCDF_FORMAT_NC4C = 4, /* netCDF version 4 (classic) */
-    /* HDF files (HDF5 or HDF4) not supported because of lack of support */
-    /* in libnetcdf installation or conflict with other drivers */
-    NCDF_FORMAT_HDF5 = 5,    /* HDF5 file, not supported */
-    NCDF_FORMAT_HDF4 = 6,    /* HDF4 file, not supported */
-    NCDF_FORMAT_UNKNOWN = 10 /* Format not determined (yet) */
-} NetCDFFormatEnum;
 
 /* compression parameters */
 typedef enum
@@ -811,9 +790,7 @@ class netCDFDataset final : public GDALPamDataset
     char **papszCreationOptions;
     NetCDFCompressEnum eCompress;
     int nZLevel;
-#ifdef NETCDF_HAS_NC4
     bool bChunking;
-#endif
     int nCreateMode;
     bool bSignedData;
 
@@ -905,11 +882,9 @@ class netCDFDataset final : public GDALPamDataset
                               std::vector<std::string> *paosRemovedMDItems);
     void SetProjectionFromVar(int nGroupId, int nVarId, bool bReadSRSOnly);
 
-#ifdef NETCDF_HAS_NC4
     bool ProcessNASAL2OceanGeoLocation(int nGroupId, int nVarId);
 
     bool ProcessNASAEMITGeoLocation(int nGroupId, int nVarId);
-#endif
 
     int ProcessCFGeolocation(int nGroupId, int nVarId,
                              std::string &osGeolocXNameOut,
@@ -925,9 +900,7 @@ class netCDFDataset final : public GDALPamDataset
                          int nLayerId, int nDimIdToGrow, size_t nNewSize);
     bool GrowDim(int nLayerId, int nDimIdToGrow, size_t nNewSize);
 
-#ifdef NETCDF_HAS_NC4
     void ProcessSentinel3_SRAL_MWR();
-#endif
 
     CPLErr
     FilterVars(int nCdfId, bool bKeepRasters, bool bKeepVectors,
@@ -938,8 +911,8 @@ class netCDFDataset final : public GDALPamDataset
                std::map<std::array<int, 3>, std::vector<std::pair<int, int>>>
                    &oMap2DDimsToGroupAndVar);
     CPLErr CreateGrpVectorLayers(int nCdfId, CPLString osFeatureType,
-                                 std::vector<int> anPotentialVectorVarID,
-                                 std::map<int, int> oMapDimIdToCount,
+                                 const std::vector<int> &anPotentialVectorVarID,
+                                 const std::map<int, int> &oMapDimIdToCount,
                                  int nVarXId, int nVarYId, int nVarZId,
                                  int nProfileDimId, int nParentIndexVarID,
                                  bool bKeepRasters);
@@ -947,10 +920,8 @@ class netCDFDataset final : public GDALPamDataset
     bool DetectAndFillSGLayers(int ncid);
     CPLErr LoadSGVarIntoLayer(int ncid, int nc_basevarId);
 
-#ifdef NETCDF_HAS_NC4
     static GDALDataset *OpenMultiDim(GDALOpenInfo *);
     std::shared_ptr<GDALGroup> m_poRootGroup{};
-#endif
 
     void SetGeoTransformNoUpdate(double *);
     void SetSpatialRefNoUpdate(const OGRSpatialReference *);
@@ -994,9 +965,7 @@ class netCDFDataset final : public GDALPamDataset
     }
     virtual OGRLayer *GetLayer(int nIdx) override;
 
-#ifdef NETCDF_HAS_NC4
     std::shared_ptr<GDALGroup> GetRootGroup() const override;
-#endif
 
     int GetCDFID() const
     {
@@ -1009,8 +978,6 @@ class netCDFDataset final : public GDALPamDataset
     }
 
     /* static functions */
-    static int Identify(GDALOpenInfo *);
-    static NetCDFFormatEnum IdentifyFormat(GDALOpenInfo *, bool);
     static GDALDataset *Open(GDALOpenInfo *);
 
     static netCDFDataset *CreateLL(const char *pszFilename, int nXSize,
@@ -1024,12 +991,10 @@ class netCDFDataset final : public GDALPamDataset
                                    GDALProgressFunc pfnProgress,
                                    void *pProgressData);
 
-#ifdef NETCDF_HAS_NC4
     static GDALDataset *
     CreateMultiDimensional(const char *pszFilename,
                            CSLConstList papszRootGroupOptions,
                            CSLConstList papzOptions);
-#endif
 };
 
 class netCDFLayer final : public OGRLayer
@@ -1174,7 +1139,7 @@ class netCDFLayer final : public OGRLayer
     virtual OGRFeatureDefn *GetLayerDefn() override;
 
     virtual OGRErr ICreateFeature(OGRFeature *poFeature) override;
-    virtual OGRErr CreateField(OGRFieldDefn *poFieldDefn,
+    virtual OGRErr CreateField(const OGRFieldDefn *poFieldDefn,
                                int bApproxOK) override;
 };
 
@@ -1191,12 +1156,11 @@ int NCDFWriteSRSVariable(int cdfid, const OGRSpatialReference *poSRS,
 
 double NCDFGetDefaultNoDataValue(int nCdfId, int nVarId, int nVarType,
                                  bool &bGotNoData);
-#ifdef NETCDF_HAS_NC4
+
 int64_t NCDFGetDefaultNoDataValueAsInt64(int nCdfId, int nVarId,
                                          bool &bGotNoData);
 uint64_t NCDFGetDefaultNoDataValueAsUInt64(int nCdfId, int nVarId,
                                            bool &bGotNoData);
-#endif
 
 CPLErr NCDFGetAttr(int nCdfId, int nVarId, const char *pszAttrName,
                    double *pdfValue);

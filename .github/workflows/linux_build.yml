@@ -14,6 +14,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   linux-build:
@@ -34,7 +37,6 @@ jobs:
       CACHE_CONTAINER_TAG: ${{ matrix.container }}-master
 
     permissions:
-      contents: write  # for Git to git push
       packages: write
 
     strategy:
@@ -62,11 +64,26 @@ jobs:
             container: alpine
             build_script: build.sh
 
+          - name: Alpine, gcc 32-bit
+            id: alpine_32bit
+            container: alpine_32bit
+            build_script: build.sh
+            test_script: test.sh
+            travis_branch: alpine_32bit
+
           - name: Fedora Rawhide, clang++
             id: fedora_rawhide
             travis_branch: sanitize
             container: fedora_rawhide
             build_script: build.sh
+
+          - name: Ubuntu 22.04, gcc
+            id: ubuntu_22.04
+            travis_branch: ubuntu_2204
+            container: ubuntu_22.04
+            before_test_script: services.sh
+            build_script: build.sh
+            test_script: test.sh
 
           - name: Ubuntu 20.04, clang ASAN
             id: asan
@@ -87,6 +104,7 @@ jobs:
             id: coverage
             travis_branch: ubuntu_2004
             container: ubuntu_20.04
+            before_test_script: services.sh
             build_script: build.sh
             test_script: test.sh
 
@@ -101,21 +119,6 @@ jobs:
             id: icc
             container: icc
             build_script: build.sh
-
-          - name: Ubuntu 18.04, gcc
-            id: ubuntu_18.04
-            container: ubuntu_18.04
-            build_script: build.sh
-            before_test_script: services.sh
-            test_script: test.sh
-            travis_branch: ubuntu_1804
-
-          - name: Ubuntu 18.04, gcc 32-bit
-            id: ubuntu_18.04_32bit
-            container: ubuntu_18.04_32bit
-            build_script: build.sh
-            test_script: test.sh
-            travis_branch: ubuntu_1804_32bit
 
     name: ${{ matrix.name }}
 
@@ -319,14 +322,14 @@ jobs:
           docker push ${CONTAINER_NAME_FULL}
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ matrix.id == 'coverage' }}
         with:
           name: coverage_index.html
           path: build-${{ matrix.id }}/coverage_html/index.html
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ matrix.id == 'coverage' }}
         with:
           name: HTML

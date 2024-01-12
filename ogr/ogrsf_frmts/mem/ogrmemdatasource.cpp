@@ -85,6 +85,7 @@ OGRLayer *OGRMemDataSource::ICreateLayer(const char *pszLayerName,
     if (CPLFetchBool(papszOptions, "ADVERTIZE_UTF8", false))
         poLayer->SetAdvertizeUTF8(true);
 
+    poLayer->SetDataset(this);
     poLayer->SetFIDColumn(CSLFetchNameValueDef(papszOptions, "FID", ""));
 
     // Add layer to data source layer list.
@@ -204,6 +205,7 @@ bool OGRMemDataSource::DeleteFieldDomain(const std::string &name,
                 poLayer->GetLayerDefn()->GetFieldDefn(j);
             if (poFieldDefn->GetDomainName() == name)
             {
+                auto oTemporaryUnsealer(poFieldDefn->GetTemporaryUnsealer());
                 poFieldDefn->SetDomainName(std::string());
             }
         }

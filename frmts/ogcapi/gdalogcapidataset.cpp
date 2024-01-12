@@ -760,6 +760,7 @@ bool OGCAPIDataset::InitFromCollection(GDALOpenInfo *poOpenInfo,
     bool bItemsJson = false;
 
     CPLString osSelfURL;
+    bool bSelfJson = false;
 
     for (const auto &oLink : oLinks)
     {
@@ -830,9 +831,17 @@ bool OGCAPIDataset::InitFromCollection(GDALOpenInfo *poOpenInfo,
                 osItemsURL = BuildURL(oLink["href"].ToString());
             }
         }
-        else if (osRel == "self" && osType == "application/json")
+        else if (!bSelfJson && osRel == "self")
         {
-            osSelfURL = BuildURL(oLink["href"].ToString());
+            if (osType == "application/json")
+            {
+                bSelfJson = true;
+                osSelfURL = BuildURL(oLink["href"].ToString());
+            }
+            else if (osType.empty())
+            {
+                osSelfURL = BuildURL(oLink["href"].ToString());
+            }
         }
     }
 
@@ -1503,7 +1512,7 @@ ParseXMLSchema(const std::string &osURL,
                 GML_GetOGRFieldType(poProperty->GetType(), eSubType);
 
             const char *pszName = poProperty->GetName();
-            auto poField = cpl::make_unique<OGRFieldDefn>(pszName, eFType);
+            auto poField = std::make_unique<OGRFieldDefn>(pszName, eFType);
             poField->SetSubType(eSubType);
             apoFields.emplace_back(std::move(poField));
         }
@@ -2737,7 +2746,7 @@ GDALDataset *OGCAPIDataset::Open(GDALOpenInfo *poOpenInfo)
 {
     if (!Identify(poOpenInfo))
         return nullptr;
-    auto poDS = cpl::make_unique<OGCAPIDataset>();
+    auto poDS = std::make_unique<OGCAPIDataset>();
     if (STARTS_WITH_CI(poOpenInfo->pszFilename, "OGCAPI:"))
     {
         if (!poDS->InitFromURL(poOpenInfo))

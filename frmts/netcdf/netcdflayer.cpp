@@ -235,8 +235,8 @@ bool netCDFLayer::Create(char **papszOptions,
                 if (status != NC_NOERR)
                     return false;
 
-                aoAutoVariables.push_back(std::pair<CPLString, int>(
-                    m_osProfileDimName, m_nProfileVarID));
+                aoAutoVariables.push_back(
+                    std::pair(m_osProfileDimName, m_nProfileVarID));
 
                 status =
                     nc_put_att_text(m_nLayerCDFId, m_nProfileVarID, "cf_role",
@@ -282,7 +282,7 @@ bool netCDFLayer::Create(char **papszOptions,
                 return false;
 
             aoAutoVariables.push_back(
-                std::pair<CPLString, int>("parentIndex", m_nParentIndexVarID));
+                std::pair("parentIndex", m_nParentIndexVarID));
 
             status =
                 nc_put_att_text(m_nLayerCDFId, m_nParentIndexVarID, CF_LNG_NAME,
@@ -325,10 +325,8 @@ bool netCDFLayer::Create(char **papszOptions,
                 return false;
             }
 
-            aoAutoVariables.push_back(
-                std::pair<CPLString, int>(pszXVarName, m_nXVarID));
-            aoAutoVariables.push_back(
-                std::pair<CPLString, int>(pszYVarName, m_nYVarID));
+            aoAutoVariables.push_back(std::pair(pszXVarName, m_nXVarID));
+            aoAutoVariables.push_back(std::pair(pszYVarName, m_nYVarID));
 
             m_nXVarNCDFType = NC_DOUBLE;
             m_nYVarNCDFType = NC_DOUBLE;
@@ -364,8 +362,7 @@ bool netCDFLayer::Create(char **papszOptions,
                     return false;
                 }
 
-                aoAutoVariables.push_back(
-                    std::pair<CPLString, int>(pszZVarName, m_nZVarID));
+                aoAutoVariables.push_back(std::pair(pszZVarName, m_nZVarID));
 
                 m_nZVarNCDFType = NC_DOUBLE;
                 m_uZVarNoData.dfVal = NC_FILL_DOUBLE;
@@ -402,7 +399,6 @@ bool netCDFLayer::Create(char **papszOptions,
         }
         else if (m_poFeatureDefn->GetGeomType() != wkbNone)
         {
-#ifdef NETCDF_HAS_NC4
             if (m_poDS->eFormat == NCDF_FORMAT_NC4 && m_bUseStringInNC4)
             {
                 m_nWKTNCDFType = NC_STRING;
@@ -411,7 +407,6 @@ bool netCDFLayer::Create(char **papszOptions,
                                1, &m_nRecordDimID, &m_nWKTVarID);
             }
             else
-#endif
             {
                 m_nWKTNCDFType = NC_CHAR;
                 m_nWKTMaxWidth = atoi(CSLFetchNameValueDef(
@@ -437,8 +432,7 @@ bool netCDFLayer::Create(char **papszOptions,
                 return false;
             }
 
-            aoAutoVariables.push_back(
-                std::pair<CPLString, int>(m_osWKTVarName, m_nWKTVarID));
+            aoAutoVariables.push_back(std::pair(m_osWKTVarName, m_nWKTVarID));
 
             status = nc_put_att_text(m_nLayerCDFId, m_nWKTVarID, CF_LNG_NAME,
                                      strlen("Geometry as ISO WKT"),
@@ -481,8 +475,7 @@ bool netCDFLayer::Create(char **papszOptions,
             return false;
         if (pszCFProjection != nullptr)
         {
-            aoAutoVariables.push_back(
-                std::pair<CPLString, int>(pszCFProjection, nSRSVarId));
+            aoAutoVariables.push_back(std::pair(pszCFProjection, nSRSVarId));
 
             m_osGridMapping = pszCFProjection;
             CPLFree(pszCFProjection);
@@ -779,7 +772,6 @@ void netCDFLayer::SetWKTGeometryField(const char *pszWKTVarName)
     int nd;
     nc_inq_varndims(m_nLayerCDFId, m_nWKTVarID, &nd);
     nc_inq_vartype(m_nLayerCDFId, m_nWKTVarID, &m_nWKTNCDFType);
-#ifdef NETCDF_HAS_NC4
     if (nd == 1 && m_nWKTNCDFType == NC_STRING)
     {
         int nDimID;
@@ -790,9 +782,7 @@ void netCDFLayer::SetWKTGeometryField(const char *pszWKTVarName)
             return;
         }
     }
-    else
-#endif
-        if (nd == 2 && m_nWKTNCDFType == NC_CHAR)
+    else if (nd == 2 && m_nWKTNCDFType == NC_CHAR)
     {
         int anDimIds[2] = {-1, -1};
         size_t nLen = 0;
@@ -1014,7 +1004,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_STRING:
             {
                 char *pszVal = nullptr;
@@ -1032,7 +1021,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 }
                 break;
             }
-#endif
 
             case NC_BYTE:
             {
@@ -1050,7 +1038,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_UBYTE:
             {
                 unsigned char uchVal = 0;
@@ -1066,7 +1053,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 poFeature->SetField(i, static_cast<int>(uchVal));
                 break;
             }
-#endif
 
             case NC_SHORT:
             {
@@ -1085,7 +1071,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_USHORT:
             {
                 unsigned short usVal = 0;
@@ -1101,7 +1086,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 poFeature->SetField(i, static_cast<int>(usVal));
                 break;
             }
-#endif
 
             case NC_INT:
             {
@@ -1136,7 +1120,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_UINT:
             {
                 unsigned int unVal = 0;
@@ -1158,9 +1141,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 poFeature->SetField(i, static_cast<GIntBig>(unVal));
                 break;
             }
-#endif
-
-#ifdef NETCDF_HAS_NC4
             case NC_INT64:
             {
                 GIntBig nVal = 0;
@@ -1192,7 +1172,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 poFeature->SetField(i, static_cast<double>(nVal));
                 break;
             }
-#endif
 
             case NC_FLOAT:
             {
@@ -1324,7 +1303,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 pszWKT = nullptr;
             }
         }
-#ifdef NETCDF_HAS_NC4
         else if (m_nWKTNCDFType == NC_STRING)
         {
             char *pszVal = nullptr;
@@ -1344,7 +1322,6 @@ bool netCDFLayer::FillFeatureFromVar(OGRFeature *poFeature, int nMainDimId,
                 nc_free_string(1, &pszVal);
             }
         }
-#endif
         if (pszWKT != nullptr)
         {
             OGRGeometry *poGeom = nullptr;
@@ -1528,7 +1505,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
 
         if (!(poFeature->IsFieldSetAndNotNull(i)) && m_bLegacyCreateMode)
         {
-#ifdef NETCDF_HAS_NC4
             if (m_bNCDumpCompat && m_aoFieldDesc[i].nType == NC_STRING)
             {
                 const char *pszVal = "";
@@ -1536,7 +1512,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                     m_nLayerCDFId, m_aoFieldDesc[i].nVarId, anIndex, &pszVal);
                 NCDF_ERR(status);
             }
-#endif
             continue;
         }
 
@@ -1658,7 +1633,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_STRING:
             {
                 const char *pszVal = poFeature->GetFieldAsString(i);
@@ -1679,7 +1653,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
 
                 break;
             }
-#endif
 
             case NC_BYTE:
             {
@@ -1702,7 +1675,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_UBYTE:
             {
                 int nVal = poFeature->GetFieldAsInteger(i);
@@ -1723,7 +1695,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                 }
                 break;
             }
-#endif
 
             case NC_SHORT:
             {
@@ -1744,7 +1715,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_USHORT:
             {
                 int nVal = poFeature->GetFieldAsInteger(i);
@@ -1765,7 +1735,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
 
                 break;
             }
-#endif
 
             case NC_INT:
             {
@@ -1814,7 +1783,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                 break;
             }
 
-#ifdef NETCDF_HAS_NC4
             case NC_UINT:
             {
                 GIntBig nVal = poFeature->GetFieldAsInteger64(i);
@@ -1835,9 +1803,7 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
 
                 break;
             }
-#endif
 
-#ifdef NETCDF_HAS_NC4
             case NC_INT64:
             {
                 GIntBig nVal = poFeature->GetFieldAsInteger64(i);
@@ -1874,7 +1840,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
 
                 break;
             }
-#endif
 
             case NC_FLOAT:
             {
@@ -2028,7 +1993,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
         char *pszWKT = nullptr;
         poGeom->exportToWkt(&pszWKT, wkbVariantIso);
         int status;
-#ifdef NETCDF_HAS_NC4
         if (m_nWKTNCDFType == NC_STRING)
         {
             const char *pszWKTConst = pszWKT;
@@ -2036,7 +2000,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                                         &pszWKTConst);
         }
         else
-#endif
         {
             size_t anCount[2];
             anCount[0] = 1;
@@ -2081,7 +2044,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
             return false;
         }
     }
-#ifdef NETCDF_HAS_NC4
     else if (m_poFeatureDefn->GetGeomType() != wkbNone && m_nWKTVarID >= 0 &&
              poGeom == nullptr && m_nWKTNCDFType == NC_STRING &&
              m_bNCDumpCompat && m_bLegacyCreateMode)
@@ -2091,7 +2053,6 @@ bool netCDFLayer::FillVarFromFeature(OGRFeature *poFeature, int nMainDimId,
                                         &pszWKTConst);
         NCDF_ERR(status);
     }
-#endif
 
     try
     {
@@ -2172,7 +2133,6 @@ bool netCDFLayer::AddField(int nVarID)
             break;
         }
 
-#ifdef NETCDF_HAS_NC4
         case NC_UBYTE:
         {
             eType = OFTInteger;
@@ -2184,7 +2144,6 @@ bool netCDFLayer::AddField(int nVarID)
             CPLFree(pszValue);
             break;
         }
-#endif
 
         case NC_CHAR:
         {
@@ -2202,13 +2161,11 @@ bool netCDFLayer::AddField(int nVarID)
             break;
         }
 
-#ifdef NETCDF_HAS_NC4
         case NC_STRING:
         {
             eType = OFTString;
             break;
         }
-#endif
 
         case NC_SHORT:
         {
@@ -2223,7 +2180,6 @@ bool netCDFLayer::AddField(int nVarID)
             break;
         }
 
-#ifdef NETCDF_HAS_NC4
         case NC_USHORT:
         {
             eType = OFTInteger;
@@ -2235,7 +2191,6 @@ bool netCDFLayer::AddField(int nVarID)
             CPLFree(pszValue);
             break;
         }
-#endif
 
         case NC_INT:
         {
@@ -2249,7 +2204,6 @@ bool netCDFLayer::AddField(int nVarID)
             break;
         }
 
-#ifdef NETCDF_HAS_NC4
         case NC_UINT:
         {
             eType = OFTInteger64;
@@ -2262,9 +2216,7 @@ bool netCDFLayer::AddField(int nVarID)
             CPLFree(pszValue);
             break;
         }
-#endif
 
-#ifdef NETCDF_HAS_NC4
         case NC_INT64:
         {
             eType = OFTInteger64;
@@ -2294,7 +2246,6 @@ bool netCDFLayer::AddField(int nVarID)
             CPLFree(pszValue);
             break;
         }
-#endif
 
         case NC_FLOAT:
         {
@@ -2433,7 +2384,8 @@ bool netCDFLayer::AddField(int nVarID)
 /*                             CreateField()                            */
 /************************************************************************/
 
-OGRErr netCDFLayer::CreateField(OGRFieldDefn *poFieldDefn, int /* bApproxOK */)
+OGRErr netCDFLayer::CreateField(const OGRFieldDefn *poFieldDefn,
+                                int /* bApproxOK */)
 {
     int nSecDimId = -1;
     int nVarID = -1;
@@ -2579,7 +2531,6 @@ OGRErr netCDFLayer::CreateField(OGRFieldDefn *poFieldDefn, int /* bApproxOK */)
                     nVarID =
                         layerVID.nc_def_vvar(pszVarName, nType, 1, &nMainDimId);
                 }
-#ifdef NETCDF_HAS_NC4
                 else if (m_poDS->eFormat == NCDF_FORMAT_NC4 &&
                          m_bUseStringInNC4)
                 {
@@ -2587,7 +2538,6 @@ OGRErr netCDFLayer::CreateField(OGRFieldDefn *poFieldDefn, int /* bApproxOK */)
                     nVarID =
                         layerVID.nc_def_vvar(pszVarName, nType, 1, &nMainDimId);
                 }
-#endif
                 else
                 {
                     if (poFieldDefn->GetWidth() == 0 && !m_bAutoGrowStrings)
@@ -2654,13 +2604,11 @@ OGRErr netCDFLayer::CreateField(OGRFieldDefn *poFieldDefn, int /* bApproxOK */)
             {
                 nType = NC_DOUBLE;
                 nodata.dfVal = NC_FILL_DOUBLE;
-#ifdef NETCDF_HAS_NC4
                 if (m_poDS->eFormat == NCDF_FORMAT_NC4)
                 {
                     nType = NC_INT64;
                     nodata.nVal64 = NC_FILL_INT64;
                 }
-#endif
 
                 nVarID =
                     layerVID.nc_def_vvar(pszVarName, nType, 1, &nMainDimId);

@@ -609,6 +609,7 @@ CPLErr PostGISRasterRasterBand::IRasterIO(
               sizeof(PostGISRasterTileDataset *), SortTilesByPKID);
     }
 
+    VRTSource::WorkingState oWorkingState;
     for (i = 0; i < nFeatureCount && eErr == CE_None; i++)
     {
         PostGISRasterTileDataset *poTile = papsMatchingTiles[i];
@@ -617,7 +618,8 @@ CPLErr PostGISRasterRasterBand::IRasterIO(
                 poTile->GetRasterBand(nBand));
         eErr = poTileBand->poSource->RasterIO(
             eDataType, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize,
-            nBufYSize, eBufType, nPixelSpace, nLineSpace, nullptr);
+            nBufYSize, eBufType, nPixelSpace, nLineSpace, nullptr,
+            oWorkingState);
     }
 
     // Free the object that holds pointers to matching tiles
@@ -675,6 +677,11 @@ GDALRasterBand *PostGISRasterRasterBand::GetOverview(int i)
 
     PostGISRasterDataset *poRDS = cpl::down_cast<PostGISRasterDataset *>(poDS);
     PostGISRasterDataset *poOverviewDS = poRDS->GetOverviewDS(i);
+    if (!poOverviewDS)
+    {
+        CPLAssert(false);
+        return nullptr;
+    }
     if (poOverviewDS->nBands == 0)
     {
         if (!poOverviewDS->SetRasterProperties(nullptr) ||

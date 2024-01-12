@@ -1229,9 +1229,12 @@ CPLErr JP2OPJLikeDataset<CODEC, BASE>::SetMetadataItem(const char *pszName,
 /*                            Identify()                                */
 /************************************************************************/
 
+#ifndef jpc_header_defined
+#define jpc_header_defined
 static const unsigned char jpc_header[] = {0xff, 0x4f, 0xff,
                                            0x51};  // SOC + RSIZ markers
 static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
+#endif
 
 template <typename CODEC, typename BASE>
 int JP2OPJLikeDataset<CODEC, BASE>::Identify(GDALOpenInfo *poOpenInfo)
@@ -2247,21 +2250,6 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
     const char *pszYCC = CSLFetchNameValue(papszOptions, "YCC");
     int bYCC = ((nBands == 3 || nBands == 4) &&
                 CPLTestBool(CSLFetchNameValueDef(papszOptions, "YCC", "TRUE")));
-
-    if (!CODEC::supportsYCC_4Band())
-    {
-        if (bYCC && nBands > 3)
-        {
-            if (pszYCC != nullptr)
-            {
-                CPLError(
-                    CE_Warning, CPLE_AppDefined,
-                    "OpenJPEG r2950 and below can generate invalid output with "
-                    "MCT YCC transform and more than 3 bands. Disabling YCC");
-            }
-            bYCC = FALSE;
-        }
-    }
 
     if (bYCBCR420 && bYCC)
     {
@@ -3702,6 +3690,7 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
     return poDS;
 }
 
+#ifdef unused
 template <typename CODEC, typename BASE>
 void GDALRegisterJP2(const std::string &libraryName,
                      const std::string &driverName)
@@ -3740,3 +3729,4 @@ void GDALRegisterJP2(const std::string &libraryName,
 
     GetGDALDriverManager()->RegisterDriver(poDriver);
 }
+#endif

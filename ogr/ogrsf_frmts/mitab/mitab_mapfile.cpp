@@ -33,6 +33,7 @@
 #include "cpl_port.h"
 #include "mitab.h"
 
+#include <cassert>
 #include <cstddef>
 #if HAVE_FCNTL_H
 #include <fcntl.h>
@@ -751,7 +752,11 @@ int TABMAPFile::LoadNextMatchingObjectBlock(int bFirstObject)
         m_poSpIndexLeaf->SetCurChildRef(nullptr, ++iEntry);
 
         TABMAPIndexEntry *psEntry = m_poSpIndexLeaf->GetEntry(iEntry);
-
+        if (!psEntry)
+        {
+            CPLAssert(false);
+            continue;
+        }
         if (psEntry->XMax < m_XMinFilter || psEntry->YMax < m_YMinFilter ||
             psEntry->XMin > m_XMaxFilter || psEntry->YMin > m_YMaxFilter)
             continue;
@@ -2007,7 +2012,7 @@ TABMAPObjectBlock *TABMAPFile::SplitObjBlock(TABMAPObjHdr *poObjHdrToAdd,
     /*-----------------------------------------------------------------
      * Create new obj and coord block
      *----------------------------------------------------------------*/
-    auto poNewObjBlock = cpl::make_unique<TABMAPObjectBlock>(m_eAccessMode);
+    auto poNewObjBlock = std::make_unique<TABMAPObjectBlock>(m_eAccessMode);
     poNewObjBlock->InitNewBlock(m_fp, m_poHeader->m_nRegularBlockSize,
                                 m_oBlockManager.AllocNewBlock("OBJECT"));
 

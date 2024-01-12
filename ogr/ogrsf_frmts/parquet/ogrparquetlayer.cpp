@@ -344,7 +344,8 @@ bool OGRParquetLayerBase::DealWithGeometryColumn(
     {
         std::shared_ptr<arrow::DataType> fieldType = field->type();
         auto fieldTypeId = fieldType->id();
-        if (fieldTypeId == arrow::Type::BINARY)
+        if (fieldTypeId == arrow::Type::BINARY ||
+            fieldTypeId == arrow::Type::LARGE_BINARY)
         {
             CPLDebug("PARQUET",
                      "Field %s detected as likely WKB geometry field",
@@ -352,7 +353,8 @@ bool OGRParquetLayerBase::DealWithGeometryColumn(
             bRegularField = false;
             m_aeGeomEncoding.push_back(OGRArrowGeomEncoding::WKB);
         }
-        else if (fieldTypeId == arrow::Type::STRING &&
+        else if ((fieldTypeId == arrow::Type::STRING ||
+                  fieldTypeId == arrow::Type::LARGE_STRING) &&
                  (field->name().find("wkt") != std::string::npos ||
                   field->name().find("WKT") != std::string::npos))
         {
@@ -392,9 +394,6 @@ bool OGRParquetLayerBase::DealWithGeometryColumn(
 
 int OGRParquetLayerBase::TestCapability(const char *pszCap)
 {
-    if (EQUAL(pszCap, OLCFastFeatureCount))
-        return m_poAttrQuery == nullptr && m_poFilterGeom == nullptr;
-
     if (EQUAL(pszCap, OLCMeasuredGeometries))
         return true;
 
@@ -449,7 +448,9 @@ void OGRParquetLayer::EstablishFeatureDefn()
 
     LoadGeoMetadata(kv_metadata);
     const auto oMapFieldNameToGDALSchemaFieldDefn =
-        LoadGDALMetadata(kv_metadata.get());
+        LoadGDALSchema(kv_metadata.get());
+
+    LoadGDALMetadata(kv_metadata.get());
 
     if (!m_poArrowReader->GetSchema(&m_poSchema).ok())
     {
@@ -1677,6 +1678,9 @@ bool OGRParquetLayer::FastGetExtent(int iGeomField, OGREnvelope *psExtent) const
 
 int OGRParquetLayer::TestCapability(const char *pszCap)
 {
+    if (EQUAL(pszCap, OLCFastFeatureCount))
+        return m_poAttrQuery == nullptr && m_poFilterGeom == nullptr;
+
     if (EQUAL(pszCap, OLCIgnoreFields))
         return !m_bHasMissingMappingToParquet;
 

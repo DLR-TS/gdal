@@ -951,7 +951,7 @@ int OGRLIBKMLDataSource::ParseLayers(ContainerPtr poKmlContainer, bool bRecurse)
 
 ******************************************************************************/
 
-static ContainerPtr GetContainerFromRoot(KmlFactory *m_poKmlFactory,
+static ContainerPtr GetContainerFromRoot(KmlFactory *poKmlFactory,
                                          ElementPtr poKmlRoot)
 {
     ContainerPtr poKmlContainer = nullptr;
@@ -976,7 +976,7 @@ static ContainerPtr GetContainerFromRoot(KmlFactory *m_poKmlFactory,
                          (bReadGroundOverlay &&
                           poKmlFeat->IsA(kmldom::Type_GroundOverlay)))
                 {
-                    poKmlContainer = m_poKmlFactory->CreateDocument();
+                    poKmlContainer = poKmlFactory->CreateDocument();
                     poKmlContainer->add_feature(
                         kmldom::AsFeature(kmlengine::Clone(poKmlFeat)));
                 }
@@ -1630,7 +1630,7 @@ void OGRLIBKMLDataSource::ParseDocumentOptions(KmlPtr poKml,
                 else
                 {
                     CPLError(CE_Warning, CPLE_AppDefined,
-                             "Invalid IRI for AUTHOR_URI");
+                             "Invalid URI for AUTHOR_URI");
                 }
             }
             if (pszAuthorEmail != nullptr)

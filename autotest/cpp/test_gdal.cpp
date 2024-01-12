@@ -2533,6 +2533,32 @@ TEST_F(test_gdal, MarkSuppressOnClose)
     }
 }
 
+// Test effect of UnMarkSuppressOnClose()
+TEST_F(test_gdal, UnMarkSuppressOnClose)
+{
+    const char *pszFilename = "/vsimem/out.tif";
+    const char *const apszOptions[] = {"PROFILE=BASELINE", nullptr};
+    {
+        GDALDatasetUniquePtr poDstDS(
+            GDALDriver::FromHandle(GDALGetDriverByName("GTiff"))
+                ->Create(pszFilename, 1, 1, 1, GDT_Byte, apszOptions));
+        poDstDS->MarkSuppressOnClose();
+        poDstDS->GetRasterBand(1)->Fill(255);
+        if (poDstDS->IsMarkedSuppressOnClose())
+            poDstDS->UnMarkSuppressOnClose();
+        poDstDS->FlushCache(true);
+        // All buffers have been flushed, and our dirty block should have
+        // been written hence the checksum will not be 0
+        EXPECT_NE(GDALChecksumImage(
+                      GDALRasterBand::FromHandle(poDstDS->GetRasterBand(1)), 0,
+                      0, 1, 1),
+                  0);
+        VSIStatBufL sStat;
+        EXPECT_TRUE(VSIStatL(pszFilename, &sStat) == 0);
+        VSIUnlink(pszFilename);
+    }
+}
+
 template <class T> void TestCachedPixelAccessor()
 {
     constexpr auto eType = GDALCachedPixelAccessorGetDataType<T>::DataType;
@@ -3420,6 +3446,7 @@ TEST_F(test_gdal, jpegxl_jpeg_compatible_ReadCompressedData)
 // Test GDAL_OF_SHARED flag and open options
 TEST_F(test_gdal, open_shared_open_options)
 {
+    CPLErrorReset();
     const char *const apszOpenOptions[] = {"OVERVIEW_LEVEL=NONE", nullptr};
     {
         GDALDataset *poDS1 =
@@ -3428,6 +3455,7 @@ TEST_F(test_gdal, open_shared_open_options)
         GDALDataset *poDS2 =
             GDALDataset::Open(GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED,
                               nullptr, apszOpenOptions);
+        EXPECT_EQ(CPLGetLastErrorType(), CE_None);
         EXPECT_NE(poDS1, nullptr);
         EXPECT_NE(poDS2, nullptr);
         EXPECT_EQ(poDS1, poDS2);
@@ -3443,6 +3471,7 @@ TEST_F(test_gdal, open_shared_open_options)
         GDALDataset *poDS3 =
             GDALDataset::Open(GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED,
                               nullptr, apszOpenOptions);
+        EXPECT_EQ(CPLGetLastErrorType(), CE_None);
         EXPECT_NE(poDS1, nullptr);
         EXPECT_NE(poDS2, nullptr);
         EXPECT_NE(poDS3, nullptr);
@@ -3460,11 +3489,65 @@ TEST_F(test_gdal, open_shared_open_options)
         GDALDataset *poDS2 =
             GDALDataset::Open(GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED,
                               nullptr, apszOpenOptions);
+        EXPECT_EQ(CPLGetLastErrorType(), CE_None);
         EXPECT_NE(poDS1, nullptr);
         EXPECT_NE(poDS2, nullptr);
         EXPECT_EQ(poDS1, poDS2);
         GDALClose(poDS1);
         GDALClose(poDS2);
+    }
+    {
+        GDALDataset *poDS1 = GDALDataset::Open(
+            GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED, nullptr, nullptr);
+        GDALDataset *poDS2 =
+            GDALDataset::Open(GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED,
+                              nullptr, apszOpenOptions);
+        GDALDataset *poDS3 =
+            GDALDataset::Open(GCORE_DATA_DIR "rgbsmall.tif", GDAL_OF_SHARED,
+                              nullptr, apszOpenOptions);
+        EXPECT_EQ(CPLGetLastErrorType(), CE_None);
+        EXPECT_NE(poDS1, nullptr);
+        EXPECT_NE(poDS2, nullptr);
+        EXPECT_NE(poDS3, nullptr);
+        EXPECT_NE(poDS1, poDS2);
+        EXPECT_EQ(poDS2, poDS3);
+        GDALClose(poDS1);
+        GDALClose(poDS2);
+        GDALClose(poDS3);
+    }
+}
+
+// Test DropCache() to check that no data is saved on disk
+TEST_F(test_gdal, drop_cache)
+{
+    CPLErrorReset();
+    {
+        GDALDriverManager *gdalDriverManager = GetGDALDriverManager();
+        if (!gdalDriverManager)
+            return;
+        GDALDriver *enviDriver = gdalDriverManager->GetDriverByName("ENVI");
+        if (!enviDriver)
+            return;
+        const char *enviOptions[] = {"SUFFIX=ADD", "INTERLEAVE=BIL", nullptr};
+
+        const char *filename = GCORE_DATA_DIR "test_drop_cache.bil";
+
+        auto poDS = std::unique_ptr<GDALDataset>(enviDriver->Create(
+            filename, 1, 1, 1, GDALDataType::GDT_Float32, enviOptions));
+        if (!poDS)
+            return;
+        poDS->GetRasterBand(1)->Fill(1);
+        poDS->DropCache();
+        poDS.reset();
+
+        poDS.reset(
+            GDALDataset::Open(filename, GDAL_OF_SHARED, nullptr, nullptr));
+        if (!poDS)
+            return;
+
+        EXPECT_EQ(GDALChecksumImage(poDS->GetRasterBand(1), 0, 0, 1, 1), 0);
+        poDS->MarkSuppressOnClose();
+        poDS.reset();
     }
 }
 

@@ -57,8 +57,6 @@
 #include "ogr_spatialref.h"
 #include "ogr_srs_api.h"
 
-CPL_CVSID("$Id$")
-
 CPL_C_START
 void *GDALDeserializeGCPTransformer(CPLXMLNode *psTree);
 void *GDALDeserializeTPSTransformer(CPLXMLNode *psTree);
@@ -958,7 +956,7 @@ retry:
                 {
                     // CHECK_WITH_INVERT_PROJ=YES prevent reliable
                     // transformation of poles.
-                    poSetter = cpl::make_unique<CPLConfigOptionSetter>(
+                    poSetter = std::make_unique<CPLConfigOptionSetter>(
                         "CHECK_WITH_INVERT_PROJ", "NO", false);
                     GDALRefreshGenImgProjTransformer(pTransformArg);
                     // GDALRefreshGenImgProjTransformer() has invalidated psRTI
@@ -1732,7 +1730,7 @@ static void GDALGCPAntimeridianUnwrap(int nGCPCount, GDAL_GCP *pasGCPList,
  * will result in a subset of the GCPs with longitude in the [-180,-170] range
  * and another subset in [170, 180]. By default (AUTO), that situation will be
  * detected and longitudes in [-180,-170] will be shifted to [180, 190] to get
- * a continuous set. This option can be set to YES to force that behaviour
+ * a continuous set. This option can be set to YES to force that behavior
  * (useful if no SRS information is available), or to NO to disable it.
  * </li>
  * <li> SRC_METHOD: may have a value which is one of GEOTRANSFORM,

@@ -101,6 +101,64 @@ void CPL_STDCALL GDALDestroyDriver(GDALDriverH hDriver)
 }
 
 /************************************************************************/
+/*                               Open()                                 */
+/************************************************************************/
+
+//! @cond Doxygen_Suppress
+
+GDALDataset *GDALDriver::Open(GDALOpenInfo *poOpenInfo, bool bSetOpenOptions)
+{
+
+    GDALDataset *poDS = nullptr;
+    pfnOpen = GetOpenCallback();
+    if (pfnOpen != nullptr)
+    {
+        poDS = pfnOpen(poOpenInfo);
+    }
+    else if (pfnOpenWithDriverArg != nullptr)
+    {
+        poDS = pfnOpenWithDriverArg(this, poOpenInfo);
+    }
+
+    if (poDS)
+    {
+        poDS->nOpenFlags = poOpenInfo->nOpenFlags;
+
+        if (strlen(poDS->GetDescription()) == 0)
+            poDS->SetDescription(poOpenInfo->pszFilename);
+
+        if (poDS->poDriver == nullptr)
+            poDS->poDriver = this;
+
+        if (poDS->papszOpenOptions == nullptr && bSetOpenOptions)
+        {
+            poDS->papszOpenOptions = CSLDuplicate(poOpenInfo->papszOpenOptions);
+        }
+
+        if (!(poOpenInfo->nOpenFlags & GDAL_OF_INTERNAL))
+        {
+            if (CPLGetPID() != GDALGetResponsiblePIDForCurrentThread())
+                CPLDebug(
+                    "GDAL",
+                    "GDALOpen(%s, this=%p) succeeds as "
+                    "%s (pid=%d, responsiblePID=%d).",
+                    poOpenInfo->pszFilename, poDS, GetDescription(),
+                    static_cast<int>(CPLGetPID()),
+                    static_cast<int>(GDALGetResponsiblePIDForCurrentThread()));
+            else
+                CPLDebug("GDAL", "GDALOpen(%s, this=%p) succeeds as %s.",
+                         poOpenInfo->pszFilename, poDS, GetDescription());
+
+            poDS->AddToDatasetOpenList();
+        }
+    }
+
+    return poDS;
+}
+
+//! @endcond
+
+/************************************************************************/
 /*                               Create()                               */
 /************************************************************************/
 
@@ -145,6 +203,7 @@ GDALDataset *GDALDriver::Create(const char *pszFilename, int nXSize, int nYSize,
     /* -------------------------------------------------------------------- */
     /*      Does this format support creation.                              */
     /* -------------------------------------------------------------------- */
+    pfnCreate = GetCreateCallback();
     if (pfnCreate == nullptr && pfnCreateEx == nullptr &&
         pfnCreateVectorOnly == nullptr)
     {
@@ -300,6 +359,7 @@ GDALDriver::CreateMultiDimensional(const char *pszFilename,
     /* -------------------------------------------------------------------- */
     /*      Does this format support creation.                              */
     /* -------------------------------------------------------------------- */
+    pfnCreateMultiDimensional = GetCreateMultiDimensionalCallback();
     if (pfnCreateMultiDimensional == nullptr)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
@@ -923,6 +983,112 @@ void GDALDriver::DefaultCopyMetadata(GDALDataset *poSrcDS, GDALDataset *poDstDS,
     }
     CSLDestroy(papszSrcMDD);
 }
+
+/************************************************************************/
+/*                      QuietDeleteForCreateCopy()                      */
+/************************************************************************/
+
+CPLErr GDALDriver::QuietDeleteForCreateCopy(const char *pszFilename,
+                                            GDALDataset *poSrcDS)
+{
+    // Someone issuing CreateCopy("foo.tif") on a
+    // memory driver doesn't expect files with those names to be deleted
+    // on a file system...
+    // This is somewhat messy. Ideally there should be a way for the
+    // driver to overload the default behavior
+    if (!EQUAL(GetDescription(), "MEM") && !EQUAL(GetDescription(), "Memory") &&
+        // Also exclude database formats for which there's no file list
+        // and whose opening might be slow (GeoRaster in particular)
+        !EQUAL(GetDescription(), "GeoRaster") &&
+        !EQUAL(GetDescription(), "PostGISRaster"))
+    {
+        /* --------------------------------------------------------------------
+         */
+        /*      Establish list of files of output dataset if it already
+         * exists. */
+        /* --------------------------------------------------------------------
+         */
+        std::set<std::string> oSetExistingDestFiles;
+        {
+            CPLPushErrorHandler(CPLQuietErrorHandler);
+            const char *const apszAllowedDrivers[] = {GetDescription(),
+                                                      nullptr};
+            auto poExistingOutputDS =
+                std::unique_ptr<GDALDataset>(GDALDataset::Open(
+                    pszFilename, GDAL_OF_RASTER, apszAllowedDrivers));
+            if (poExistingOutputDS)
+            {
+                char **papszFileList = poExistingOutputDS->GetFileList();
+                for (char **papszIter = papszFileList; papszIter && *papszIter;
+                     ++papszIter)
+                {
+                    oSetExistingDestFiles.insert(
+                        CPLString(*papszIter).replaceAll('\\', '/'));
+                }
+                CSLDestroy(papszFileList);
+            }
+            CPLPopErrorHandler();
+        }
+
+        /* --------------------------------------------------------------------
+         */
+        /*      Check if the source dataset shares some files with the dest
+         * one.*/
+        /* --------------------------------------------------------------------
+         */
+        std::set<std::string> oSetExistingDestFilesFoundInSource;
+        if (!oSetExistingDestFiles.empty())
+        {
+            CPLPushErrorHandler(CPLQuietErrorHandler);
+            // We need to reopen in a temporary dataset for the particular
+            // case of overwritten a .tif.ovr file from a .tif
+            // If we probe the file list of the .tif, it will then open the
+            // .tif.ovr !
+            const char *const apszAllowedDrivers[] = {
+                poSrcDS->GetDriver() ? poSrcDS->GetDriver()->GetDescription()
+                                     : nullptr,
+                nullptr};
+            auto poSrcDSTmp = std::unique_ptr<GDALDataset>(GDALDataset::Open(
+                poSrcDS->GetDescription(), GDAL_OF_RASTER, apszAllowedDrivers));
+            if (poSrcDSTmp)
+            {
+                char **papszFileList = poSrcDSTmp->GetFileList();
+                for (char **papszIter = papszFileList; papszIter && *papszIter;
+                     ++papszIter)
+                {
+                    CPLString osFilename(*papszIter);
+                    osFilename.replaceAll('\\', '/');
+                    if (oSetExistingDestFiles.find(osFilename) !=
+                        oSetExistingDestFiles.end())
+                    {
+                        oSetExistingDestFilesFoundInSource.insert(osFilename);
+                    }
+                }
+                CSLDestroy(papszFileList);
+            }
+            CPLPopErrorHandler();
+        }
+
+        // If the source file(s) and the dest one share some files in
+        // common, only remove the files that are *not* in common
+        if (!oSetExistingDestFilesFoundInSource.empty())
+        {
+            for (const std::string &osFilename : oSetExistingDestFiles)
+            {
+                if (oSetExistingDestFilesFoundInSource.find(osFilename) ==
+                    oSetExistingDestFilesFoundInSource.end())
+                {
+                    VSIUnlink(osFilename.c_str());
+                }
+            }
+        }
+
+        QuietDelete(pszFilename);
+    }
+
+    return CE_None;
+}
+
 //! @endcond
 
 /************************************************************************/
@@ -1108,109 +1274,17 @@ GDALDataset *GDALDriver::CreateCopy(const char *pszFilename,
     /* -------------------------------------------------------------------- */
     const bool bAppendSubdataset =
         CPLFetchBool(papszOptions, "APPEND_SUBDATASET", false);
-    // Note: QUIET_DELETE_ON_CREATE_COPY is set to NO by the KMLSuperOverlay
-    // driver when writing a .kmz file
+    // Note: @QUIET_DELETE_ON_CREATE_COPY is set to NO by the KMLSuperOverlay
+    // driver when writing a .kmz file. Also by GDALTranslate() if it has
+    // already done a similar job.
     if (!bAppendSubdataset &&
-        CPLFetchBool(papszOptions, "QUIET_DELETE_ON_CREATE_COPY", true))
+        CPLFetchBool(papszOptions, "@QUIET_DELETE_ON_CREATE_COPY", true))
     {
-        // Someone issuing CreateCopy("foo.tif") on a
-        // memory driver doesn't expect files with those names to be deleted
-        // on a file system...
-        // This is somewhat messy. Ideally there should be a way for the
-        // driver to overload the default behavior
-        if (!EQUAL(GetDescription(), "MEM") &&
-            !EQUAL(GetDescription(), "Memory"))
-        {
-            /* --------------------------------------------------------------------
-             */
-            /*      Establish list of files of output dataset if it already
-             * exists. */
-            /* --------------------------------------------------------------------
-             */
-            std::set<std::string> oSetExistingDestFiles;
-            {
-                CPLPushErrorHandler(CPLQuietErrorHandler);
-                const char *const apszAllowedDrivers[] = {GetDescription(),
-                                                          nullptr};
-                auto poExistingOutputDS =
-                    std::unique_ptr<GDALDataset>(GDALDataset::Open(
-                        pszFilename, GDAL_OF_RASTER, apszAllowedDrivers));
-                if (poExistingOutputDS)
-                {
-                    char **papszFileList = poExistingOutputDS->GetFileList();
-                    for (char **papszIter = papszFileList;
-                         papszIter && *papszIter; ++papszIter)
-                    {
-                        oSetExistingDestFiles.insert(
-                            CPLString(*papszIter).replaceAll('\\', '/'));
-                    }
-                    CSLDestroy(papszFileList);
-                }
-                CPLPopErrorHandler();
-            }
-
-            /* --------------------------------------------------------------------
-             */
-            /*      Check if the source dataset shares some files with the dest
-             * one.*/
-            /* --------------------------------------------------------------------
-             */
-            std::set<std::string> oSetExistingDestFilesFoundInSource;
-            if (!oSetExistingDestFiles.empty())
-            {
-                CPLPushErrorHandler(CPLQuietErrorHandler);
-                // We need to reopen in a temporary dataset for the particular
-                // case of overwritten a .tif.ovr file from a .tif
-                // If we probe the file list of the .tif, it will then open the
-                // .tif.ovr !
-                const char *const apszAllowedDrivers[] = {
-                    poSrcDS->GetDriver()
-                        ? poSrcDS->GetDriver()->GetDescription()
-                        : nullptr,
-                    nullptr};
-                auto poSrcDSTmp = std::unique_ptr<GDALDataset>(
-                    GDALDataset::Open(poSrcDS->GetDescription(), GDAL_OF_RASTER,
-                                      apszAllowedDrivers));
-                if (poSrcDSTmp)
-                {
-                    char **papszFileList = poSrcDSTmp->GetFileList();
-                    for (char **papszIter = papszFileList;
-                         papszIter && *papszIter; ++papszIter)
-                    {
-                        CPLString osFilename(*papszIter);
-                        osFilename.replaceAll('\\', '/');
-                        if (oSetExistingDestFiles.find(osFilename) !=
-                            oSetExistingDestFiles.end())
-                        {
-                            oSetExistingDestFilesFoundInSource.insert(
-                                osFilename);
-                        }
-                    }
-                    CSLDestroy(papszFileList);
-                }
-                CPLPopErrorHandler();
-            }
-
-            // If the source file(s) and the dest one share some files in
-            // common, only remove the files that are *not* in common
-            if (!oSetExistingDestFilesFoundInSource.empty())
-            {
-                for (const std::string &osFilename : oSetExistingDestFiles)
-                {
-                    if (oSetExistingDestFilesFoundInSource.find(osFilename) ==
-                        oSetExistingDestFilesFoundInSource.end())
-                    {
-                        VSIUnlink(osFilename.c_str());
-                    }
-                }
-            }
-
-            QuietDelete(pszFilename);
-        }
+        QuietDeleteForCreateCopy(pszFilename, poSrcDS);
     }
 
     int iIdxQuietDeleteOnCreateCopy =
-        CSLPartialFindString(papszOptions, "QUIET_DELETE_ON_CREATE_COPY=");
+        CSLPartialFindString(papszOptions, "@QUIET_DELETE_ON_CREATE_COPY=");
     if (iIdxQuietDeleteOnCreateCopy >= 0)
     {
         if (papszOptionsToDelete == nullptr)
@@ -1284,12 +1358,13 @@ GDALDataset *GDALDriver::CreateCopy(const char *pszFilename,
     /*      Create() method.                                                */
     /* -------------------------------------------------------------------- */
     GDALDataset *poDstDS = nullptr;
-    if (pfnCreateCopy != nullptr &&
+    auto l_pfnCreateCopy = GetCreateCopyCallback();
+    if (l_pfnCreateCopy != nullptr &&
         !CPLTestBool(CPLGetConfigOption("GDAL_DEFAULT_CREATE_COPY", "NO")))
     {
-        poDstDS = pfnCreateCopy(pszFilename, poSrcDS, bStrict,
-                                const_cast<char **>(papszOptions), pfnProgress,
-                                pProgressData);
+        poDstDS = l_pfnCreateCopy(pszFilename, poSrcDS, bStrict,
+                                  const_cast<char **>(papszOptions),
+                                  pfnProgress, pProgressData);
         if (poDstDS != nullptr)
         {
             if (poDstDS->GetDescription() == nullptr ||
@@ -1517,6 +1592,7 @@ CPLErr GDALDriver::QuietDelete(const char *pszName,
 
     CPLDebug("GDAL", "QuietDelete(%s) invoking Delete()", pszName);
 
+    poDriver->pfnDelete = poDriver->GetDeleteCallback();
     const bool bQuiet = !bExists && poDriver->pfnDelete == nullptr &&
                         poDriver->pfnDeleteDataSource == nullptr;
     if (bQuiet)
@@ -1557,6 +1633,7 @@ CPLErr GDALDriver::QuietDelete(const char *pszName,
 CPLErr GDALDriver::Delete(const char *pszFilename)
 
 {
+    pfnDelete = GetDeleteCallback();
     if (pfnDelete != nullptr)
         return pfnDelete(pszFilename);
     else if (pfnDeleteDataSource != nullptr)
@@ -1734,6 +1811,7 @@ CPLErr GDALDriver::DefaultRename(const char *pszNewName, const char *pszOldName)
 CPLErr GDALDriver::Rename(const char *pszNewName, const char *pszOldName)
 
 {
+    pfnRename = GetRenameCallback();
     if (pfnRename != nullptr)
         return pfnRename(pszNewName, pszOldName);
 
@@ -1859,6 +1937,7 @@ CPLErr GDALDriver::DefaultCopyFiles(const char *pszNewName,
 CPLErr GDALDriver::CopyFiles(const char *pszNewName, const char *pszOldName)
 
 {
+    pfnCopyFiles = GetCopyFilesCallback();
     if (pfnCopyFiles != nullptr)
         return pfnCopyFiles(pszNewName, pszOldName);
 
@@ -2581,6 +2660,7 @@ GDALDriverH CPL_STDCALL GDALIdentifyDriverEx(
     const int nDriverCount = poDM->GetDriverCount();
 
     // First pass: only use drivers that have a pfnIdentify implementation.
+    std::vector<GDALDriver *> apoSecondPassDrivers;
     for (int iDriver = 0; iDriver < nDriverCount; ++iDriver)
     {
         GDALDriver *poDriver = poDM->GetDriver(iDriver);
@@ -2619,12 +2699,28 @@ GDALDriverH CPL_STDCALL GDALIdentifyDriverEx(
         }
         else
         {
-            if (poDriver->pfnIdentify(&oOpenInfo) > 0)
+            const int nIdentifyRes = poDriver->pfnIdentify(&oOpenInfo);
+            if (nIdentifyRes > 0)
                 return poDriver;
+            if (nIdentifyRes < 0 &&
+                poDriver->GetMetadataItem("IS_NON_LOADED_PLUGIN"))
+            {
+                // Not loaded plugin
+                apoSecondPassDrivers.push_back(poDriver);
+            }
         }
     }
 
-    // Second pass: slow method.
+    // second pass: try loading plugin drivers
+    for (auto poDriver : apoSecondPassDrivers)
+    {
+        // Force plugin driver loading
+        poDriver->GetMetadata();
+        if (poDriver->pfnIdentify(&oOpenInfo) > 0)
+            return poDriver;
+    }
+
+    // third pass: slow method.
     for (int iDriver = 0; iDriver < nDriverCount; ++iDriver)
     {
         GDALDriver *poDriver = poDM->GetDriver(iDriver);
@@ -2702,6 +2798,14 @@ CPLErr GDALDriver::SetMetadataItem(const char *pszName, const char *pszValue,
             GDALMajorObject::GetMetadataItem(GDAL_DMD_EXTENSIONS) == nullptr)
         {
             GDALMajorObject::SetMetadataItem(GDAL_DMD_EXTENSIONS, pszValue);
+        }
+        /* and vice-versa if there is a single extension in GDAL_DMD_EXTENSIONS */
+        else if (EQUAL(pszName, GDAL_DMD_EXTENSIONS) &&
+                 strchr(pszValue, ' ') == nullptr &&
+                 GDALMajorObject::GetMetadataItem(GDAL_DMD_EXTENSION) ==
+                     nullptr)
+        {
+            GDALMajorObject::SetMetadataItem(GDAL_DMD_EXTENSION, pszValue);
         }
     }
     return GDALMajorObject::SetMetadataItem(pszName, pszValue, pszDomain);
