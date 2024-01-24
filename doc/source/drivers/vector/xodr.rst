@@ -1,7 +1,7 @@
 .. _vector.xodr:
 
 XODR -- OpenDRIVE Road Description Format
-========================================
+=========================================
 
 .. shortname:: XODR
 
@@ -14,10 +14,12 @@ This driver provides read access to road network elements of an OpenDRIVE datase
 Specification version
 ---------------------
 
-The currently supported OpenDRIVE version is 1.4 and basically depends on what is provided by `libOpenDRIVE <https://github.com/pageldev/libOpenDRIVE/>`_. 
+The currently supported OpenDRIVE version is 1.4 and basically depends on what is provided by libOpenDRIVE_. 
+
+.. _libOpenDRIVE: https://github.com/pageldev/libOpenDRIVE/
 
 Supported OpenDRIVE elements
-+++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++
 
 The XODR driver exposes OpenDRIVE's different road elements as separate layers by converting geometric elements into 3-dimensional OGR geometry types. The following _`layer types` are currently implemented:
 
@@ -42,7 +44,7 @@ By definition, OpenDRIVE geometries are always referenced in a Cartesian coordin
 The XODR driver uses this PROJ definition as spatial reference for creation of all OGR geometry layers. 
 
 Open options
-----------------------
+------------
 
 The following open options can be specified
 (typically with the ``-oo name=value`` parameters of :program:`ogrinfo` or :program:`ogr2ogr`):
@@ -97,7 +99,7 @@ Ensure to meet the following driver dependencies:
 
 * PROJ
 * GEOS
-* `libOpenDRIVE <https://github.com/grepthat/libOpenDRIVE>`_ as shared library (built with CMake option ``-DBUILD_SHARED_LIBS=ON``)
+* libOpenDRIVE_ as shared library (built with CMake option ``-DBUILD_SHARED_LIBS=ON``)
 
 Then, after checking out GDAL sources with this driver extension, create the build directory:
 
