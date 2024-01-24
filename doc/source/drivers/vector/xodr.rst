@@ -133,8 +133,8 @@ Check if XODR driver is found:
 
   ::
     
-    cd <gdal>/build/apps/
-    ./ogrinfo --formats
+    cd <gdal>/build/
+    ./apps/ogrinfo --formats
 
 This should print a list of supported OGR formats, including `XODR` in the first row:
 
