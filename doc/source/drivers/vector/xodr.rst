@@ -97,7 +97,7 @@ Ensure to meet the following driver dependencies:
 
 * PROJ
 * GEOS
-* Clone the sources of `libOpenDRIVE <https://github.com/grepthat/libOpenDRIVE>`_. Then build and install the library, preferably with CMake.
+* `libOpenDRIVE <https://github.com/grepthat/libOpenDRIVE>`_ as shared library (built with CMake option ``-DBUILD_SHARED_LIBS=ON``)
 
 Then, after checking out GDAL sources with this driver extension, create the build directory:
 
@@ -148,12 +148,12 @@ If you are on Linux, depending on your environment, you might experience linker 
 
   ::
 
-    ogrinfo: error while loading shared libraries: libgdal.so.33: cannot open shared object file: No such file or directory
+    ERROR 1: libOpenDrive.so: cannot open shared object file: No such file or directory
 
 In such a case set the following environment variables:
 
   ::
 
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<gdal>/build/apps
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
     export GDAL_DRIVER_PATH=<gdal>/build/gdalplugins/
     
