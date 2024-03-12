@@ -22,162 +22,202 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-
 import pytest
 
 from osgeo import gdal, ogr
 
 pytestmark = pytest.mark.require_driver("XODR")
-
 xodr_file = "data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr"
 
-def test_ogr_xodr_basic():
-    """Test basic capabilities
 
-    - Data source
-    - Layer count
-
-    Args:
-        xodr_file: Path to XODR test file
+def test_ogr_xodr_basics():
+    """Test basic capabilities:
+        - Data source
+        - Layer count
     """
-    # Data Source test
-    ds = ogr.Open(xodr_file)
+    ds = gdal.OpenEx(xodr_file, gdal.OF_VECTOR)
     assert ds is not None, f"Cannot open dataset for file: {xodr_file}"
-
     assert ds.GetLayerCount() == 6, f"Bad layer count for file: {xodr_file}"
 
 
+def test_ogr_xodr_point_and_line_layers():
+    """Test all point and linestring layers for:
+        - Correct feature type definitions
+        - Spatial reference system
+    """
+    ds = gdal.OpenEx(xodr_file, gdal.OF_VECTOR)
+
+    layer_reference_line = ds.GetLayer("ReferenceLine")
+    check_feat_def_reference_line(layer_reference_line)
+    check_spatial_ref(layer_reference_line)
+
+    layer_lane_border = ds.GetLayer("LaneBorder")
+    check_feat_def_lane_border(layer_lane_border)
+    check_spatial_ref(layer_lane_border)
+
+
 @pytest.mark.parametrize("dissolve_tin", [True, False])
-@pytest.mark.parametrize("eps", [1.0, 0.1])
-def test_ogr_xodr_dissolving_and_eps(dissolve_tin: bool, eps: float):
-    """Test correct geometry creation for different values of open options DISSOLVE_TIN and EPS.
+def test_ogr_xodr_tin_layers_with_dissolve(dissolve_tin: bool):
+    """Test all TIN layers for:
+        - Correct feature type definitions
+        - Spatial reference system
 
     Args:
         dissolve_tin (bool): True if to dissolve triangulated surfaces.
+    """
+    options = ["DISSOLVE_TIN=" + str(dissolve_tin)]
+    ds = gdal.OpenEx(xodr_file, gdal.OF_VECTOR, open_options=options)
+
+    layer_road_mark = ds.GetLayer("RoadMark")
+    check_feat_def_road_mark(layer_road_mark, dissolve_tin)
+    check_spatial_ref(layer_road_mark)
+
+    layer_road_object = ds.GetLayer("RoadObject")
+    check_feat_def_road_object(layer_road_object, dissolve_tin)
+    check_spatial_ref(layer_road_object)
+
+    layer_lane = ds.GetLayer("Lane")
+    check_feat_def_lane(layer_lane, dissolve_tin)
+    check_spatial_ref(layer_lane)
+
+    layer_road_signal = ds.GetLayer("RoadSignal")
+    check_feat_def_road_signal(layer_road_signal, dissolve_tin)
+    check_spatial_ref(layer_road_signal)
+
+
+def check_feat_def_reference_line(layer):
+    assert layer.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 41
+    assert layer.GetLayerDefn().GetFieldCount() == 3
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTReal
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+    )
+
+
+def check_feat_def_lane_border(layer):
+    assert layer.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 230
+    assert layer.GetLayerDefn().GetFieldCount() == 5
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTInteger
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTInteger
+        and layer.GetLayerDefn().GetFieldDefn(4).GetType() == ogr.OFTInteger
+    )
+
+
+def check_feat_def_road_mark(layer, dissolve_tin: bool):
+    if not dissolve_tin:
+        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
+    else:
+        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 424
+    assert layer.GetLayerDefn().GetFieldCount() == 3
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTInteger
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+    )
+
+
+def check_feat_def_road_object(layer, dissolve_tin: bool):
+    if not dissolve_tin:
+        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
+    else:
+        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 273
+    assert layer.GetLayerDefn().GetFieldCount() == 4
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTString
+    )
+
+
+def check_feat_def_lane(layer, dissolve_tin: bool):
+    if not dissolve_tin:
+        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
+    else:
+        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 174
+    assert layer.GetLayerDefn().GetFieldCount() == 5
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTInteger
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTInteger
+        and layer.GetLayerDefn().GetFieldDefn(4).GetType() == ogr.OFTInteger
+    )
+
+
+def check_feat_def_road_signal(layer, dissolve_tin: bool):
+    if not dissolve_tin:
+        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
+    else:
+        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+    assert layer.GetFeatureCount() == 50
+    assert layer.GetLayerDefn().GetFieldCount() == 4
+    assert (
+        layer.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
+        and layer.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTString
+    )
+
+
+def check_spatial_ref(layer):
+    srs_proj4 = layer.GetSpatialRef().ExportToProj4()
+    expected_proj4 = '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
+    assert srs_proj4 == expected_proj4, "bad spatial ref"
+
+
+@pytest.mark.parametrize("eps", [1.0, 0.1])
+def test_ogr_xodr_geometry_eps(eps: float):
+    """Test correct geometry creation for different values of open option EPS.
+
+    Args:
         eps (float): Value for linear approximation of parametric geometries.
     """
-    options = ["DISSOLVE_TIN=" + str(dissolve_tin), "EPS=" + str(eps)]
-    ds = gdal.OpenEx(
-        xodr_file,
-        gdal.OF_VECTOR,
-        open_options=options,
-    )
-    for lyr_idx in range(ds.GetLayerCount()):
-        ogr_xodr_check_layer(ds, lyr_idx, dissolve_tin, eps)
+    options = ["EPS=" + str(eps)]
+    ds = gdal.OpenEx(xodr_file, gdal.OF_VECTOR, open_options=options)
+
+    lyr = ds.GetLayer("ReferenceLine")
+    ogr_xodr_check_reference_line_geometry_eps(lyr, eps)
 
 
-def test_ogr_xodr_srs():
-    """Check spatial reference system for each layer
+def ogr_xodr_check_reference_line_geometry_eps(lyr, eps: float):
+    lyr.ResetReading()
+    feat = lyr.GetNextFeature()
+    wkt = feat.GetGeometryRef().ExportToWkt()
+    if eps == 1.0:
+        assert wkt == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
+    elif eps == 0.1:
+        assert wkt == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618257.937110798 5809506.62607284 102.364759846201,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
+
+
+@pytest.mark.parametrize("dissolve_tin", [True, False])
+def test_ogr_xodr_geometry_dissolve(dissolve_tin: bool):
+    """Test correct geometry creation for different values of open option DISSOLVE_TIN.
+
+    Args:
+        dissolve_tin (bool): True if to dissolve triangulated surfaces.
     """
-    ds = ogr.Open(xodr_file)
-    for i in range(ds.GetLayerCount()):
-        lyr = ds.GetLayer(i)
-        srs_proj4 = lyr.GetSpatialRef().ExportToProj4()
-        expected_proj4 = '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
-        assert srs_proj4 == expected_proj4, "bad spatial ref"
+    options = ["DISSOLVE_TIN=" + str(dissolve_tin)]
+    ds = gdal.OpenEx(xodr_file, gdal.OF_VECTOR, open_options=options)
+
+    lyr = ds.GetLayer("Lane")
+    ogr_xodr_check_lane_geometry_dissolve(lyr, dissolve_tin)
 
 
-def ogr_xodr_check_layer(ds, lyr_idx, dissolve_tin, eps):
-    if lyr_idx == 0:
-        ## Layer 0 : Reference Line
-        lyr = ds.GetLayer(0)
-        assert lyr.GetName() == "ReferenceLine", "bad layer name"
-        assert lyr.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"
-        assert lyr.GetFeatureCount() == 41
-        assert lyr.GetLayerDefn().GetFieldCount() == 3
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTReal
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-        )
-
-        # Test geometry output for EPS=1.0
-        lyr.ResetReading()
-        feat = lyr.GetNextFeature()
-        if(eps == 1.0):
-            assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
-        # Test geometry output for EPS=0.1
-        elif(eps == 0.1):
-            assert feat.GetGeometryRef().ExportToWkt() == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618257.937110798 5809506.62607284 102.364759846201,618258.290734177 5809506.56065761 102.363999939623)", "wrong geometry created"
-        lyr.ResetReading()
-    elif lyr_idx == 1:
-        ## Layer 1 : Lane Border
-        lyr = ds.GetLayer(1)
-        assert lyr.GetName() == "LaneBorder", "bad layer name"
-        assert lyr.GetGeomType() == ogr.wkbLineString, "bad layer geometry type"
-        assert lyr.GetFeatureCount() == 230
-        assert lyr.GetLayerDefn().GetFieldCount() == 5
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTInteger
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTInteger
-            and lyr.GetLayerDefn().GetFieldDefn(4).GetType() == ogr.OFTInteger
-        )
-    elif lyr_idx == 2:
-        ## Layer 2 : Road Mark
-        lyr = ds.GetLayer(2)
-        assert lyr.GetName() == "RoadMark", "bad layer name"
-        if(dissolve_tin == False):
-            assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option
-        else:
-            assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-        assert lyr.GetFeatureCount() == 424
-        assert lyr.GetLayerDefn().GetFieldCount() == 3
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTInteger
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-        )
-    elif lyr_idx == 3:
-        ## Layer 3 : Road Object
-        lyr = ds.GetLayer(3)
-        assert lyr.GetName() == "RoadObject", "bad layer name"
-        if(dissolve_tin == False):
-            assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option
-        else:
-            assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-
-        assert lyr.GetFeatureCount() == 273
-        assert lyr.GetLayerDefn().GetFieldCount() == 4
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTString
-        )
-    elif lyr_idx == 4:
-        ## Layer 4 : Lane
-        lyr = ds.GetLayer(4)
-        assert lyr.GetName() == "Lane", "bad layer name"
-        if(dissolve_tin == False):
-            assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option
-        else:
-            assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-
-        assert lyr.GetFeatureCount() == 174
-        assert lyr.GetLayerDefn().GetFieldCount() == 5
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTInteger
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTInteger
-            and lyr.GetLayerDefn().GetFieldDefn(4).GetType() == ogr.OFTInteger
-        )
-    elif lyr_idx == 5:
-        ## Layer 5 : Road Signal
-        lyr = ds.GetLayer(5)
-        assert lyr.GetName() == "RoadSignal", "bad layer name"
-        if(dissolve_tin == False):
-            assert lyr.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type" #It uses default for layer create option
-        else:
-            assert lyr.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
-
-        assert lyr.GetFeatureCount() == 50
-        assert lyr.GetLayerDefn().GetFieldCount() == 4
-        assert (
-            lyr.GetLayerDefn().GetFieldDefn(0).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(1).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(2).GetType() == ogr.OFTString
-            and lyr.GetLayerDefn().GetFieldDefn(3).GetType() == ogr.OFTString
-        )
+def ogr_xodr_check_lane_geometry_dissolve(lyr, dissolve_tin: bool):
+    lyr.ResetReading()
+    feat = lyr.GetNextFeature()
+    wkt = feat.GetGeometryRef().ExportToWkt()
+    if not dissolve_tin:
+        assert wkt == "TIN Z (((618251.708293914 5809503.30115552 102.206436434521,618253.406110685 5809502.59383908 102.162274831603,618253.40871869 5809503.08668632 102.186041767762,618251.708293914 5809503.30115552 102.206436434521)),((618251.708293914 5809503.30115552 102.206436434521,618251.726901715 5809502.7975446 102.182768671482,618253.406110685 5809502.59383908 102.162274831603,618251.708293914 5809503.30115552 102.206436434521)),((618253.40871869 5809503.08668632 102.186041767762,618254.710111278 5809502.39980074 102.146632509166,618254.735144074 5809502.88656198 102.170637739305,618253.40871869 5809503.08668632 102.186041767762)),((618253.40871869 5809503.08668632 102.186041767762,618253.406110685 5809502.59383908 102.162274831603,618254.710111278 5809502.39980074 102.146632509166,618253.40871869 5809503.08668632 102.186041767762)),((618254.735144074 5809502.88656198 102.170637739305,618256.354637481 5809502.1051039 102.128452978327,618256.414547031 5809502.56472816 102.151918900654,618254.735144074 5809502.88656198 102.170637739305)),((618254.735144074 5809502.88656198 102.170637739305,618254.710111278 5809502.39980074 102.146632509166,618256.354637481 5809502.1051039 102.128452978327,618254.735144074 5809502.88656198 102.170637739305)),((618256.414547031 5809502.56472816 102.151918900654,618257.381896193 5809501.87667676 102.118091279345,618257.465586929 5809502.30800315 102.140735883984,618256.414547031 5809502.56472816 102.151918900654)),((618256.414547031 5809502.56472816 102.151918900654,618256.354637481 5809502.1051039 102.128452978327,618257.381896193 5809501.87667676 102.118091279345,618256.414547031 5809502.56472816 102.151918900654)))", "wrong geometry created"
+    else:
+        assert wkt == "POLYGON ((618257.381896193 5809501.87667676 102.118091279345,618256.354637481 5809502.1051039 102.128452978327,618254.710111278 5809502.39980074 102.146632509166,618253.406110685 5809502.59383908 102.162274831603,618251.726901715 5809502.7975446 102.182768671482,618251.708293914 5809503.30115552 102.206436434521,618253.40871869 5809503.08668632 102.186041767762,618254.735144074 5809502.88656198 102.170637739305,618256.414547031 5809502.56472816 102.151918900654,618257.465586929 5809502.30800315 102.140735883984,618257.381896193 5809501.87667676 102.118091279345))", "wrong geometry created"
