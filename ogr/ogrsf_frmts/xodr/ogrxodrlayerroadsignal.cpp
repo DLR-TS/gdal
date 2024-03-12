@@ -28,8 +28,9 @@
 
 
 OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(RoadElements xodrRoadElements,
-                                               std::string proj4Defn)
-    : OGRXODRLayer(xodrRoadElements, proj4Defn)
+                                               std::string proj4Defn,
+                                               bool dissolveTriangulatedSurface)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
@@ -51,9 +52,27 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
         odr::RoadSignal roadSignal = *roadSignalIter;
         odr::Mesh3D roadSignalMesh = *roadSignalMeshesIter;
 
-        OGRTriangulatedSurface tin = triangulateSurface(roadSignalMesh);
-        //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-        feature->SetGeometry(&tin);
+
+        if (dissolveTIN)
+        {
+            std::string roadId = roadSignal.road_id;
+            odr::Road road = roadElements.roads.at(roadId);
+
+            double s = roadSignal.s0;
+            double t = roadSignal.t0;
+            double z = roadSignal.zOffset;
+            odr::Vec3D xyz = road.get_xyz(s, t, z);
+
+            OGRPoint point(xyz[0], xyz[1], xyz[2]);
+            OGRGeometry *geometry = point.MakeValid();
+            feature->SetGeometry(geometry);
+        }
+        else
+        {
+            OGRTriangulatedSurface tin = triangulateSurface(roadSignalMesh);
+            //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+            feature->SetGeometry(&tin);
+        }
 
         feature->SetField(featureDefn->GetFieldIndex("SignalID"),
                           roadSignal.id.c_str());
@@ -82,7 +101,14 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
 void OGRXODRLayerRoadSignal::defineFeatureClass()
 {
-    featureDefn->SetGeomType(wkbTINZ);
+    if (dissolveTIN)
+    {
+        featureDefn->SetGeomType(wkbPoint);
+    }
+    else
+    {
+        featureDefn->SetGeomType(wkbTINZ);
+    }
 
     OGRFieldDefn oFieldObjectID("SignalID", OFTString);
     featureDefn->AddFieldDefn(&oFieldObjectID);

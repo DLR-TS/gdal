@@ -32,7 +32,8 @@
 
 struct RoadElements
 {
-    std::vector<odr::Road> roads;
+    /* Map of road to its original OpenDRIVE ID for fast lookup. */
+    std::map<std::string, odr::Road> roads;
     std::vector<odr::Line3D> referenceLines;
 
     std::vector<odr::Lane> lanes;
@@ -87,7 +88,7 @@ class OGRXODRLayer : public OGRLayer
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
     int nNextFID;
 
-    std::vector<odr::Road>::iterator roadIter;
+    std::map<std::string, odr::Road>::iterator roadIter;
     std::vector<odr::Line3D>::iterator referenceLineIter;
 
     std::vector<odr::Lane>::iterator laneIter;
@@ -121,10 +122,10 @@ class OGRXODRLayer : public OGRLayer
   public:
     /**
      * \param dissolveTriangulatedSurface True if original triangulated surface meshes from 
-     * libOpenDRIVE are to be dissolved into single polygons.
+     * libOpenDRIVE are to be dissolved into simpler geometries.
      * Only applicable for layer types derived from meshes.
     */
-   // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
+    // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn);
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface);                 
@@ -189,7 +190,8 @@ class OGRXODRLayerRoadSignal : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadSignal";
 
-    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn);
+    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn,
+                           bool dissolveTriangulatedSurface);
 };
 
 class OGRXODRLayerLane : public OGRXODRLayer

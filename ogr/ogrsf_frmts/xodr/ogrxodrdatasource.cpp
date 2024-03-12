@@ -87,7 +87,7 @@ int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdat
     layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, dissolveTIN);
     layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
     layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, dissolveTIN);
-    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn);
+    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
     return TRUE;
 }
 
@@ -117,7 +117,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads)
 
     for (odr::Road road : roads)
     {
-        elements.roads.push_back(road);
+        elements.roads.insert({road.id, road});
 
         odr::Line3D referenceLine = road.ref_line.get_line(0.0, road.length, eps);
         elements.referenceLines.push_back(referenceLine);

@@ -65,6 +65,7 @@ The following open options can be specified
       :default: NO
 
       Whether to dissolve triangulated surfaces. By setting this option to YES, the TIN layers *Lane* and *RoadMark* of geometry type :cpp:class:`OGRTriangulatedSurface` will be simplified to single, simple :cpp:class:`OGRPolygon` geometries. This performs a :cpp:func:`UnaryUnion` which dissolves boundaries of all touching triangle patches and thus yields a slimmer dataset which often suffices for basic GIS usage. Be aware that this dissolving step increases processing time significantly.
+      Layer *RoadSignal* will be dissolved to a simple :cpp:class:`OGRPoint`.
 
 Examples
 --------

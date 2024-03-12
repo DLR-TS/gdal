@@ -46,7 +46,7 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
     {
         feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
 
-        odr::Road road = *roadIter;
+        odr::Road road = (*roadIter).second;
         odr::Line3D refLine = *referenceLineIter;
 
         OGRLineString lineString;
