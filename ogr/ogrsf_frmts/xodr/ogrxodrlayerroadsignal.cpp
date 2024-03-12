@@ -80,8 +80,20 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
                           roadSignal.road_id.c_str());
         feature->SetField(featureDefn->GetFieldIndex("Type"),
                           roadSignal.type.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("SubType"),
+                          roadSignal.subtype.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("HOffset"),
+                          roadSignal.hOffset);                          
+        feature->SetField(featureDefn->GetFieldIndex("Pitch"),
+                          roadSignal.pitch);
+        feature->SetField(featureDefn->GetFieldIndex("Roll"),
+                          roadSignal.roll);          
+        feature->SetField(featureDefn->GetFieldIndex("Orientation"),
+                          roadSignal.orientation.c_str());                                          
         feature->SetField(featureDefn->GetFieldIndex("Name"),
                           roadSignal.name.c_str());
+        feature->SetField(featureDefn->GetFieldIndex("Dynamic"),
+                        roadSignal.is_dynamic);
         feature->SetFID(nNextFID++);
 
         roadSignalIter++;
@@ -110,8 +122,8 @@ void OGRXODRLayerRoadSignal::defineFeatureClass()
         featureDefn->SetGeomType(wkbTINZ);
     }
 
-    OGRFieldDefn oFieldObjectID("SignalID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldObjectID);
+    OGRFieldDefn oFieldSignalID("SignalID", OFTString);
+    featureDefn->AddFieldDefn(&oFieldSignalID);
 
     OGRFieldDefn oFieldRoadID("RoadID", OFTString);
     featureDefn->AddFieldDefn(&oFieldRoadID);
@@ -119,6 +131,25 @@ void OGRXODRLayerRoadSignal::defineFeatureClass()
     OGRFieldDefn oFieldType("Type", OFTString);
     featureDefn->AddFieldDefn(&oFieldType);
 
-    OGRFieldDefn oFieldObjectName("Name", OFTString);
-    featureDefn->AddFieldDefn(&oFieldObjectName);
+    OGRFieldDefn oFieldSubType("SubType", OFTString);
+    featureDefn->AddFieldDefn(&oFieldSubType);
+
+    OGRFieldDefn oFieldHOffset("HOffset", OFTReal);
+    featureDefn->AddFieldDefn(&oFieldHOffset);
+
+    OGRFieldDefn oFieldPitch("Pitch", OFTReal);
+    featureDefn->AddFieldDefn(&oFieldPitch);
+
+    OGRFieldDefn oFieldRoll("Roll", OFTReal);
+    featureDefn->AddFieldDefn(&oFieldRoll);
+
+    OGRFieldDefn oFieldOrientation("Orientation", OFTString);
+    featureDefn->AddFieldDefn(&oFieldOrientation);        
+
+    OGRFieldDefn oFieldName("Name", OFTString);
+    featureDefn->AddFieldDefn(&oFieldName);
+
+    OGRFieldDefn oFieldObjectDynamic("Dynamic", OFTInteger);
+    oFieldObjectDynamic.SetSubType(OFSTBoolean);
+    featureDefn->AddFieldDefn(&oFieldObjectDynamic);
 }
