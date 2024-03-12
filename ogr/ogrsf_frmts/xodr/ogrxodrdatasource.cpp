@@ -85,9 +85,9 @@ int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdat
     layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
     layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
     layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, dissolveTIN);
-    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn, dissolveTIN);
+    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
     layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, dissolveTIN);
-    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
+    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn);
     return TRUE;
 }
 

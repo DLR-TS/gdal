@@ -177,8 +177,7 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
 
-    OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface);
+    OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn);
 };
 
 class OGRXODRLayerRoadSignal : public OGRXODRLayer
@@ -190,8 +189,7 @@ class OGRXODRLayerRoadSignal : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadSignal";
 
-    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface);
+    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn);
 };
 
 class OGRXODRLayerLane : public OGRXODRLayer

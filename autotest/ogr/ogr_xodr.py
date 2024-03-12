@@ -40,7 +40,7 @@ def test_ogr_xodr_basics():
     assert ds.GetLayerCount() == 6, f"Bad layer count for file: {xodr_file}"
 
 
-def test_ogr_xodr_point_and_line_layers():
+def test_ogr_xodr_simple_layers():
     """Test all point and linestring layers for:
         - Correct feature type definitions
         - Spatial reference system
@@ -54,6 +54,14 @@ def test_ogr_xodr_point_and_line_layers():
     layer_lane_border = ds.GetLayer("LaneBorder")
     check_feat_def_lane_border(layer_lane_border)
     check_spatial_ref(layer_lane_border)
+
+    layer_road_object = ds.GetLayer("RoadObject")
+    check_feat_def_road_object(layer_road_object)
+    check_spatial_ref(layer_road_object)
+
+    layer_road_signal = ds.GetLayer("RoadSignal")
+    check_feat_def_road_signal(layer_road_signal)
+    check_spatial_ref(layer_road_signal)
 
 
 @pytest.mark.parametrize("dissolve_tin", [True, False])
@@ -72,17 +80,9 @@ def test_ogr_xodr_tin_layers_with_dissolve(dissolve_tin: bool):
     check_feat_def_road_mark(layer_road_mark, dissolve_tin)
     check_spatial_ref(layer_road_mark)
 
-    layer_road_object = ds.GetLayer("RoadObject")
-    check_feat_def_road_object(layer_road_object, dissolve_tin)
-    check_spatial_ref(layer_road_object)
-
     layer_lane = ds.GetLayer("Lane")
     check_feat_def_lane(layer_lane, dissolve_tin)
     check_spatial_ref(layer_lane)
-
-    layer_road_signal = ds.GetLayer("RoadSignal")
-    check_feat_def_road_signal(layer_road_signal, dissolve_tin)
-    check_spatial_ref(layer_road_signal)
 
 
 def check_feat_def_reference_line(layer):
@@ -123,11 +123,8 @@ def check_feat_def_road_mark(layer, dissolve_tin: bool):
     )
 
 
-def check_feat_def_road_object(layer, dissolve_tin: bool):
-    if not dissolve_tin:
-        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
-    else:
-        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+def check_feat_def_road_object(layer):
+    assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
     assert layer.GetFeatureCount() == 273
     assert layer.GetLayerDefn().GetFieldCount() == 4
     assert (
@@ -154,11 +151,8 @@ def check_feat_def_lane(layer, dissolve_tin: bool):
     )
 
 
-def check_feat_def_road_signal(layer, dissolve_tin: bool):
-    if not dissolve_tin:
-        assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
-    else:
-        assert layer.GetGeomType() == ogr.wkbPolygon, "bad layer geometry type"
+def check_feat_def_road_signal(layer):
+    assert layer.GetGeomType() == ogr.wkbTINZ, "bad layer geometry type"
     assert layer.GetFeatureCount() == 50
     assert layer.GetLayerDefn().GetFieldCount() == 4
     assert (

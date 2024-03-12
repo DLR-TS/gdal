@@ -27,9 +27,8 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerRoadObject::OGRXODRLayerRoadObject(RoadElements xodrRoadElements,
-                                               std::string proj4Defn,
-                                               bool dissolveTriangulatedSurface)
-    : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
+                                               std::string proj4Defn)
+    : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
@@ -51,17 +50,8 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
         odr::Mesh3D roadObjectMesh = *roadObjectMeshesIter;
 
         OGRTriangulatedSurface tin = triangulateSurface(roadObjectMesh);
-
-        if (dissolveTIN)
-        {
-            OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
-            feature->SetGeometry(dissolvedPolygon);
-        }
-        else
-        {
-            //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometry(&tin);
-        }
+        //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+        feature->SetGeometry(&tin);
 
         feature->SetField(featureDefn->GetFieldIndex("ObjectID"),
                           roadObject.id.c_str());
@@ -90,14 +80,7 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
 
 void OGRXODRLayerRoadObject::defineFeatureClass()
 {
-    if (dissolveTIN)
-    {
-        featureDefn->SetGeomType(wkbPolygon);
-    }
-    else
-    {
-        featureDefn->SetGeomType(wkbTINZ);
-    }
+    featureDefn->SetGeomType(wkbTINZ);
 
     OGRFieldDefn oFieldObjectID("ObjectID", OFTString);
     featureDefn->AddFieldDefn(&oFieldObjectID);
