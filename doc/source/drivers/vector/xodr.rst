@@ -132,6 +132,36 @@ Now, build GDAL and install it:
 
 Afterwards you will find a new shared library file :file:`{path/to/GDAL/installdir}/lib/gdalplugins/ogr_XODR`.
 
+Alternative build option with docker image 
+++++++++++++++++++++++++++++
+To compile xodr driver with docker image, please locate to docker directory 
+  ::
+    
+    cd <gdal>/docker/ubuntu-small/
+
+Run docker building process by using following command 
+
+  ::
+    
+    docker build . -t <your_name/repository_name>:<tag>
+
+Then run docker container that enables to use xodr driver in isolated workspace 
+  ::
+    
+    docker run --name <container_name> -it <your_name/repository_name>:<tag> /bin/bash
+
+If you lost your connection docker container your can run following command to execute container 
+  ::
+    
+    docker exec -it <container_name> /bin/bash
+
+If you want to copy your local file into container
+  ::
+    
+    docker cp path/to/your/local/file <container_name>/specified/path/for/file
+
+You can follow the following section to verify if driver successfully avaliable inside of container.  
+
 Verifying a successful build
 ++++++++++++++++++++++++++++
 

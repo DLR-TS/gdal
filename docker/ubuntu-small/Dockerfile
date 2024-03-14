@@ -41,24 +41,24 @@ USER root
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-            build-essential ca-certificates \
-            git make cmake wget unzip libtool automake \
-            zlib1g-dev${APT_ARCH_SUFFIX} libsqlite3-dev${APT_ARCH_SUFFIX} pkg-config sqlite3 libcurl4-gnutls-dev${APT_ARCH_SUFFIX} \
-            libtiff5-dev${APT_ARCH_SUFFIX} \
+    build-essential ca-certificates \
+    git make cmake wget unzip libtool automake \
+    zlib1g-dev${APT_ARCH_SUFFIX} libsqlite3-dev${APT_ARCH_SUFFIX} pkg-config sqlite3 libcurl4-gnutls-dev${APT_ARCH_SUFFIX} \
+    libtiff5-dev${APT_ARCH_SUFFIX} \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup build env for GDAL
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-       python3-dev${APT_ARCH_SUFFIX} python3-numpy${APT_ARCH_SUFFIX} python3-setuptools${APT_ARCH_SUFFIX} \
-       libjpeg-dev${APT_ARCH_SUFFIX} libgeos-dev${APT_ARCH_SUFFIX} \
-       libexpat-dev${APT_ARCH_SUFFIX} libxerces-c-dev${APT_ARCH_SUFFIX} \
-       libwebp-dev${APT_ARCH_SUFFIX} libpng-dev${APT_ARCH_SUFFIX} \
-       libzstd-dev${APT_ARCH_SUFFIX} bash zip curl \
-       libpq-dev${APT_ARCH_SUFFIX} libssl-dev${APT_ARCH_SUFFIX} libopenjp2-7-dev${APT_ARCH_SUFFIX} \
-       libspatialite-dev${APT_ARCH_SUFFIX} \
-       autoconf automake sqlite3 bash-completion swig \
+    python3-dev${APT_ARCH_SUFFIX} python3-numpy${APT_ARCH_SUFFIX} python3-setuptools${APT_ARCH_SUFFIX} \
+    libjpeg-dev${APT_ARCH_SUFFIX} libgeos-dev${APT_ARCH_SUFFIX} \
+    libexpat-dev${APT_ARCH_SUFFIX} libxerces-c-dev${APT_ARCH_SUFFIX} \
+    libwebp-dev${APT_ARCH_SUFFIX} libpng-dev${APT_ARCH_SUFFIX} \
+    libzstd-dev${APT_ARCH_SUFFIX} bash zip curl \
+    libpq-dev${APT_ARCH_SUFFIX} libssl-dev${APT_ARCH_SUFFIX} libopenjp2-7-dev${APT_ARCH_SUFFIX} \
+    libspatialite-dev${APT_ARCH_SUFFIX} \
+    autoconf automake sqlite3 bash-completion swig \
     && rm -rf /var/lib/apt/lists/*
 
 # Build openjpeg
@@ -70,7 +70,7 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -f v${OPENJPEG_VERSION}.tar.gz \
     && cd openjpeg-${OPENJPEG_VERSION} \
     && cmake . -DBUILD_SHARED_LIBS=ON  -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_PREFIX=/usr \
     && make -j$(nproc) \
     && make install \
     && mkdir -p /build_thirdparty/usr/lib \
@@ -78,6 +78,25 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && for i in /build_thirdparty/usr/lib/*; do strip -s $i 2>/dev/null || /bin/true; done \
     && cd .. \
     && rm -rf openjpeg-${OPENJPEG_VERSION} \
+    ); fi
+
+# Build libOpenDRIVE
+ARG OPENDRIVE_VERSION=0.5.0
+RUN . /buildscripts/bh-set-envvars.sh \
+    && if test "${OPENDRIVE_VERSION}" != ""; then ( \
+    wget -q https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/${OPENDRIVE_VERSION}.tar.gz \
+    && tar xzf ${OPENDRIVE_VERSION}.tar.gz \
+    && rm -f ${OPENDRIVE_VERSION}.tar.gz \
+    && cd libOpenDRIVE-${OPENDRIVE_VERSION} \
+    && cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/ \
+    && make -j$(nproc) \
+    && make install \
+    && mkdir -p /build_thirdparty/usr/lib \
+    && cp -P /usr/lib/libOpenDrive*.so* /build_thirdparty/usr/lib \
+    && for i in /build_thirdparty/usr/lib/*; do strip -s $i 2>/dev/null || /bin/true; done \
+    && cd .. \
+    && rm -rf libOpenDRIVE-${OPENDRIVE_VERSION} \
     ); fi
 
 ARG PROJ_INSTALL_PREFIX
@@ -98,33 +117,33 @@ ARG PROJ_VERSION=master
 RUN . /buildscripts/bh-set-envvars.sh \
     && mkdir proj \
     && wget -q https://github.com/OSGeo/PROJ/archive/${PROJ_VERSION}.tar.gz -O - \
-        | tar xz -C proj --strip-components=1 \
+    | tar xz -C proj --strip-components=1 \
     && cd proj \
     && if test "${RSYNC_REMOTE:-}" != ""; then \
-        echo "Downloading cache..."; \
-        rsync -ra ${RSYNC_REMOTE}/proj/${GCC_ARCH}/ $HOME/; \
-        echo "Finished"; \
-        export CC="ccache ${GCC_ARCH}-linux-gnu-gcc"; \
-        export CXX="ccache ${GCC_ARCH}-linux-gnu-g++"; \
-        export PROJ_DB_CACHE_DIR="$HOME/.ccache"; \
-        ccache -M 100M; \
+    echo "Downloading cache..."; \
+    rsync -ra ${RSYNC_REMOTE}/proj/${GCC_ARCH}/ $HOME/; \
+    echo "Finished"; \
+    export CC="ccache ${GCC_ARCH}-linux-gnu-gcc"; \
+    export CXX="ccache ${GCC_ARCH}-linux-gnu-g++"; \
+    export PROJ_DB_CACHE_DIR="$HOME/.ccache"; \
+    ccache -M 100M; \
     fi \
     && CFLAGS='-DPROJ_RENAME_SYMBOLS -O2' CXXFLAGS='-DPROJ_RENAME_SYMBOLS -DPROJ_INTERNAL_CPP_NAMESPACE -O2' \
-        cmake . \
-        -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=${PROJ_INSTALL_PREFIX} \
-        -DBUILD_TESTING=OFF \
+    cmake . \
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${PROJ_INSTALL_PREFIX} \
+    -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install DESTDIR="/build" \
     && if test "${RSYNC_REMOTE:-}" != ""; then \
-        ccache -s; \
-        echo "Uploading cache..."; \
-        rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/proj/${GCC_ARCH}/; \
-        echo "Finished"; \
-        rm -rf $HOME/.ccache; \
-        unset CC; \
-        unset CXX; \
+    ccache -s; \
+    echo "Uploading cache..."; \
+    rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/proj/${GCC_ARCH}/; \
+    echo "Finished"; \
+    rm -rf $HOME/.ccache; \
+    unset CC; \
+    unset CXX; \
     fi \
     && cd .. \
     && rm -rf proj \
@@ -147,50 +166,53 @@ ARG GDAL_REPOSITORY=OSGeo/gdal
 
 RUN . /buildscripts/bh-set-envvars.sh \
     && if test "${GDAL_VERSION}" = "master"; then \
-        export GDAL_VERSION=$(curl -Ls https://api.github.com/repos/${GDAL_REPOSITORY}/commits/HEAD -H "Accept: application/vnd.github.VERSION.sha"); \
-        export GDAL_RELEASE_DATE=$(date "+%Y%m%d"); \
+    export GDAL_VERSION=$(curl -Ls https://api.github.com/repos/${GDAL_REPOSITORY}/commits/HEAD -H "Accept: application/vnd.github.VERSION.sha"); \
+    export GDAL_RELEASE_DATE=$(date "+%Y%m%d"); \
     fi \
     && if test "x${GDAL_BUILD_IS_RELEASE:-}" = "x"; then \
-        export GDAL_SHA1SUM=${GDAL_VERSION}; \
+    export GDAL_SHA1SUM=${GDAL_VERSION}; \
     fi \
     && mkdir gdal \
-    && wget -q https://github.com/${GDAL_REPOSITORY}/archive/${GDAL_VERSION}.tar.gz -O - \
-        | tar xz -C gdal --strip-components=1 \
+    && wget -q https://github.com/DLR-TS/gdal/archive/refs/heads/libopendrive.tar.gz -O - \
+    | tar xz -C gdal --strip-components=1 \
     && cd gdal \
     && if test "${RSYNC_REMOTE:-}" != ""; then \
-        echo "Downloading cache..."; \
-        rsync -ra ${RSYNC_REMOTE}/gdal/${GCC_ARCH}/ $HOME/; \
-        echo "Finished"; \
-        # Little trick to avoid issues with Python bindings
-        printf "#!/bin/sh\nccache %s-linux-gnu-gcc \$*" "${GCC_ARCH}" > ccache_gcc.sh; \
-        chmod +x ccache_gcc.sh; \
-        printf "#!/bin/sh\nccache %s-linux-gnu-g++ \$*" "${GCC_ARCH}" > ccache_g++.sh; \
-        chmod +x ccache_g++.sh; \
-        export CC=$PWD/ccache_gcc.sh; \
-        export CXX=$PWD/ccache_g++.sh; \
-        ccache -M 1G; \
+    echo "Downloading cache..."; \
+    rsync -ra ${RSYNC_REMOTE}/gdal/${GCC_ARCH}/ $HOME/; \
+    echo "Finished"; \
+    # Little trick to avoid issues with Python bindings
+    printf "#!/bin/sh\nccache %s-linux-gnu-gcc \$*" "${GCC_ARCH}" > ccache_gcc.sh; \
+    chmod +x ccache_gcc.sh; \
+    printf "#!/bin/sh\nccache %s-linux-gnu-g++ \$*" "${GCC_ARCH}" > ccache_g++.sh; \
+    chmod +x ccache_g++.sh; \
+    export CC=$PWD/ccache_gcc.sh; \
+    export CXX=$PWD/ccache_g++.sh; \
+    ccache -M 1G; \
     fi \
     && mkdir build \
     && cd build \
     && CFLAGS='-DPROJ_RENAME_SYMBOLS -O2' CXXFLAGS='-DPROJ_RENAME_SYMBOLS -DPROJ_INTERNAL_CPP_NAMESPACE -O2' \
-       cmake .. \
-        -DCMAKE_INSTALL_PREFIX=/usr \
-        -DPROJ_INCLUDE_DIR="/build${PROJ_INSTALL_PREFIX-/usr/local}/include" \
-        -DPROJ_LIBRARY="/build${PROJ_INSTALL_PREFIX-/usr/local}/lib/libinternalproj.so" \
-        -DGDAL_USE_TIFF_INTERNAL=ON \
-        -DGDAL_USE_GEOTIFF_INTERNAL=ON \
-        -DBUILD_TESTING=OFF \
+    cmake .. \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DPROJ_INCLUDE_DIR="/build${PROJ_INSTALL_PREFIX-/usr/local}/include" \
+    -DPROJ_LIBRARY="/build${PROJ_INSTALL_PREFIX-/usr/local}/lib/libinternalproj.so" \
+    -DGDAL_USE_TIFF_INTERNAL=ON \
+    -DGDAL_USE_GEOTIFF_INTERNAL=ON \
+    -DOGR_ENABLE_DRIVER_XODR=TRUE \
+    -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE \
+    -DOpenDrive_DIR=/usr/lib/ \
+    -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install DESTDIR="/build" \
     && cd .. \
     && if test "${RSYNC_REMOTE:-}" != ""; then \
-        ccache -s; \
-        echo "Uploading cache..."; \
-        rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/gdal/${GCC_ARCH}/; \
-        echo "Finished"; \
-        rm -rf $HOME/.ccache; \
-        unset CC; \
-        unset CXX; \
+    ccache -s; \
+    echo "Uploading cache..."; \
+    rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/gdal/${GCC_ARCH}/; \
+    echo "Finished"; \
+    rm -rf $HOME/.ccache; \
+    unset CC; \
+    unset CXX; \
     fi \
     && cd .. \
     && rm -rf gdal \
@@ -217,28 +239,28 @@ RUN apt-get update -y && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
-# PROJ dependencies
+    # PROJ dependencies
     && DEBIAN_FRONTEND=noninteractive apt-get install -y  --no-install-recommends \
-        libsqlite3-0 libtiff5 libcurl4 \
-        curl unzip ca-certificates \
+    libsqlite3-0 libtiff5 libcurl4 \
+    curl unzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # GDAL dependencies
 RUN apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y  --no-install-recommends \
-        python3-numpy libpython3.10 \
-        libjpeg-turbo8 libgeos3.10.2 libgeos-c1v5 \
-        libexpat1 \
-        libxerces-c3.2 \
-        libwebp7 libpng16-16 \
-        libzstd1 bash libpq5 libssl3 libopenjp2-7 libspatialite7 \
-        # pil for antialias option of gdal2tiles
-        python3-pil \
+    python3-numpy libpython3.10 \
+    libjpeg-turbo8 libgeos3.10.2 libgeos-c1v5 \
+    libexpat1 \
+    libxerces-c3.2 \
+    libwebp7 libpng16-16 \
+    libzstd1 bash libpq5 libssl3 libopenjp2-7 libspatialite7 \
+    # pil for antialias option of gdal2tiles
+    python3-pil \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        python-is-python3 \
+    python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Order layers starting with less frequently varying ones
@@ -257,5 +279,5 @@ COPY --from=builder  /build/usr/share/gdal/ /usr/share/gdal/
 COPY --from=builder  /build/usr/include/ /usr/include/
 COPY --from=builder  /build_gdal_python/usr/ /usr/
 COPY --from=builder  /build_gdal_version_changing/usr/ /usr/
-
+COPY --from=builder /build_thirdparty/usr/lib/ /usr/lib/
 RUN ldconfig
