@@ -115,7 +115,8 @@ void OGRXODRLayerRoadSignal::defineFeatureClass()
 {
     if (dissolveTIN)
     {
-        featureDefn->SetGeomType(wkbPoint);
+        OGRwkbGeometryType wkbPointWithZ = OGR_GT_SetZ(wkbPoint);
+        featureDefn->SetGeomType(wkbPointWithZ);
     }
     else
     {

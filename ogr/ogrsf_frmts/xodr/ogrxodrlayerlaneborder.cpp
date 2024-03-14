@@ -90,7 +90,8 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 
 void OGRXODRLayerLaneBorder::defineFeatureClass()
 {
-    featureDefn->SetGeomType(wkbLineString);
+    OGRwkbGeometryType wkbLineStringWithZ = OGR_GT_SetZ(wkbLineString);
+    featureDefn->SetGeomType(wkbLineStringWithZ);
 
     OGRFieldDefn oFieldID("ID", OFTInteger);
     featureDefn->AddFieldDefn(&oFieldID);

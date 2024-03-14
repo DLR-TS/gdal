@@ -104,7 +104,8 @@ void OGRXODRLayerLane::defineFeatureClass()
 {
     if (dissolveTIN)
     {
-        featureDefn->SetGeomType(wkbPolygon);
+        OGRwkbGeometryType wkbPolygonWithZ = OGR_GT_SetZ(wkbPolygon);
+        featureDefn->SetGeomType(wkbPolygonWithZ);
     }
     else
     {

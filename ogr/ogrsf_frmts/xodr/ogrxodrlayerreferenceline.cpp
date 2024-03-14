@@ -81,7 +81,8 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
 
 void OGRXODRLayerReferenceLine::defineFeatureClass()
 {
-    featureDefn->SetGeomType(wkbLineString);
+    OGRwkbGeometryType wkbLineStringWithZ = OGR_GT_SetZ(wkbLineString);
+    featureDefn->SetGeomType(wkbLineStringWithZ);
 
     OGRFieldDefn oFieldID("ID", OFTString);
     featureDefn->AddFieldDefn(&oFieldID);
