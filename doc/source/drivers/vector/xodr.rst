@@ -54,13 +54,13 @@ Open options
 The following open options can be specified
 (typically with the ``-oo name=value`` parameters of :program:`ogrinfo` or :program:`ogr2ogr`):
 
--  .. oo:: EPS
+-  oo: EPS
       :choices: <float>
       :default: 1.0
 
       Epsilon value for linear approximation of continuous OpenDRIVE geometries. A smaller value results in a finer sampling. This parameter is internally forwarded to libOpenDRIVE.
 
--  .. oo:: DISSOLVE_TIN
+-   oo: DISSOLVE_TIN
       :choices: YES, NO
       :default: NO
 
@@ -134,31 +134,46 @@ Afterwards you will find a new shared library file :file:`{path/to/GDAL/installd
 
 Alternative build option with docker image 
 ++++++++++++++++++++++++++++
-To compile xodr driver with docker image, please locate to docker directory 
-  ::
-    
-    cd <gdal>/docker/ubuntu-small/
+- To compile xodr driver with docker image, please locate to docker directory 
+    ::
 
-Run docker building process by using following command 
+      cd <gdal>/docker/ubuntu-small/
 
-  ::
-    
-    docker build . -t <your_name/repository_name>:<tag>
+- Build docker image by using following command 
+    ::
 
-Then run docker container that enables to use xodr driver in isolated workspace 
-  ::
-    
-    docker run --name <container_name> -it <your_name/repository_name>:<tag> /bin/bash
+      docker build . -t <your_name/repository_name>:<tag>
 
-If you lost your connection docker container your can run following command to execute container 
-  ::
-    
-    docker exec -it <container_name> /bin/bash
+- Example usage of docker image
 
-If you want to copy your local file into container
-  ::
+  - Use `ogrinfo` to extract detailed information about a local `xodr` file. Mount the directory containing the file into the Docker container and execute the command as follows:
     
-    docker cp path/to/your/local/file <container_name>/specified/path/for/file
+    ::
+
+      docker run --rm -v /<path/to/file>:/<path/to/file> -it <your_name/repository_name> ogrinfo $PWD/<file>.xodr
+
+  - Use `ogr2ogr` to convert local `xodr` file into desired data type that avaliable in GDAL 
+    ::
+
+      docker run --rm -v /<path/to/file>:/<path/to/file> -it <your_name/repository_name> ogr2ogr -f "GPKG" $PWD/<file>.gpkg $PWD/<file>.xodr
+
+
+- Alternatively, you can run docker container that enables to use xodr driver in isolated workspace 
+    ::
+
+      docker run --name <container_name> -it <your_name/repository_name>:<tag> /bin/bash
+
+    If you lost your connection docker container your can run following command to execute container 
+
+      ::
+
+        docker exec -it <container_name> /bin/bash
+
+    If you want to copy your local file into container
+    
+      ::
+
+        docker cp path/to/your/local/file <container_name>/specified/path/for/file
 
 You can follow the following section to verify if driver successfully avaliable inside of container.  
 
