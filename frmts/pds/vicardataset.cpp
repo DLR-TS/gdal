@@ -1750,7 +1750,7 @@ void VICARDataset::BuildLabel()
         }
     }
 
-    m_oJSonLabel = oLabel;
+    m_oJSonLabel = std::move(oLabel);
 }
 
 /************************************************************************/
@@ -2278,7 +2278,7 @@ void VICARDataset::ReadProjectionFromMapGroup()
             }
         }
 
-        m_oSRS = oSRS;
+        m_oSRS = std::move(oSRS);
         m_oSRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
     }
     if (bProjectionSet)
@@ -3270,7 +3270,7 @@ VICARDataset *VICARDataset::CreateInternal(const char *pszFilename, int nXSize,
     poDS->m_osTargetName =
         CSLFetchNameValueDef(papszOptions, "TARGET_NAME", "");
     poDS->m_bInitToNodata = true;
-    poDS->m_oSrcJSonLabel = oSrcJSonLabel;
+    poDS->m_oSrcJSonLabel = std::move(oSrcJSonLabel);
     poDS->m_eCompress = eCompress;
     poDS->m_anRecordOffsets = std::move(anRecordOffsets);
     poDS->eAccess = GA_Update;

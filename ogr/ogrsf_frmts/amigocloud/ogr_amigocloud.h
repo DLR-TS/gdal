@@ -210,7 +210,7 @@ class OGRAmigoCloudTableLayer final : public OGRAmigoCloudLayer
     void SetDeferredCreation(OGRwkbGeometryType eGType,
                              OGRSpatialReference *poSRS, int bGeomNullable);
 
-    static CPLString GetAmigoCloudType(OGRFieldDefn &oField);
+    static CPLString GetAmigoCloudType(const OGRFieldDefn &oField);
 
     OGRErr RunDeferredCreationIfNecessary();
     int GetDeferredCreation() const
@@ -290,11 +290,9 @@ class OGRAmigoCloudDataSource final : public OGRDataSource
 
     virtual int TestCapability(const char *) override;
 
-    virtual OGRLayer *
-    ICreateLayer(const char *pszName,
-                 const OGRSpatialReference *poSpatialRef = nullptr,
-                 OGRwkbGeometryType eGType = wkbUnknown,
-                 char **papszOptions = nullptr) override;
+    virtual OGRLayer *ICreateLayer(const char *pszName,
+                                   const OGRGeomFieldDefn *poGeomFieldDefn,
+                                   CSLConstList papszOptions) override;
     virtual OGRErr DeleteLayer(int) override;
 
     virtual OGRLayer *ExecuteSQL(const char *pszSQLCommand,

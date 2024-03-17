@@ -24,6 +24,7 @@ Synopsis
                  [-addalpha] [-hidenodata]
                  [-srcnodata "<value>[ <value>]..."] [-vrtnodata "<value>[ <value>]..."
                  [-ignore_srcmaskband]
+                 [-nodata_max_mask_threshold <threshold>]
                  [-a_srs <srs_def>]
                  [-r {nearest|bilinear|cubic|cubicspline|lanczos|average|mode}]
                  [-oo <NAME>=<VALUE>]...
@@ -40,8 +41,15 @@ of the command line, or put in a text file (one filename per line) for very long
 or it can be a MapServer tileindex (see :ref:`gdaltindex` utility). In the later case, all
 entries in the tile index will be added to the VRT.
 
+.. note::
+
+    Starting with GDAL 3.9, for virtual mosaic with a very large number of source rasters
+    (typically hundreds of thousands of source rasters, or more), it is advised to use the
+    :ref:`gdaltindex` utility to generate a tile index compatible of the
+    :ref:`GTI <raster.gti>` driver.
+
 With -separate, each files goes into a separate band in the VRT dataset. Otherwise,
-the files are considered as tiles of a larger mosaic and the VRT file has as many bands as one
+the files are considered as source rasters of a larger mosaic and the VRT file has as many bands as one
 of the input files.
 
 If one GDAL dataset is made of several subdatasets and has 0 raster bands,
@@ -138,6 +146,14 @@ changed in later versions.
     When specifying the -ignore_srcmaskband option, the mask band of sources will
     not be taken into account, and in case of overlapping between sources, the
     last one will override previous ones in areas of overlap.
+
+.. option:: -nodata_max_mask_threshold <threshold>
+
+    .. versionadded:: 3.9
+
+    Insert a <NoDataFromMaskSource> source, which replaces the value of the source
+    with the value of :option:`-vrtnodata` (or 0 if not specified) when the value
+    of the mask band of the source is less or equal to the threshold.
 
 .. option:: -b <band>
 

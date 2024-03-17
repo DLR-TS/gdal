@@ -202,7 +202,9 @@ class OGRPMTilesTileIterator
     int m_nCurY = -1;
 
     // for sanity checks. Must be increasing when walking through entries
-    uint64_t m_nLastTileId = 0;
+    static constexpr uint64_t INVALID_LAST_TILE_ID =
+        std::numeric_limits<uint64_t>::max();
+    uint64_t m_nLastTileId = INVALID_LAST_TILE_ID;
 
     // Computed values from zoom leven and min/max x/y
     uint64_t m_nMinTileId = std::numeric_limits<uint64_t>::max();
@@ -364,8 +366,9 @@ class OGRPMTilesWriterDataset final : public GDALDataset
 
     CPLErr Close() override;
 
-    OGRLayer *ICreateLayer(const char *, const OGRSpatialReference *,
-                           OGRwkbGeometryType, char **) override;
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
 
     int TestCapability(const char *) override;
 };

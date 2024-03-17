@@ -175,7 +175,8 @@ void VSIDIRWithMissingDirSynthesis::SynthetizeMissingDirectories(
 
     if (bAddEntryForThisSubdir)
     {
-        aoEntries.push_back(std::unique_ptr<VSIDIREntry>(new VSIDIREntry()));
+        aoEntries.push_back(std::make_unique<VSIDIREntry>());
+        // cppcheck-suppress constVariableReference
         auto &entry = aoEntries.back();
         entry->pszName = CPLStrdup(osCurSubdir.c_str());
         entry->nMode = S_IFDIR;
@@ -358,7 +359,7 @@ bool VSIDIRS3::AnalyseS3FileList(
                         prop.fileSize = entry->nSize;
                         prop.bIsDirectory = (entry->nMode == S_IFDIR);
                         prop.mTime = static_cast<time_t>(entry->nMTime);
-                        prop.ETag = ETag;
+                        prop.ETag = std::move(ETag);
 
                         std::string osCachedFilename =
                             osBaseURL + CPLAWSURLEncode(osPrefix, false) +
@@ -451,8 +452,8 @@ bool VSIDIRS3::AnalyseS3FileList(
                 const char *pszName = CPLGetXMLValue(psIter, "Name", nullptr);
                 if (pszName)
                 {
-                    aoEntries.push_back(
-                        std::unique_ptr<VSIDIREntry>(new VSIDIREntry()));
+                    aoEntries.push_back(std::make_unique<VSIDIREntry>());
+                    // cppcheck-suppress constVariableReference
                     auto &entry = aoEntries.back();
                     entry->pszName = CPLStrdup(pszName);
                     entry->nMode = S_IFDIR;
@@ -3577,8 +3578,8 @@ VSIDIR *IVSIS3LikeFSHandler::OpenDir(const char *pszPath, int nRecurseDepth,
     dir->nRecurseDepth = nRecurseDepth;
     dir->poFS = this;
     dir->poS3HandleHelper = poS3HandleHelper;
-    dir->osBucket = osBucket;
-    dir->osObjectKey = osObjectKey;
+    dir->osBucket = std::move(osBucket);
+    dir->osObjectKey = std::move(osObjectKey);
     dir->nMaxFiles = atoi(CSLFetchNameValueDef(papszOptions, "MAXFILES", "0"));
     dir->bCacheEntries = CPLTestBool(
         CSLFetchNameValueDef(papszOptions, "CACHE_ENTRIES", "TRUE"));
@@ -3795,7 +3796,8 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
 
     std::string osSource(pszSource);
     std::string osSourceWithoutSlash(pszSource);
-    if (osSourceWithoutSlash.back() == '/')
+    if (osSourceWithoutSlash.back() == '/' ||
+        osSourceWithoutSlash.back() == '\\')
     {
         osSourceWithoutSlash.resize(osSourceWithoutSlash.size() - 1);
     }
@@ -3844,7 +3846,8 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
     // If the source is likely to be a directory, try to issue a ReadDir()
     // if we haven't stat'ed it yet
     std::unique_ptr<VSIDIR> poSourceDir;
-    if (STARTS_WITH(pszSource, GetFSPrefix().c_str()) && osSource.back() == '/')
+    if (STARTS_WITH(pszSource, GetFSPrefix().c_str()) &&
+        (osSource.back() == '/' || osSource.back() == '\\'))
     {
         const char *const apszOptions[] = {"SYNTHETIZE_MISSING_DIRECTORIES=YES",
                                            nullptr};
@@ -3960,7 +3963,8 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
 
     struct ChunkToCopy
     {
-        std::string osFilename{};
+        std::string osSrcFilename{};
+        std::string osDstFilename{};
         GIntBig nMTime = 0;
         std::string osETag{};
         vsi_l_offset nTotalSize = 0;
@@ -4075,10 +4079,18 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
     std::string osTargetDir;  // set in the VSI_ISDIR(sSource.st_mode) case
     std::string osTarget;     // set in the !(VSI_ISDIR(sSource.st_mode)) case
 
+    const auto NormalizeDirSeparatorForDstFilename =
+        [&osSource, &osTargetDir](const std::string &s) -> std::string
+    {
+        return CPLString(s).replaceAll(
+            VSIGetDirectorySeparator(osSource.c_str()),
+            VSIGetDirectorySeparator(osTargetDir.c_str()));
+    };
+
     if (VSI_ISDIR(sSource.st_mode))
     {
         osTargetDir = pszTarget;
-        if (osSource.back() != '/')
+        if (osSource.back() != '/' && osSource.back() != '\\')
         {
             osTargetDir = CPLFormFilename(osTargetDir.c_str(),
                                           CPLGetFilename(pszSource), nullptr);
@@ -4106,15 +4118,16 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                 const auto entry = VSIGetNextDirEntry(poTargetDir.get());
                 if (!entry)
                     break;
+                const auto osDstName =
+                    NormalizeDirSeparatorForDstFilename(entry->pszName);
                 if (VSI_ISDIR(entry->nMode))
                 {
-                    oSetTargetSubdirs.insert(entry->pszName);
+                    oSetTargetSubdirs.insert(osDstName);
                 }
                 else
                 {
                     oMapExistingTargetFiles.insert(
-                        std::pair<std::string, VSIDIREntry>(entry->pszName,
-                                                            *entry));
+                        std::pair<std::string, VSIDIREntry>(osDstName, *entry));
                 }
             }
             poTargetDir.reset();
@@ -4139,11 +4152,13 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                 break;
             if (VSI_ISDIR(entry->nMode))
             {
-                if (oSetTargetSubdirs.find(entry->pszName) ==
+                const auto osDstName =
+                    NormalizeDirSeparatorForDstFilename(entry->pszName);
+                if (oSetTargetSubdirs.find(osDstName) ==
                     oSetTargetSubdirs.end())
                 {
                     const std::string osTargetSubdir(CPLFormFilename(
-                        osTargetDir.c_str(), entry->pszName, nullptr));
+                        osTargetDir.c_str(), osDstName.c_str(), nullptr));
                     aoSetDirsToCreate.insert(osTargetSubdir);
                 }
             }
@@ -4162,7 +4177,9 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                     return false;
                 }
                 ChunkToCopy chunk;
-                chunk.osFilename = entry->pszName;
+                chunk.osSrcFilename = entry->pszName;
+                chunk.osDstFilename =
+                    NormalizeDirSeparatorForDstFilename(entry->pszName);
                 chunk.nMTime = entry->nMTime;
                 chunk.nTotalSize = entry->nSize;
                 chunk.osETag =
@@ -4209,12 +4226,12 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                 continue;
             const std::string osSubSource(
                 CPLFormFilename(osSourceWithoutSlash.c_str(),
-                                chunk.osFilename.c_str(), nullptr));
+                                chunk.osSrcFilename.c_str(), nullptr));
             const std::string osSubTarget(CPLFormFilename(
-                osTargetDir.c_str(), chunk.osFilename.c_str(), nullptr));
+                osTargetDir.c_str(), chunk.osDstFilename.c_str(), nullptr));
             bool bSkip = false;
             const auto oIterExistingTarget =
-                oMapExistingTargetFiles.find(chunk.osFilename);
+                oMapExistingTargetFiles.find(chunk.osDstFilename);
             if (oIterExistingTarget != oMapExistingTargetFiles.end() &&
                 oIterExistingTarget->second.nSize == chunk.nTotalSize)
             {
@@ -4223,7 +4240,8 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                     if (CanSkipDownloadFromNetworkToLocal(
                             osSubSource.c_str(), osSubTarget.c_str(),
                             chunk.nMTime, oIterExistingTarget->second.nMTime,
-                            [&chunk](const char *) { return chunk.osETag; }))
+                            [&chunk](const char *) -> std::string
+                            { return chunk.osETag; }))
                     {
                         bSkip = true;
                     }
@@ -4234,7 +4252,7 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                     if (CanSkipUploadFromLocalToNetwork(
                             fpIn, osSubSource.c_str(), osSubTarget.c_str(),
                             chunk.nMTime, oIterExistingTarget->second.nMTime,
-                            [&oIterExistingTarget](const char *)
+                            [&oIterExistingTarget](const char *) -> std::string
                             {
                                 return std::string(CSLFetchNameValueDef(
                                     oIterExistingTarget->second.papszExtra,
@@ -4299,7 +4317,7 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                         def.nExpectedCount = static_cast<int>(
                             (chunk.nTotalSize + chunk.nSize - 1) / chunk.nSize);
                         def.nTotalSize = chunk.nTotalSize;
-                        oMapMultiPartDefs[osSubTarget] = def;
+                        oMapMultiPartDefs[osSubTarget] = std::move(def);
                     }
                     else
                     {
@@ -4330,9 +4348,9 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                 CPLAssert(chunk.nStartOffset == 0);
                 const std::string osSubSource(
                     CPLFormFilename(osSourceWithoutSlash.c_str(),
-                                    chunk.osFilename.c_str(), nullptr));
+                                    chunk.osSrcFilename.c_str(), nullptr));
                 const std::string osSubTarget(CPLFormFilename(
-                    osTargetDir.c_str(), chunk.osFilename.c_str(), nullptr));
+                    osTargetDir.c_str(), chunk.osDstFilename.c_str(), nullptr));
                 // coverity[divide_by_zero]
                 void *pScaledProgress = GDALCreateScaledProgress(
                     double(nAccSize) / nTotalSize,
@@ -4400,7 +4418,7 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
             if (CanSkipDownloadFromNetworkToLocal(
                     osSourceWithoutSlash.c_str(), osTarget.c_str(),
                     sSource.st_mtime, sTarget.st_mtime,
-                    [this](const char *pszFilename)
+                    [this](const char *pszFilename) -> std::string
                     {
                         FileProp cachedFileProp;
                         if (GetCachedFileProp(
@@ -4428,7 +4446,7 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
             if (CanSkipUploadFromLocalToNetwork(
                     fpIn, osSourceWithoutSlash.c_str(), osTarget.c_str(),
                     sSource.st_mtime, sTarget.st_mtime,
-                    [this](const char *pszFilename)
+                    [this](const char *pszFilename) -> std::string
                     {
                         FileProp cachedFileProp;
                         if (GetCachedFileProp(
@@ -4508,7 +4526,7 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                         def.nExpectedCount = static_cast<int>(
                             (chunk.nTotalSize + chunk.nSize - 1) / chunk.nSize);
                         def.nTotalSize = chunk.nTotalSize;
-                        oMapMultiPartDefs[osTarget] = def;
+                        oMapMultiPartDefs[osTarget] = std::move(def);
                     }
                     else
                     {
@@ -4626,12 +4644,12 @@ bool IVSIS3LikeFSHandler::Sync(const char *pszSource, const char *pszTarget,
                 queue->osTargetDir.empty()
                     ? queue->osSource.c_str()
                     : CPLFormFilename(queue->osSourceDir.c_str(),
-                                      chunk.osFilename.c_str(), nullptr));
+                                      chunk.osSrcFilename.c_str(), nullptr));
             const std::string osSubTarget(
                 queue->osTargetDir.empty()
                     ? queue->osTarget.c_str()
                     : CPLFormFilename(queue->osTargetDir.c_str(),
-                                      chunk.osFilename.c_str(), nullptr));
+                                      chunk.osDstFilename.c_str(), nullptr));
 
             ProgressData progressData;
             progressData.nFileSize = chunk.nSize;

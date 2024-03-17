@@ -559,6 +559,51 @@ TEST_F(test_gdal, GDALWarp_error_flush_cache)
     delete poDriver;
 }
 
+// Test GDALWarp() to VRT and that we can call GDALReleaseDataset() on the
+// source dataset when we want.
+TEST_F(test_gdal, GDALWarp_VRT)
+{
+    const char *args[] = {"-of", "VRT", nullptr};
+    GDALWarpAppOptions *psOptions =
+        GDALWarpAppOptionsNew((char **)args, nullptr);
+    GDALDatasetH hSrcDS = GDALOpen(GCORE_DATA_DIR "byte.tif", GA_ReadOnly);
+    GDALDatasetH hOutDS = GDALWarp("", nullptr, 1, &hSrcDS, psOptions, nullptr);
+    GDALWarpAppOptionsFree(psOptions);
+    GDALReleaseDataset(hSrcDS);
+    EXPECT_EQ(GDALChecksumImage(GDALGetRasterBand(hOutDS, 1), 0, 0, 20, 20),
+              4672);
+    GDALReleaseDataset(hOutDS);
+}
+
+// Test GDALTranslate() to VRT and that we can call GDALReleaseDataset() on the
+// source dataset when we want.
+TEST_F(test_gdal, GDALTranslate_VRT)
+{
+    const char *args[] = {"-of", "VRT", nullptr};
+    GDALTranslateOptions *psOptions =
+        GDALTranslateOptionsNew((char **)args, nullptr);
+    GDALDatasetH hSrcDS = GDALOpen(GCORE_DATA_DIR "byte.tif", GA_ReadOnly);
+    GDALDatasetH hOutDS = GDALTranslate("", hSrcDS, psOptions, nullptr);
+    GDALTranslateOptionsFree(psOptions);
+    GDALReleaseDataset(hSrcDS);
+    EXPECT_EQ(GDALChecksumImage(GDALGetRasterBand(hOutDS, 1), 0, 0, 20, 20),
+              4672);
+    GDALReleaseDataset(hOutDS);
+}
+
+// Test GDALBuildVRT() and that we can call GDALReleaseDataset() on the
+// source dataset when we want.
+TEST_F(test_gdal, GDALBuildVRT)
+{
+    GDALDatasetH hSrcDS = GDALOpen(GCORE_DATA_DIR "byte.tif", GA_ReadOnly);
+    GDALDatasetH hOutDS =
+        GDALBuildVRT("", 1, &hSrcDS, nullptr, nullptr, nullptr);
+    GDALReleaseDataset(hSrcDS);
+    EXPECT_EQ(GDALChecksumImage(GDALGetRasterBand(hOutDS, 1), 0, 0, 20, 20),
+              4672);
+    GDALReleaseDataset(hOutDS);
+}
+
 // Test that GDALSwapWords() with unaligned buffers
 TEST_F(test_gdal, GDALSwapWords_unaligned_buffers)
 {
@@ -2417,6 +2462,193 @@ TEST_F(test_gdal, GDALBufferHasOnlyNoData)
                                          GSF_FLOATING_POINT));
 }
 
+// Test GetRasterNoDataReplacementValue()
+TEST_F(test_gdal, GetRasterNoDataReplacementValue)
+{
+    // Test GDT_Byte
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Byte, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Byte,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Byte, std::numeric_limits<uint8_t>::lowest()),
+              std::numeric_limits<uint8_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Byte, std::numeric_limits<uint8_t>::max()),
+              std::numeric_limits<uint8_t>::max() - 1);
+
+    // Test GDT_Int8
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int8, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Int8,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int8, std::numeric_limits<int8_t>::lowest()),
+              std::numeric_limits<int8_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Int8,
+                                            std::numeric_limits<int8_t>::max()),
+              std::numeric_limits<int8_t>::max() - 1);
+
+    // Test GDT_UInt16
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt16, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_UInt16,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt16, std::numeric_limits<uint16_t>::lowest()),
+              std::numeric_limits<uint16_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt16, std::numeric_limits<uint16_t>::max()),
+              std::numeric_limits<uint16_t>::max() - 1);
+
+    // Test GDT_Int16
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int16, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Int16,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int16, std::numeric_limits<int16_t>::lowest()),
+              std::numeric_limits<int16_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int16, std::numeric_limits<int16_t>::max()),
+              std::numeric_limits<int16_t>::max() - 1);
+
+    // Test GDT_UInt32
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt32, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_UInt32,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt32, std::numeric_limits<uint32_t>::lowest()),
+              std::numeric_limits<uint32_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt32, std::numeric_limits<uint32_t>::max()),
+              std::numeric_limits<uint32_t>::max() - 1);
+
+    // Test GDT_Int32
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int32, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Int32,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int32, std::numeric_limits<int32_t>::lowest()),
+              std::numeric_limits<int32_t>::lowest() + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int32, std::numeric_limits<int32_t>::max()),
+              std::numeric_limits<int32_t>::max() - 1);
+
+    // Test GDT_UInt64
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt64, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_UInt64,
+                                            std::numeric_limits<double>::max()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_UInt64,
+                  static_cast<double>(std::numeric_limits<uint64_t>::lowest())),
+              static_cast<double>(std::numeric_limits<uint64_t>::lowest()) + 1);
+    // uin64_t max is not representable in double so we expect the next value to be returned
+    EXPECT_EQ(
+        GDALGetNoDataReplacementValue(
+            GDT_UInt64,
+            static_cast<double>(std::numeric_limits<uint64_t>::max())),
+        std::nextafter(
+            static_cast<double>(std::numeric_limits<uint64_t>::max()), 0) -
+            1);
+
+    // Test GDT_Int64
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int64, std::numeric_limits<double>::lowest()),
+              0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Int64,
+                                            std::numeric_limits<double>::max()),
+              0);
+    // in64_t max is not representable in double so we expect the next value to be returned
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int64,
+                  static_cast<double>(std::numeric_limits<int64_t>::lowest())),
+              static_cast<double>(std::numeric_limits<int64_t>::lowest()) + 1);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Int64,
+                  static_cast<double>(std::numeric_limits<int64_t>::max())),
+              std::nextafter(
+                  static_cast<double>(std::numeric_limits<int64_t>::max()), 0) -
+                  1);
+
+    // Test floating point types
+
+    // out of range for float32
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float32, std::numeric_limits<double>::lowest()),
+              0.0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float32,
+                                            std::numeric_limits<double>::max()),
+              0.0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float32, std::numeric_limits<double>::infinity()),
+              0.0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float32, -std::numeric_limits<double>::infinity()),
+              0.0);
+
+    // in range for float 32
+    EXPECT_EQ(
+        static_cast<float>(GDALGetNoDataReplacementValue(GDT_Float32, -1.0)),
+        std::nextafter(float(-1.0), 0.0f));
+    EXPECT_EQ(
+        static_cast<float>(GDALGetNoDataReplacementValue(GDT_Float32, 1.1)),
+        std::nextafter(float(1.1), 2.0f));
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float32, std::numeric_limits<float>::lowest()),
+              std::nextafter(std::numeric_limits<float>::lowest(), 0.0f));
+
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float32,
+                                            std::numeric_limits<float>::max()),
+              static_cast<double>(
+                  std::nextafter(std::numeric_limits<float>::max(), 0.0f)));
+
+    // in range for float64
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float64, std::numeric_limits<double>::lowest()),
+              std::nextafter(std::numeric_limits<double>::lowest(), 0.0));
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float64,
+                                            std::numeric_limits<double>::max()),
+              std::nextafter(std::numeric_limits<double>::max(), 0.0));
+
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float64, std::numeric_limits<double>::lowest()),
+              std::nextafter(std::numeric_limits<double>::lowest(), 0.0));
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float64,
+                                            std::numeric_limits<double>::max()),
+              std::nextafter(std::numeric_limits<double>::max(), 0.0));
+
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float64, double(-1.0)),
+              std::nextafter(double(-1.0), 0.0));
+    EXPECT_EQ(GDALGetNoDataReplacementValue(GDT_Float64, double(1.1)),
+              std::nextafter(double(1.1), 2.0));
+
+    // test infinity
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float64, std::numeric_limits<double>::infinity()),
+              0.0);
+    EXPECT_EQ(GDALGetNoDataReplacementValue(
+                  GDT_Float64, -std::numeric_limits<double>::infinity()),
+              0.0);
+}
+
 // Test GDALRasterBand::GetIndexColorTranslationTo()
 TEST_F(test_gdal, GetIndexColorTranslationTo)
 {
@@ -2583,7 +2815,8 @@ template <class T> void TestCachedPixelAccessor()
         }
     }
 
-    std::vector<T> values(poBand->GetYSize() * poBand->GetXSize());
+    std::vector<T> values(static_cast<size_t>(poBand->GetYSize()) *
+                          poBand->GetXSize());
     accessor.FlushCache();
     EXPECT_EQ(poBand->RasterIO(GF_Read, 0, 0, poBand->GetXSize(),
                                poBand->GetYSize(), values.data(),
@@ -2923,7 +3156,7 @@ TEST_F(test_gdal, GDALDatasetReportError)
     CPLPushErrorHandler(CPLQuietErrorHandler);
     poSrcDS->ReportError("%foo", CE_Warning, CPLE_AppDefined, "bar");
     CPLPopErrorHandler();
-    EXPECT_STREQ(CPLGetLastErrorMsg(), "bar");
+    EXPECT_STREQ(CPLGetLastErrorMsg(), "%foo: bar");
 
     CPLPushErrorHandler(CPLQuietErrorHandler);
     poSrcDS->ReportError(
@@ -3548,6 +3781,143 @@ TEST_F(test_gdal, drop_cache)
         EXPECT_EQ(GDALChecksumImage(poDS->GetRasterBand(1), 0, 0, 1, 1), 0);
         poDS->MarkSuppressOnClose();
         poDS.reset();
+    }
+}
+
+// Test gdal::gcp class
+TEST_F(test_gdal, gdal_gcp_class)
+{
+    {
+        gdal::GCP gcp;
+        EXPECT_STREQ(gcp.Id(), "");
+        EXPECT_STREQ(gcp.Info(), "");
+        EXPECT_EQ(gcp.Pixel(), 0.0);
+        EXPECT_EQ(gcp.Line(), 0.0);
+        EXPECT_EQ(gcp.X(), 0.0);
+        EXPECT_EQ(gcp.Y(), 0.0);
+        EXPECT_EQ(gcp.Z(), 0.0);
+    }
+    {
+        gdal::GCP gcp("id", "info", 1.5, 2.5, 3.5, 4.5, 5.5);
+        EXPECT_STREQ(gcp.Id(), "id");
+        EXPECT_STREQ(gcp.Info(), "info");
+        EXPECT_EQ(gcp.Pixel(), 1.5);
+        EXPECT_EQ(gcp.Line(), 2.5);
+        EXPECT_EQ(gcp.X(), 3.5);
+        EXPECT_EQ(gcp.Y(), 4.5);
+        EXPECT_EQ(gcp.Z(), 5.5);
+
+        gcp.SetId("id2");
+        gcp.SetInfo("info2");
+        gcp.Pixel() = -1.5;
+        gcp.Line() = -2.5;
+        gcp.X() = -3.5;
+        gcp.Y() = -4.5;
+        gcp.Z() = -5.5;
+        EXPECT_STREQ(gcp.Id(), "id2");
+        EXPECT_STREQ(gcp.Info(), "info2");
+        EXPECT_EQ(gcp.Pixel(), -1.5);
+        EXPECT_EQ(gcp.Line(), -2.5);
+        EXPECT_EQ(gcp.X(), -3.5);
+        EXPECT_EQ(gcp.Y(), -4.5);
+        EXPECT_EQ(gcp.Z(), -5.5);
+
+        {
+            gdal::GCP gcp_copy(gcp);
+            EXPECT_STREQ(gcp_copy.Id(), "id2");
+            EXPECT_STREQ(gcp_copy.Info(), "info2");
+            EXPECT_EQ(gcp_copy.Pixel(), -1.5);
+            EXPECT_EQ(gcp_copy.Line(), -2.5);
+            EXPECT_EQ(gcp_copy.X(), -3.5);
+            EXPECT_EQ(gcp_copy.Y(), -4.5);
+            EXPECT_EQ(gcp_copy.Z(), -5.5);
+        }
+
+        {
+            gdal::GCP gcp_copy;
+            gcp_copy = gcp;
+            EXPECT_STREQ(gcp_copy.Id(), "id2");
+            EXPECT_STREQ(gcp_copy.Info(), "info2");
+            EXPECT_EQ(gcp_copy.Pixel(), -1.5);
+            EXPECT_EQ(gcp_copy.Line(), -2.5);
+            EXPECT_EQ(gcp_copy.X(), -3.5);
+            EXPECT_EQ(gcp_copy.Y(), -4.5);
+            EXPECT_EQ(gcp_copy.Z(), -5.5);
+        }
+
+        {
+            gdal::GCP gcp_copy(gcp);
+            gdal::GCP gcp_from_moved(std::move(gcp_copy));
+            EXPECT_STREQ(gcp_from_moved.Id(), "id2");
+            EXPECT_STREQ(gcp_from_moved.Info(), "info2");
+            EXPECT_EQ(gcp_from_moved.Pixel(), -1.5);
+            EXPECT_EQ(gcp_from_moved.Line(), -2.5);
+            EXPECT_EQ(gcp_from_moved.X(), -3.5);
+            EXPECT_EQ(gcp_from_moved.Y(), -4.5);
+            EXPECT_EQ(gcp_from_moved.Z(), -5.5);
+        }
+
+        {
+            gdal::GCP gcp_copy(gcp);
+            gdal::GCP gcp_from_moved;
+            gcp_from_moved = std::move(gcp_copy);
+            EXPECT_STREQ(gcp_from_moved.Id(), "id2");
+            EXPECT_STREQ(gcp_from_moved.Info(), "info2");
+            EXPECT_EQ(gcp_from_moved.Pixel(), -1.5);
+            EXPECT_EQ(gcp_from_moved.Line(), -2.5);
+            EXPECT_EQ(gcp_from_moved.X(), -3.5);
+            EXPECT_EQ(gcp_from_moved.Y(), -4.5);
+            EXPECT_EQ(gcp_from_moved.Z(), -5.5);
+        }
+
+        {
+            const GDAL_GCP *c_gcp = gcp.c_ptr();
+            EXPECT_STREQ(c_gcp->pszId, "id2");
+            EXPECT_STREQ(c_gcp->pszInfo, "info2");
+            EXPECT_EQ(c_gcp->dfGCPPixel, -1.5);
+            EXPECT_EQ(c_gcp->dfGCPLine, -2.5);
+            EXPECT_EQ(c_gcp->dfGCPX, -3.5);
+            EXPECT_EQ(c_gcp->dfGCPY, -4.5);
+            EXPECT_EQ(c_gcp->dfGCPZ, -5.5);
+
+            const gdal::GCP gcp_from_c(*c_gcp);
+            EXPECT_STREQ(gcp_from_c.Id(), "id2");
+            EXPECT_STREQ(gcp_from_c.Info(), "info2");
+            EXPECT_EQ(gcp_from_c.Pixel(), -1.5);
+            EXPECT_EQ(gcp_from_c.Line(), -2.5);
+            EXPECT_EQ(gcp_from_c.X(), -3.5);
+            EXPECT_EQ(gcp_from_c.Y(), -4.5);
+            EXPECT_EQ(gcp_from_c.Z(), -5.5);
+        }
+    }
+
+    {
+        const std::vector<gdal::GCP> gcps{
+            gdal::GCP{nullptr, nullptr, 0, 0, 0, 0, 0},
+            gdal::GCP{"id", "info", 1.5, 2.5, 3.5, 4.5, 5.5}};
+
+        const GDAL_GCP *c_gcps = gdal::GCP::c_ptr(gcps);
+        EXPECT_STREQ(c_gcps[1].pszId, "id");
+        EXPECT_STREQ(c_gcps[1].pszInfo, "info");
+        EXPECT_EQ(c_gcps[1].dfGCPPixel, 1.5);
+        EXPECT_EQ(c_gcps[1].dfGCPLine, 2.5);
+        EXPECT_EQ(c_gcps[1].dfGCPX, 3.5);
+        EXPECT_EQ(c_gcps[1].dfGCPY, 4.5);
+        EXPECT_EQ(c_gcps[1].dfGCPZ, 5.5);
+
+        const auto gcps_from_c =
+            gdal::GCP::fromC(c_gcps, static_cast<int>(gcps.size()));
+        ASSERT_EQ(gcps_from_c.size(), gcps.size());
+        for (size_t i = 0; i < gcps.size(); ++i)
+        {
+            EXPECT_STREQ(gcps_from_c[i].Id(), gcps[i].Id());
+            EXPECT_STREQ(gcps_from_c[i].Info(), gcps[i].Info());
+            EXPECT_EQ(gcps_from_c[i].Pixel(), gcps[i].Pixel());
+            EXPECT_EQ(gcps_from_c[i].Line(), gcps[i].Line());
+            EXPECT_EQ(gcps_from_c[i].X(), gcps[i].X());
+            EXPECT_EQ(gcps_from_c[i].Y(), gcps[i].Y());
+            EXPECT_EQ(gcps_from_c[i].Z(), gcps[i].Z());
+        }
     }
 }
 

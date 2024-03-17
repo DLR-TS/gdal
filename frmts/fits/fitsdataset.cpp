@@ -118,9 +118,9 @@ class FITSDataset final : public GDALPamDataset
     OGRLayer *GetLayer(int) override;
 
     OGRLayer *ICreateLayer(const char *pszName,
-                           const OGRSpatialReference *poSRS,
-                           OGRwkbGeometryType eGType,
-                           char **papszOptions) override;
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
+
     int TestCapability(const char *pszCap) override;
 
     bool GetRawBinaryLayout(GDALDataset::RawBinaryLayout &) override;
@@ -1048,7 +1048,7 @@ void FITSLayer::RunDeferredFieldCreation(const OGRFeature *poFeature)
                 (iBit = strtol(pszBit + strlen("_bit"), &pszEndPtr, 10)) > 0 &&
                 pszEndPtr && *pszEndPtr == '\0')
             {
-                CPLString osName;
+                std::string osName;
                 osName.assign(pszFieldName, pszBit - pszFieldName);
                 if (oSetBitFieldNames.find(osName) == oSetBitFieldNames.end())
                 {
@@ -1060,7 +1060,7 @@ void FITSLayer::RunDeferredFieldCreation(const OGRFeature *poFeature)
 
                     if (osPendingBitFieldName.empty())
                     {
-                        osPendingBitFieldName = osName;
+                        osPendingBitFieldName = std::move(osName);
                         nPendingBitFieldSize = 1;
                         continue;
                     }
@@ -1084,7 +1084,8 @@ void FITSLayer::RunDeferredFieldCreation(const OGRFeature *poFeature)
         const char *pszRepeat = m_aosCreationOptions.FetchNameValue(
             (CPLString("REPEAT_") + pszFieldName).c_str());
 
-        const auto osTFormFromMD = oMapColNameToMetadata[pszFieldName]["TFORM"];
+        const auto &osTFormFromMD =
+            oMapColNameToMetadata[pszFieldName]["TFORM"];
 
         // For fields of type list, determine if we can know if it has a fixed
         // number of elements
@@ -1232,6 +1233,7 @@ void FITSLayer::RunDeferredFieldCreation(const OGRFeature *poFeature)
                 osTForm = oCol.typechar;
             }
         }
+        CPL_IGNORE_RET_VAL(osRepeat);
         int status = 0;
         fits_insert_col(m_poDS->m_hFITS, oCol.iCol, &osTType[0], &osTForm[0],
                         &status);
@@ -2299,12 +2301,13 @@ OGRLayer *FITSDataset::GetLayer(int idx)
 /************************************************************************/
 
 OGRLayer *FITSDataset::ICreateLayer(const char *pszName,
-                                    const OGRSpatialReference * /* poSRS */,
-                                    OGRwkbGeometryType eGType,
-                                    char **papszOptions)
+                                    const OGRGeomFieldDefn *poGeomFieldDefn,
+                                    CSLConstList papszOptions)
 {
     if (!TestCapability(ODsCCreateLayer))
         return nullptr;
+
+    const auto eGType = poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
     if (eGType != wkbNone)
     {
         CPLError(CE_Failure, CPLE_NotSupported, "Spatial tables not supported");

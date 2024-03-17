@@ -302,7 +302,8 @@ OGRErr OGRGeoJSONLayer::ICreateFeature(OGRFeature *poFeature)
                     szBuffer[10] = 0;
                     int i = 9;
                     // Locate final }
-                    while (isspace(szBuffer[i]) && i > 0)
+                    while (isspace(static_cast<unsigned char>(szBuffer[i])) &&
+                           i > 0)
                         i--;
                     if (szBuffer[i] != '}')
                     {
@@ -312,7 +313,8 @@ OGRErr OGRGeoJSONLayer::ICreateFeature(OGRFeature *poFeature)
                     if (i > 0)
                         i--;
                     // Locate ']' ending features array
-                    while (isspace(szBuffer[i]) && i > 0)
+                    while (isspace(static_cast<unsigned char>(szBuffer[i])) &&
+                           i > 0)
                         i--;
                     if (szBuffer[i] != ']')
                     {
@@ -321,7 +323,8 @@ OGRErr OGRGeoJSONLayer::ICreateFeature(OGRFeature *poFeature)
                     }
                     if (i > 0)
                         i--;
-                    while (isspace(szBuffer[i]) && i > 0)
+                    while (isspace(static_cast<unsigned char>(szBuffer[i])) &&
+                           i > 0)
                         i--;
                     // Locate '}' ending last feature, or '[' starting features
                     // array
@@ -345,7 +348,7 @@ OGRErr OGRGeoJSONLayer::ICreateFeature(OGRFeature *poFeature)
                     VSIFPrintfL(fp, ",\n");
                 }
                 json_object *poObj =
-                    OGRGeoJSONWriteFeature(poFeature, OGRGeoJSONWriteOptions());
+                    OGRGeoJSONWriteFeature(poFeature, oWriteOptions_);
                 VSIFPrintfL(fp, "%s", json_object_to_json_string(poObj));
                 json_object_put(poObj);
 

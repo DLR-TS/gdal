@@ -559,7 +559,7 @@ CPLString OGRShapeLayer::ConvertCodePage(const char *pszCodePage)
     if (pszCodePage == nullptr)
         return l_osEncoding;
 
-    CPLString osEncodingFromLDID;
+    std::string osEncodingFromLDID;
     if (hDBF->iLanguageDriver != 0)
     {
         SetMetadataItem("LDID_VALUE", CPLSPrintf("%d", hDBF->iLanguageDriver),
@@ -573,7 +573,7 @@ CPLString OGRShapeLayer::ConvertCodePage(const char *pszCodePage)
                         "SHAPEFILE");
     }
 
-    CPLString osEncodingFromCPG;
+    std::string osEncodingFromCPG;
     if (!STARTS_WITH_CI(pszCodePage, "LDID/"))
     {
         SetMetadataItem("CPG_VALUE", pszCodePage, "SHAPEFILE");
@@ -581,14 +581,14 @@ CPLString OGRShapeLayer::ConvertCodePage(const char *pszCodePage)
         osEncodingFromCPG = GetEncodingFromCPG(pszCodePage);
 
         if (!osEncodingFromCPG.empty())
-            SetMetadataItem("ENCODING_FROM_CPG", osEncodingFromCPG,
+            SetMetadataItem("ENCODING_FROM_CPG", osEncodingFromCPG.c_str(),
                             "SHAPEFILE");
 
-        l_osEncoding = osEncodingFromCPG;
+        l_osEncoding = std::move(osEncodingFromCPG);
     }
     else if (!osEncodingFromLDID.empty())
     {
-        l_osEncoding = osEncodingFromLDID;
+        l_osEncoding = std::move(osEncodingFromLDID);
     }
 
     return l_osEncoding;
@@ -2873,7 +2873,7 @@ OGRErr OGRShapeLayer::Repack()
             CPLGetBasename(papszCandidates[i]);
         const CPLString osCandidateExtension =
             CPLGetExtension(papszCandidates[i]);
-#ifdef WIN32
+#ifdef _WIN32
         // On Windows, as filenames are case insensitive, a shapefile layer can
         // be made of foo.shp and FOO.DBF, so use case insensitive comparison.
         if (EQUAL(osCandidateBasename, osBasename))
@@ -3026,7 +3026,7 @@ OGRErr OGRShapeLayer::Repack()
     // many issues with files being locked, at the expense of more I/O
     const bool bPackInPlace =
         CPLTestBool(CPLGetConfigOption("OGR_SHAPE_PACK_IN_PLACE",
-#ifdef WIN32
+#ifdef _WIN32
                                        "YES"
 #else
                                        "NO"
@@ -3458,7 +3458,7 @@ OGRErr OGRShapeLayer::ResizeDBF()
             }
             else
             {
-                poFieldDefn->SetWidth(panBestWidth[j]);
+                whileUnsealing(poFieldDefn)->SetWidth(panBestWidth[j]);
             }
         }
     }

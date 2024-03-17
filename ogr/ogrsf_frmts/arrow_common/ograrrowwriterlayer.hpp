@@ -252,7 +252,8 @@ inline void OGRArrowWriterLayer::CreateSchemaCommon()
                 break;
             }
         }
-        fields.emplace_back(arrow::field(poFieldDefn->GetNameRef(), dt,
+        fields.emplace_back(arrow::field(poFieldDefn->GetNameRef(),
+                                         std::move(dt),
                                          poFieldDefn->IsNullable()));
         if (poFieldDefn->GetAlternativeNameRef()[0])
             bNeedGDALSchema = true;
@@ -325,8 +326,9 @@ inline void OGRArrowWriterLayer::CreateSchemaCommon()
                 break;
         }
 
-        auto field = arrow::field(poGeomFieldDefn->GetNameRef(), dt,
-                                  poGeomFieldDefn->IsNullable());
+        std::shared_ptr<arrow::Field> field(
+            arrow::field(poGeomFieldDefn->GetNameRef(), std::move(dt),
+                         poGeomFieldDefn->IsNullable()));
         if (m_bWriteFieldArrowExtensionName)
         {
             auto kvMetadata = field->metadata()
@@ -338,13 +340,13 @@ inline void OGRArrowWriterLayer::CreateSchemaCommon()
             field = field->WithMetadata(kvMetadata);
         }
 
-        fields.emplace_back(field);
+        fields.emplace_back(std::move(field));
     }
 
     m_aoEnvelopes.resize(m_poFeatureDefn->GetGeomFieldCount());
     m_oSetWrittenGeometryTypes.resize(m_poFeatureDefn->GetGeomFieldCount());
 
-    m_poSchema = arrow::schema(fields);
+    m_poSchema = arrow::schema(std::move(fields));
     CPLAssert(m_poSchema);
     if (bNeedGDALSchema &&
         CPLTestBool(CPLGetConfigOption(
@@ -489,7 +491,7 @@ OGRArrowWriterLayer::AddFieldDomain(std::unique_ptr<OGRFieldDomain> &&domain,
         return false;
     }
 
-    m_oMapFieldDomainToStringArray[domain->GetName()] = stringArray;
+    m_oMapFieldDomainToStringArray[domain->GetName()] = std::move(stringArray);
     m_oMapFieldDomains[domain->GetName()] = std::move(domain);
     return true;
 }
@@ -1022,7 +1024,9 @@ inline OGRErr OGRArrowWriterLayer::BuildGeometry(OGRGeometry *poGeom,
         if (m_nWKTCoordinatePrecision >= 0)
         {
             options.format = OGRWktFormat::F;
-            options.precision = m_nWKTCoordinatePrecision;
+            options.xyPrecision = m_nWKTCoordinatePrecision;
+            options.zPrecision = m_nWKTCoordinatePrecision;
+            options.mPrecision = m_nWKTCoordinatePrecision;
         }
         OGR_ARROW_RETURN_OGRERR_NOT_OK(
             static_cast<arrow::StringBuilder *>(poBuilder)->Append(
@@ -2129,7 +2133,8 @@ inline bool OGRArrowWriterLayer::WriteArrowBatchInternal(
         }
     }
 
-    auto poRecordBatchResult = arrow::ImportRecordBatch(array, poSchema);
+    auto poRecordBatchResult =
+        arrow::ImportRecordBatch(array, std::move(poSchema));
     if (!poRecordBatchResult.ok())
     {
         CPLError(CE_Failure, CPLE_AppDefined,
@@ -2166,7 +2171,7 @@ inline bool OGRArrowWriterLayer::WriteArrowBatchInternal(
             }
         }
         poRecordBatchResult = arrow::RecordBatch::Make(
-            m_poSchema, poRecordBatch->num_rows(), apoArrays);
+            m_poSchema, poRecordBatch->num_rows(), std::move(apoArrays));
         if (!poRecordBatchResult.ok())
         {
             CPLError(CE_Failure, CPLE_AppDefined,

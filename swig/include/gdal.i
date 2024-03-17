@@ -110,6 +110,7 @@ typedef void OGRGeometryShadow;
 
 typedef struct OGRStyleTableHS OGRStyleTableShadow;
 typedef struct OGRFieldDomainHS OGRFieldDomainShadow;
+typedef struct OGRGeomFieldDefnHS OGRGeomFieldDefnShadow;
 %}
 #endif /* #if defined(SWIGPYTHON) || defined(SWIGJAVA) */
 
@@ -1280,6 +1281,8 @@ struct GDALWarpAppOptions {
 
 /* Note: we must use 2 distinct names due to different ownership of the result */
 
+
+%apply Pointer NONNULL { GDALDatasetShadow* dstDS };
 %inline %{
 
 int wrapper_GDALWarpDestDS( GDALDatasetShadow* dstDS,
@@ -1318,6 +1321,7 @@ int wrapper_GDALWarpDestDS( GDALDatasetShadow* dstDS,
     return bRet;
 }
 %}
+%clear GDALDatasetShadow* dstDS;
 
 #ifdef SWIGJAVA
 %rename (Warp) wrapper_GDALWarpDestName;
@@ -2017,6 +2021,77 @@ GDALDatasetShadow* wrapper_GDALBuildVRT_names( const char* dest,
     GDALDatasetH hDSRet = GDALBuildVRT(dest, CSLCount(source_filenames), NULL, source_filenames, options, &usageError);
     if( bFreeOptions )
         GDALBuildVRTOptionsFree(options);
+#ifdef SWIGPYTHON
+    if( GetUseExceptions() )
+    {
+        PopStackingErrorHandler(&aoErrors, hDSRet != NULL);
+    }
+#endif
+    return hDSRet;
+}
+%}
+%clear char** source_filenames;
+
+//************************************************************************
+// gdal.TileIndex()
+//************************************************************************
+
+#ifdef SWIGJAVA
+%rename (TileIndexOptions) GDALTileIndexOptions;
+#endif
+struct GDALTileIndexOptions {
+%extend {
+    GDALTileIndexOptions(char** options) {
+        return GDALTileIndexOptionsNew(options, NULL);
+    }
+
+    ~GDALTileIndexOptions() {
+        GDALTileIndexOptionsFree( self );
+    }
+}
+};
+
+#ifdef SWIGPYTHON
+%rename (TileIndexInternalNames) wrapper_TileIndex_names;
+#elif defined(SWIGJAVA)
+%rename (TileIndex) wrapper_TileIndex_names;
+#endif
+%newobject wrapper_TileIndex_names;
+
+%apply (char **options) {char** source_filenames};
+%inline %{
+GDALDatasetShadow* wrapper_TileIndex_names( const char* dest,
+                                            char ** source_filenames,
+                                            GDALTileIndexOptions* options,
+                                            GDALProgressFunc callback=NULL,
+                                            void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+#if 0
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALTileIndexOptionsNew(NULL, NULL);
+        }
+        GDALTileIndexOptionsSetProgress(options, callback, callback_data);
+    }
+#endif
+
+#ifdef SWIGPYTHON
+    std::vector<ErrorStruct> aoErrors;
+    if( GetUseExceptions() )
+    {
+        PushStackingErrorHandler(&aoErrors);
+    }
+#endif
+    GDALDatasetH hDSRet = GDALTileIndex(dest, CSLCount(source_filenames), source_filenames, options, &usageError);
+#if 0
+    if( bFreeOptions )
+        GDALTileIndexOptionsFree(options);
+#endif
 #ifdef SWIGPYTHON
     if( GetUseExceptions() )
     {

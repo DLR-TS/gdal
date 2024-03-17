@@ -760,7 +760,7 @@ static ContainerPtr MyGetContainerFromRoot(KmlFactory *poKmlFactory,
         }
         else if (poKmlRoot->IsA(kmldom::Type_Container))
         {
-            poKmlContainer = AsContainer(poKmlRoot);
+            poKmlContainer = AsContainer(std::move(poKmlRoot));
         }
     }
 
@@ -851,8 +851,8 @@ static StyleSelectorPtr StyleFromStyleURL(const StyleMapPtr &stylemap,
                 kmldom::KmlFactory *poKmlFactory =
                     kmldom::KmlFactory::GetFactory();
                 ContainerPtr poKmlContainer;
-                if (!(poKmlContainer =
-                          MyGetContainerFromRoot(poKmlFactory, poKmlRoot)))
+                if (!(poKmlContainer = MyGetContainerFromRoot(
+                          poKmlFactory, std::move(poKmlRoot))))
                 {
                     CPLFree(pszUrlTmp);
                     CPLFree(pszUrl);

@@ -541,7 +541,8 @@ CPLErr VRTKernelFilteredSource::FilterData(int nXSize, int nYSize,
 
                 for (int iI = nIMin; iI < nIMax; ++iI)
                 {
-                    const GPtrDiff_t iIndex = iI * nIStride + iJ * nJStride;
+                    const GPtrDiff_t iIndex =
+                        static_cast<GPtrDiff_t>(iI) * nIStride + iJ * nJStride;
 
                     if (bHasNoData && pafSrcData[iIndex] == fNoData)
                     {
@@ -591,7 +592,7 @@ CPLErr VRTKernelFilteredSource::FilterData(int nXSize, int nYSize,
 /************************************************************************/
 
 CPLErr VRTKernelFilteredSource::XMLInit(
-    CPLXMLNode *psTree, const char *pszVRTPath,
+    const CPLXMLNode *psTree, const char *pszVRTPath,
     std::map<CPLString, GDALDataset *> &oMapSharedSources)
 
 {
@@ -704,7 +705,7 @@ CPLXMLNode *VRTKernelFilteredSource::SerializeToXML(const char *pszVRTPath)
 /************************************************************************/
 
 VRTSource *
-VRTParseFilterSources(CPLXMLNode *psChild, const char *pszVRTPath,
+VRTParseFilterSources(const CPLXMLNode *psChild, const char *pszVRTPath,
                       std::map<CPLString, GDALDataset *> &oMapSharedSources)
 
 {

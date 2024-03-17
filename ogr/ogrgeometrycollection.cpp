@@ -557,6 +557,22 @@ OGRErr OGRGeometryCollection::importFromWkbInternal(
             eErr = OGRGeometryFactory::createFromWkb(
                 pabySubData, nullptr, &poSubGeom, nSize, eWkbVariant,
                 nSubGeomBytesConsumed);
+
+            if (eErr == OGRERR_NONE)
+            {
+                // if this is a Z or M geom make sure the sub geoms are as well
+                if (Is3D() && !poSubGeom->Is3D())
+                {
+                    CPLDebug("OGR", "Promoting sub-geometry to 3D");
+                    poSubGeom->set3D(TRUE);
+                }
+
+                if (IsMeasured() && !poSubGeom->IsMeasured())
+                {
+                    CPLDebug("OGR", "Promoting sub-geometry to Measured");
+                    poSubGeom->setMeasured(TRUE);
+                }
+            }
         }
 
         if (eErr != OGRERR_NONE)
@@ -611,24 +627,32 @@ OGRErr OGRGeometryCollection::importFromWkb(const unsigned char *pabyData,
 /*      Build a well known binary representation of this object.        */
 /************************************************************************/
 
-OGRErr OGRGeometryCollection::exportToWkb(OGRwkbByteOrder eByteOrder,
-                                          unsigned char *pabyData,
-                                          OGRwkbVariant eWkbVariant) const
+OGRErr
+OGRGeometryCollection::exportToWkb(unsigned char *pabyData,
+                                   const OGRwkbExportOptions *psOptions) const
 
 {
-    if (eWkbVariant == wkbVariantOldOgc &&
+    if (psOptions == nullptr)
+    {
+        static const OGRwkbExportOptions defaultOptions;
+        psOptions = &defaultOptions;
+    }
+
+    OGRwkbExportOptions sOptions(*psOptions);
+
+    if (sOptions.eWkbVariant == wkbVariantOldOgc &&
         (wkbFlatten(getGeometryType()) == wkbMultiCurve ||
          wkbFlatten(getGeometryType()) == wkbMultiSurface))
     {
         // Does not make sense for new geometries, so patch it.
-        eWkbVariant = wkbVariantIso;
+        sOptions.eWkbVariant = wkbVariantIso;
     }
 
     /* -------------------------------------------------------------------- */
     /*      Set the byte order.                                             */
     /* -------------------------------------------------------------------- */
-    pabyData[0] =
-        DB2_V72_UNFIX_BYTE_ORDER(static_cast<unsigned char>(eByteOrder));
+    pabyData[0] = DB2_V72_UNFIX_BYTE_ORDER(
+        static_cast<unsigned char>(sOptions.eByteOrder));
 
     /* -------------------------------------------------------------------- */
     /*      Set the geometry feature type, ensuring that 3D flag is         */
@@ -636,9 +660,9 @@ OGRErr OGRGeometryCollection::exportToWkb(OGRwkbByteOrder eByteOrder,
     /* -------------------------------------------------------------------- */
     GUInt32 nGType = getGeometryType();
 
-    if (eWkbVariant == wkbVariantIso)
+    if (sOptions.eWkbVariant == wkbVariantIso)
         nGType = getIsoGeometryType();
-    else if (eWkbVariant == wkbVariantPostGIS1)
+    else if (sOptions.eWkbVariant == wkbVariantPostGIS1)
     {
         const bool bIs3D = wkbHasZ(static_cast<OGRwkbGeometryType>(nGType));
         nGType = wkbFlatten(nGType);
@@ -652,7 +676,7 @@ OGRErr OGRGeometryCollection::exportToWkb(OGRwkbByteOrder eByteOrder,
                 static_cast<OGRwkbGeometryType>(nGType | wkb25DBitInternalUse);
     }
 
-    if (OGR_SWAP(eByteOrder))
+    if (OGR_SWAP(sOptions.eByteOrder))
     {
         nGType = CPL_SWAP32(nGType);
     }
@@ -662,7 +686,7 @@ OGRErr OGRGeometryCollection::exportToWkb(OGRwkbByteOrder eByteOrder,
     /* -------------------------------------------------------------------- */
     /*      Copy in the raw data.                                           */
     /* -------------------------------------------------------------------- */
-    if (OGR_SWAP(eByteOrder))
+    if (OGR_SWAP(sOptions.eByteOrder))
     {
         int nCount = CPL_SWAP32(nGeomCount);
         memcpy(pabyData + 5, &nCount, 4);
@@ -680,7 +704,7 @@ OGRErr OGRGeometryCollection::exportToWkb(OGRwkbByteOrder eByteOrder,
     int iGeom = 0;
     for (auto &&poSubGeom : *this)
     {
-        poSubGeom->exportToWkb(eByteOrder, pabyData + nOffset, eWkbVariant);
+        poSubGeom->exportToWkb(pabyData + nOffset, &sOptions);
         // Should normally not happen if everyone else does its job,
         // but has happened sometimes. (#6332)
         if (poSubGeom->getCoordinateDimension() != getCoordinateDimension())

@@ -51,6 +51,8 @@ Synopsis
             [-resolveDomains]
             [-explodecollections] [-zfield <field_name>]
             [-gcp <ungeoref_x> <ungeoref_y> <georef_x> <georef_y> [<elevation>]]... [-order <n> | -tps]
+            [-xyRes "<val>[ m|mm|deg]"] [-zRes "<val>[ m|mm]"] [-mRes <val>]
+            [-unsetCoordPrecision]
             [-s_coord_epoch <epoch>] [-t_coord_epoch <epoch>] [-a_coord_epoch <epoch>]
             [-nomd] [-mo <META-TAG>=<VALUE>]... [-noNativeData]
 
@@ -254,6 +256,49 @@ output coordinate system or even reprojecting the features during translation.
     to reproject.
 
     .. include:: options/srs_def.rst
+
+.. option:: -xyRes "<val>[ m|mm|deg]"
+
+    .. versionadded:: 3.9
+
+    Set/override the geometry X/Y coordinate resolution. If only a numeric value
+    is specified, it is assumed to be expressed in the units of the target SRS.
+    The m, mm or deg suffixes can be specified to indicate that the value must be
+    interpreted as being in meter, millimeter or degree.
+
+    When specifying this option, the :cpp:func:`OGRGeometry::SetPrecision`
+    method is run on geometries (that are not curves) before passing them to the
+    output driver, to avoid generating invalid geometries due to the potentially
+    reduced precision (unless the :config:`OGR_APPLY_GEOM_SET_PRECISION`
+    configuration option is set to ``NO``)
+
+    If neither this option nor :option:`-unsetCoordPrecision` are specified, the
+    coordinate resolution of the source layer, if available, is used.
+
+.. option:: -zRes "<val>[ m|mm]"
+
+    .. versionadded:: 3.9
+
+    Set/override the geometry Z coordinate resolution. If only a numeric value
+    is specified, it is assumed to be expressed in the units of the target SRS.
+    The m or mm suffixes can be specified to indicate that the value must be
+    interpreted as being in meter or millimeter.
+    If neither this option nor :option:`-unsetCoordPrecision` are specified, the
+    coordinate resolution of the source layer, if available, is used.
+
+.. option:: -mRes <val>
+
+    .. versionadded:: 3.9
+
+    Set/override the geometry M coordinate resolution.
+    If neither this option nor :option:`-unsetCoordPrecision` are specified, the
+    coordinate resolution of the source layer, if available, is used.
+
+.. option:: -unsetCoordPrecision
+
+    .. versionadded:: 3.9
+
+    Prevent the geometry coordinate resolution from being set on target layer(s).
 
 .. option:: -s_coord_epoch <epoch>
 
@@ -572,31 +617,31 @@ Examples
 
 Basic conversion from Shapefile to GeoPackage:
 
-.. code-block::
+.. code-block:: bash
 
   ogr2ogr output.gpkg input.shp
 
 Change the coordinate reference system from ``EPSG:4326`` to ``EPSG:3857``:
 
-.. code-block::
+.. code-block:: bash
 
   ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:3857 output.gpkg input.gpkg
 
 Example appending to an existing layer:
 
-.. code-block::
+.. code-block:: bash
 
     ogr2ogr -append -f PostgreSQL PG:dbname=warmerda abc.tab
 
 Clip input layer with a bounding box (<xmin> <ymin> <xmax> <ymax>):
 
-.. code-block::
+.. code-block:: bash
 
   ogr2ogr -spat -13.931 34.886 46.23 74.12 output.gpkg natural_earth_vector.gpkg
 
 Filter Features by a ``-where`` clause:
 
-.. code-block::
+.. code-block:: bash
 
   ogr2ogr -where "\"POP_EST\" < 1000000" \
     output.gpkg natural_earth_vector.gpkg ne_10m_admin_0_countries
@@ -604,7 +649,7 @@ Filter Features by a ``-where`` clause:
 
 Example reprojecting from ETRS_1989_LAEA_52N_10E to EPSG:4326 and clipping to a bounding box:
 
-.. code-block::
+.. code-block:: bash
 
     ogr2ogr -wrapdateline -t_srs EPSG:4326 -clipdst -5 40 15 55 france_4326.shp europe_laea.shp
 
@@ -613,8 +658,14 @@ used to fill the third field (index 2 = third field) of the target layer, the
 second field of the source layer is ignored, the third field of the source
 layer used to fill the fifth field of the target layer.
 
-.. code-block::
+.. code-block:: bash
 
     ogr2ogr -append -fieldmap 2,-1,4 dst.shp src.shp
+
+Note that not all formats preserve geometries on layer creation by default. E.g., here we need ``-lco``:
+
+.. code-block:: bash
+
+    ogr2ogr -lco GEOMETRY=AS_XYZ TrackWaypoint.csv TrackWaypoint.kml
 
 More examples are given in the individual format pages.

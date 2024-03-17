@@ -72,8 +72,12 @@ int cmpStr(const string &s1, const string &s2)
 
     while (p1 != s1.end() && p2 != s2.end())
     {
-        if (toupper(*p1) != toupper(*p2))
-            return (toupper(*p1) < toupper(*p2)) ? -1 : 1;
+        if (toupper(static_cast<unsigned char>(*p1)) !=
+            toupper(static_cast<unsigned char>(*p2)))
+            return (toupper(static_cast<unsigned char>(*p1)) <
+                    toupper(static_cast<unsigned char>(*p2)))
+                       ? -1
+                       : 1;
         ++p1;
         ++p2;
     }
@@ -689,6 +693,8 @@ int ILI2Reader::SetupParser()
     m_poSAXReader->setLexicalHandler(m_poILI2Handler);
     m_poSAXReader->setEntityResolver(m_poILI2Handler);
     m_poSAXReader->setDTDHandler(m_poILI2Handler);
+    m_poSAXReader->setFeature(XMLUni::fgXercesDisableDefaultEntityResolution,
+                              true);
 
     /* No Validation
     #if (OGR_ILI2_VALIDATION)

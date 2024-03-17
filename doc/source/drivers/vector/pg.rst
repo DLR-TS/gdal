@@ -19,6 +19,8 @@ instead use the :ref:`PostgreSQL SQL Dump driver <vector.pgdump>`.
 You can find additional information on the driver in the :ref:`Advanced OGR
 PostgreSQL driver Information <vector.pg_advanced>` page.
 
+Starting with GDAL 3.9, only PostgreSQL >= 9 and PostGIS >= 2 are supported.
+
 Driver capabilities
 -------------------
 
@@ -81,7 +83,7 @@ and named views will be treated as layers.
 
 The driver also supports the
 `geography <http://postgis.net/docs/manual-1.5/ch04.html#PostGIS_Geography>`__
-column type introduced in PostGIS 1.5.
+column type.
 
 The driver also supports reading and writing the
 following non-linear geometry types :CIRCULARSTRING, COMPOUNDCURVE,
@@ -134,6 +136,19 @@ alternate way of setting the client encoding is to issue the following
 SQL command with ExecuteSQL() : "SET client_encoding TO encoding_name"
 where encoding_name is LATIN1, etc. Errors can be caught by enclosing
 this command with a CPLPushErrorHandler()/CPLPopErrorHandler() pair.
+
+Updating existing tables
+------------------------
+When data is appended to an existing table (for example, using the
+``-append`` option in ``ogr2ogr``) the driver will, by default,
+emit an INSERT statement for each row of data to be added. This may
+be significantly slower than the COPY-based approach taken when creating
+a new table, but ensures consistency of unique identifiers if multiple
+connections are accessing the table simultaneously.
+
+If only one connection is accessing the table when data is appended, the
+COPY-based approach can be chosen by setting the config option
+``PG_USE_COPY`` to ``YES``, which may significantly speed up the operation.
 
 Dataset open options
 ~~~~~~~~~~~~~~~~~~~~
@@ -228,7 +243,7 @@ Layer Creation Options
       :choices: geometry, geography, BYTEA, OID
 
       The GEOM_TYPE layer creation option can be set to one
-      of "geometry", "geography" (PostGIS >= 1.5), "BYTEA" or "OID" to
+      of "geometry", "geography", "BYTEA" or "OID" to
       force the type of geometry used for a table. For a PostGIS database,
       "geometry" is the default value. PostGIS "geography" assumes a geographic
       SRS (before PostGIS 2.2, it was even required to be EPSG:4326), but the
@@ -266,7 +281,7 @@ Layer Creation Options
       :choices: 2, 3, XYM, XYZM
 
       Control the dimension of the layer. Important
-      to set to 2 for 2D layers with PostGIS 1.0+ as it has constraints on
+      to set to 2 for 2D layers as it has constraints on
       the geometry dimension during loading.
 
 -  .. lco:: GEOMETRY_NAME

@@ -195,8 +195,8 @@ CPLErr TSXRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff, void *pImage)
     {
         nRequestYSize = nRasterYSize - nBlockYOff * nBlockYSize;
         memset(pImage, 0,
-               (GDALGetDataTypeSize(eDataType) / 8) * nBlockXSize *
-                   nBlockYSize);
+               static_cast<size_t>(GDALGetDataTypeSizeBytes(eDataType)) *
+                   nBlockXSize * nBlockYSize);
     }
     else
     {
@@ -439,7 +439,7 @@ bool TSXDataset::getGCPsFromGEOREF_XML(char *pszGeorefFilename)
         // CPLAtof(CPLGetXMLValue(psNode,"height",""));
     }
 
-    m_oGCPSRS = osr;
+    m_oGCPSRS = std::move(osr);
 
     CPLDestroyXMLNode(psGeorefData);
 

@@ -404,7 +404,7 @@ GDALDataset *ZarrDataset::Open(GDALOpenInfo *poOpenInfo)
                 {
                     if (osMainArray.empty())
                     {
-                        poMainArray = poArray;
+                        poMainArray = std::move(poArray);
                         osMainArray = osArrayName;
                     }
                     else
@@ -1118,22 +1118,23 @@ GDALDataset *ZarrDataset::Create(const char *pszName, int nXSize, int nYSize,
         CPLTestBool(CSLFetchNameValueDef(papszOptions, "SINGLE_ARRAY", "YES"));
     const bool bBandInterleave =
         EQUAL(CSLFetchNameValueDef(papszOptions, "INTERLEAVE", "BAND"), "BAND");
-    std::shared_ptr<GDALDimension> poBandDim;
-    if (bSingleArray && nBandsIn > 1)
-        poBandDim = poRG->CreateDimension("Band", std::string(), std::string(),
-                                          nBandsIn);
+    const std::shared_ptr<GDALDimension> poBandDim(
+        (bSingleArray && nBandsIn > 1)
+            ? poRG->CreateDimension("Band", std::string(), std::string(),
+                                    nBandsIn)
+            : nullptr);
 
     const char *pszNonNullArrayName =
         pszArrayName ? pszArrayName : CPLGetBasename(pszName);
     if (poBandDim)
     {
-        const auto apoDims =
+        const std::vector<std::shared_ptr<GDALDimension>> apoDims(
             bBandInterleave
                 ? std::vector<std::shared_ptr<GDALDimension>>{poBandDim,
                                                               poDS->m_poDimY,
                                                               poDS->m_poDimX}
                 : std::vector<std::shared_ptr<GDALDimension>>{
-                      poDS->m_poDimY, poDS->m_poDimX, poBandDim};
+                      poDS->m_poDimY, poDS->m_poDimX, poBandDim});
         poDS->m_poSingleArray = poRG->CreateMDArray(
             pszNonNullArrayName, apoDims, GDALExtendedDataType::Create(eType),
             papszOptions);

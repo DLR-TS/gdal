@@ -263,7 +263,7 @@ bool GDALMDArrayGridded::IRead(const GUInt64 *arrayStartIdx,
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnull-dereference"
 #endif
-        m_anLastStartIdx = anStartIdx;
+        m_anLastStartIdx = std::move(anStartIdx);
 #if defined(__GNUC__) && __GNUC__ >= 13
 #pragma GCC diagnostic pop
 #endif
@@ -793,7 +793,7 @@ GDALMDArray::GetGridded(const std::string &osGridOptions,
     // CPLDebug("GDAL", "nXSize = %d, nYSize = %d", nXSize, nYSize);
 
     std::vector<std::shared_ptr<GDALDimension>> apoNewDims;
-    const auto apoSelfDims = GetDimensions();
+    const auto &apoSelfDims = GetDimensions();
     for (size_t i = 0; i < GetDimensionCount() - 1; ++i)
         apoNewDims.emplace_back(apoSelfDims[i]);
 

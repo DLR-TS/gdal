@@ -55,7 +55,7 @@ def gpwv3_wms():
     tree = ET.parse(wms_xml)
     srv = next(tree.iter("ServerUrl")).text
 
-    wms_srv1_ok = gdaltest.gdalurlopen(srv) is not None
+    wms_srv1_ok = gdaltest.gdalurlopen(srv, timeout=5) is not None
 
     if not wms_srv1_ok:
         pytest.skip(f"Could not read from {srv}")
@@ -1155,3 +1155,6 @@ def test_wms_cache_path():
             ds.GetMetadataItem("CACHE_PATH").replace("\\", "/")
             == "./gdalwmscache_b37af3c29458379e6fdf4ed73300f54e/b37af3c29458379e6fdf4ed73300f54e"
         )
+
+    with pytest.raises(Exception):
+        gdal.Open("<GDAL_WMS><Service/><Cache/></GDAL_WMS>")

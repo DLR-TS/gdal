@@ -34,6 +34,8 @@
 #include "oci.h"
 #include "cpl_error.h"
 
+#include <map>
+
 /* -------------------------------------------------------------------- */
 /*      Low level Oracle spatial declarations.                          */
 /* -------------------------------------------------------------------- */
@@ -345,7 +347,7 @@ class OGROCIWritableLayer CPL_NON_FINAL : public OGROCILayer
                                int bExactMatch) override;
 
     // following methods are not base class overrides
-    void SetOptions(char **);
+    void SetOptions(CSLConstList);
 
     void SetDimension(int);
     void SetLaunderFlag(int bFlag)
@@ -564,9 +566,9 @@ class OGROCIDataSource final : public OGRDataSource
 
     // We maintain a list of known SRID to reduce the number of trips to
     // the database to get SRSes.
-    int nKnownSRID;
-    int *panSRID;
-    OGRSpatialReference **papoSRS;
+    std::map<int,
+             std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser>>
+        m_oSRSCache{};
 
   public:
     OGROCIDataSource();
@@ -594,10 +596,10 @@ class OGROCIDataSource final : public OGRDataSource
     OGRLayer *GetLayerByName(const char *pszName) override;
 
     virtual OGRErr DeleteLayer(int) override;
-    virtual OGRLayer *ICreateLayer(const char *,
-                                   const OGRSpatialReference * = nullptr,
-                                   OGRwkbGeometryType = wkbUnknown,
-                                   char ** = nullptr) override;
+
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
 
     int TestCapability(const char *) override;
 

@@ -1181,7 +1181,9 @@ void GTiffDataset::WaitCompletionForBlock(int nBlockId)
 {
     auto poQueue = m_poBaseDS ? m_poBaseDS->m_poCompressQueue.get()
                               : m_poCompressQueue.get();
+    // cppcheck-suppress constVariableReference
     auto &oQueue = m_poBaseDS ? m_poBaseDS->m_asQueueJobIdx : m_asQueueJobIdx;
+    // cppcheck-suppress constVariableReference
     auto &asJobs =
         m_poBaseDS ? m_poBaseDS->m_asCompressionJobs : m_asCompressionJobs;
 
@@ -1227,6 +1229,7 @@ bool GTiffDataset::SubmitCompressionJob(int nStripOrTile, GByte *pabyData,
         poQueue->WaitCompletion();
 
         // Flush remaining data
+        // cppcheck-suppress constVariableReference
         auto &oQueue =
             m_poBaseDS ? m_poBaseDS->m_asQueueJobIdx : m_asQueueJobIdx;
         while (!oQueue.empty())
@@ -2085,6 +2088,8 @@ CPLErr GTiffDataset::FlushCacheInternal(bool bAtClosing, bool bFlushDirectory)
         poQueue->WaitCompletion();
 
         // Flush remaining data
+        // cppcheck-suppress constVariableReference
+
         auto &oQueue =
             m_poBaseDS ? m_poBaseDS->m_asQueueJobIdx : m_asQueueJobIdx;
         while (!oQueue.empty())
@@ -3572,15 +3577,15 @@ void GTiffDataset::WriteGeoTIFFInfo()
         double *padfTiePoints = static_cast<double *>(
             CPLMalloc(6 * sizeof(double) * GetGCPCount()));
 
-        for (int iGCP = 0; iGCP < GetGCPCount(); ++iGCP)
+        for (size_t iGCP = 0; iGCP < m_aoGCPs.size(); ++iGCP)
         {
 
-            padfTiePoints[iGCP * 6 + 0] = m_pasGCPList[iGCP].dfGCPPixel;
-            padfTiePoints[iGCP * 6 + 1] = m_pasGCPList[iGCP].dfGCPLine;
+            padfTiePoints[iGCP * 6 + 0] = m_aoGCPs[iGCP].Pixel();
+            padfTiePoints[iGCP * 6 + 1] = m_aoGCPs[iGCP].Line();
             padfTiePoints[iGCP * 6 + 2] = 0;
-            padfTiePoints[iGCP * 6 + 3] = m_pasGCPList[iGCP].dfGCPX;
-            padfTiePoints[iGCP * 6 + 4] = m_pasGCPList[iGCP].dfGCPY;
-            padfTiePoints[iGCP * 6 + 5] = m_pasGCPList[iGCP].dfGCPZ;
+            padfTiePoints[iGCP * 6 + 3] = m_aoGCPs[iGCP].X();
+            padfTiePoints[iGCP * 6 + 4] = m_aoGCPs[iGCP].Y();
+            padfTiePoints[iGCP * 6 + 5] = m_aoGCPs[iGCP].Z();
 
             if (bPixelIsPoint && !bPointGeoIgnore)
             {
@@ -5061,6 +5066,44 @@ TIFF *GTiffDataset::CreateLL(const char *pszFilename, int nXSize, int nYSize,
         }
     }
 
+#ifdef HAVE_JXL
+    if (l_nCompression == COMPRESSION_JXL)
+    {
+        // Reflects tif_jxl's GetJXLDataType()
+        if (eType != GDT_Byte && eType != GDT_UInt16 && eType != GDT_Float32)
+        {
+            ReportError(pszFilename, CE_Failure, CPLE_NotSupported,
+                        "Data type %s not supported for JXL compression. Only "
+                        "Byte, UInt16, Float32 are supported",
+                        GDALGetDataTypeName(eType));
+            return nullptr;
+        }
+        const struct
+        {
+            GDALDataType eDT;
+            int nBitsPerSample;
+        } asSupportedDTBitsPerSample[] = {
+            {GDT_Byte, 8},
+            {GDT_UInt16, 16},
+            {GDT_Float32, 32},
+        };
+        for (const auto &sSupportedDTBitsPerSample : asSupportedDTBitsPerSample)
+        {
+            if (eType == sSupportedDTBitsPerSample.eDT &&
+                l_nBitsPerSample != sSupportedDTBitsPerSample.nBitsPerSample)
+            {
+                ReportError(
+                    pszFilename, CE_Failure, CPLE_NotSupported,
+                    "Bits per sample=%d not supported for JXL compression. "
+                    "Only %d is supported for %s data type.",
+                    l_nBitsPerSample, sSupportedDTBitsPerSample.nBitsPerSample,
+                    GDALGetDataTypeName(eType));
+                return nullptr;
+            }
+        }
+    }
+#endif
+
     int nPredictor = PREDICTOR_NONE;
     pszValue = CSLFetchNameValue(papszParamList, "PREDICTOR");
     if (pszValue != nullptr)
@@ -6305,7 +6348,7 @@ CPLErr GTiffDataset::CopyImageryAndMask(GTiffDataset *poDstDS,
     const int l_nBands = poDstDS->GetRasterCount();
     void *pBlockBuffer =
         VSI_MALLOC3_VERBOSE(poDstDS->m_nBlockXSize, poDstDS->m_nBlockYSize,
-                            l_nBands * nDataTypeSize);
+                            cpl::fits_on<int>(l_nBands * nDataTypeSize));
     if (pBlockBuffer == nullptr)
     {
         eErr = CE_Failure;
@@ -6353,8 +6396,9 @@ CPLErr GTiffDataset::CopyImageryAndMask(GTiffDataset *poDstDS,
                 eErr = poSrcDS->RasterIO(
                     GF_Read, iX, iY, nReqXSize, nReqYSize, pBlockBuffer,
                     nReqXSize, nReqYSize, eType, l_nBands, nullptr,
-                    nDataTypeSize * l_nBands,
-                    poDstDS->m_nBlockXSize * nDataTypeSize * l_nBands,
+                    static_cast<GSpacing>(nDataTypeSize) * l_nBands,
+                    static_cast<GSpacing>(nDataTypeSize) * l_nBands *
+                        poDstDS->m_nBlockXSize,
                     nDataTypeSize, nullptr);
                 if (eErr == CE_None)
                 {
@@ -6381,7 +6425,9 @@ CPLErr GTiffDataset::CopyImageryAndMask(GTiffDataset *poDstDS,
                             GF_Read, iX, iY, nReqXSize, nReqYSize,
                             poBlock->GetDataRef(), nReqXSize, nReqYSize, eType,
                             nDataTypeSize,
-                            nDataTypeSize * poDstDS->m_nBlockXSize, nullptr);
+                            static_cast<GSpacing>(nDataTypeSize) *
+                                poDstDS->m_nBlockXSize,
+                            nullptr);
                         poBlock->MarkDirty();
                         apoLockedBlocks.emplace_back(poBlock);
                     }
@@ -6395,7 +6441,9 @@ CPLErr GTiffDataset::CopyImageryAndMask(GTiffDataset *poDstDS,
                     eErr = poSrcDS->GetRasterBand(l_nBands)->RasterIO(
                         GF_Read, iX, iY, nReqXSize, nReqYSize, pBlockBuffer,
                         nReqXSize, nReqYSize, eType, nDataTypeSize,
-                        nDataTypeSize * poDstDS->m_nBlockXSize, nullptr);
+                        static_cast<GSpacing>(nDataTypeSize) *
+                            poDstDS->m_nBlockXSize,
+                        nullptr);
                 }
                 if (eErr == CE_None)
                 {
@@ -7266,8 +7314,11 @@ GDALDataset *GTiffDataset::CreateCopy(const char *pszFilename,
         GTiffFillStreamableOffsetAndCount(l_hTIFF, nSize);
         TIFFWriteDirectory(l_hTIFF);
     }
-    TIFFSetDirectory(l_hTIFF,
-                     static_cast<tdir_t>(TIFFNumberOfDirectories(l_hTIFF) - 1));
+    const auto nDirCount = TIFFNumberOfDirectories(l_hTIFF);
+    if (nDirCount >= 1)
+    {
+        TIFFSetDirectory(l_hTIFF, static_cast<tdir_t>(nDirCount - 1));
+    }
     const toff_t l_nDirOffset = TIFFCurrentDirOffset(l_hTIFF);
     TIFFFlush(l_hTIFF);
     XTIFFClose(l_hTIFF);
@@ -8204,16 +8255,13 @@ CPLErr GTiffDataset::SetGeoTransform(double *padfTransform)
     CPLErr eErr = CE_None;
     if (eAccess == GA_Update)
     {
-        if (m_nGCPCount > 0)
+        if (!m_aoGCPs.empty())
         {
             ReportError(CE_Warning, CPLE_AppDefined,
                         "GCPs previously set are going to be cleared "
                         "due to the setting of a geotransform.");
             m_bForceUnsetGTOrGCPs = true;
-            GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-            CPLFree(m_pasGCPList);
-            m_nGCPCount = 0;
-            m_pasGCPList = nullptr;
+            m_aoGCPs.clear();
         }
         else if (padfTransform[0] == 0.0 && padfTransform[1] == 0.0 &&
                  padfTransform[2] == 0.0 && padfTransform[3] == 0.0 &&
@@ -8271,7 +8319,7 @@ CPLErr GTiffDataset::SetGCPs(int nGCPCountIn, const GDAL_GCP *pasGCPListIn,
 
     if (eAccess == GA_Update)
     {
-        if (m_nGCPCount > 0 && nGCPCountIn == 0)
+        if (!m_aoGCPs.empty() && nGCPCountIn == 0)
         {
             m_bForceUnsetGTOrGCPs = true;
         }
@@ -8329,14 +8377,7 @@ CPLErr GTiffDataset::SetGCPs(int nGCPCountIn, const GDAL_GCP *pasGCPListIn,
             m_oSRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
         }
 
-        if (m_nGCPCount > 0)
-        {
-            GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-            CPLFree(m_pasGCPList);
-        }
-
-        m_nGCPCount = nGCPCountIn;
-        m_pasGCPList = GDALDuplicateGCPs(m_nGCPCount, pasGCPListIn);
+        m_aoGCPs = gdal::GCP::fromC(pasGCPListIn, nGCPCountIn);
     }
 
     return eErr;

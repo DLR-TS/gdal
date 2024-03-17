@@ -11,7 +11,7 @@
  * SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
  ******************************************************************************/
 
-#include "shapefil.h"
+#include "shapefil_private.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -26,7 +26,7 @@
 
 #if defined(_MSC_VER)
 #define STRCASECMP(a, b) (_stricmp(a, b))
-#elif defined(WIN32) || defined(_WIN32)
+#elif defined(_WIN32)
 #define STRCASECMP(a, b) (stricmp(a, b))
 #else
 #include <strings.h>
@@ -37,7 +37,7 @@
 #if _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
-#elif defined(WIN32) || defined(_WIN32)
+#elif defined(_WIN32)
 #ifndef snprintf
 #define snprintf _snprintf
 #endif
@@ -66,18 +66,6 @@ CPL_INLINE static void CPL_IGNORE_RET_VAL_INT(CPL_UNUSED int unused)
 }
 #else
 #define CPL_IGNORE_RET_VAL_INT(x) x
-#endif
-
-#ifdef __cplusplus
-#define STATIC_CAST(type, x) static_cast<type>(x)
-#define REINTERPRET_CAST(type, x) reinterpret_cast<type>(x)
-#define CONST_CAST(type, x) const_cast<type>(x)
-#define SHPLIB_NULLPTR nullptr
-#else
-#define STATIC_CAST(type, x) ((type)(x))
-#define REINTERPRET_CAST(type, x) ((type)(x))
-#define CONST_CAST(type, x) ((type)(x))
-#define SHPLIB_NULLPTR NULL
 #endif
 
 /************************************************************************/
@@ -310,7 +298,6 @@ void SHPAPI_CALL DBFSetLastModifiedDate(DBFHandle psDBF, int nYYSince1900,
 /************************************************************************/
 
 DBFHandle SHPAPI_CALL DBFOpen(const char *pszFilename, const char *pszAccess)
-
 {
     SAHooks sHooks;
 
@@ -1077,7 +1064,6 @@ double SHPAPI_CALL DBFReadDoubleAttribute(DBFHandle psDBF, int iRecord,
 
 const char SHPAPI_CALL1(*)
     DBFReadStringAttribute(DBFHandle psDBF, int iRecord, int iField)
-
 {
     return STATIC_CAST(const char *,
                        DBFReadAttribute(psDBF, iRecord, iField, 'C'));
@@ -1091,10 +1077,40 @@ const char SHPAPI_CALL1(*)
 
 const char SHPAPI_CALL1(*)
     DBFReadLogicalAttribute(DBFHandle psDBF, int iRecord, int iField)
-
 {
     return STATIC_CAST(const char *,
                        DBFReadAttribute(psDBF, iRecord, iField, 'L'));
+}
+
+/************************************************************************/
+/*                        DBFReadDateAttribute()                        */
+/*                                                                      */
+/*      Read a date attribute.                                          */
+/************************************************************************/
+
+SHPDate SHPAPI_CALL DBFReadDateAttribute(DBFHandle psDBF, int iRecord,
+                                         int iField)
+{
+    const char *pdateValue = STATIC_CAST(
+        const char *, DBFReadAttribute(psDBF, iRecord, iField, 'D'));
+
+    SHPDate date;
+
+    if (pdateValue == SHPLIB_NULLPTR)
+    {
+        date.year = 0;
+        date.month = 0;
+        date.day = 0;
+    }
+    else if (3 != sscanf(pdateValue, "%4d%2d%2d", &date.year, &date.month,
+                         &date.day))
+    {
+        date.year = 0;
+        date.month = 0;
+        date.day = 0;
+    }
+
+    return date;
 }
 
 /************************************************************************/
@@ -1154,7 +1170,8 @@ static bool DBFIsValueNULL(char chType, const char *pszValue)
 /*      Contributed by Jim Matthews.                                    */
 /************************************************************************/
 
-int SHPAPI_CALL DBFIsAttributeNULL(DBFHandle psDBF, int iRecord, int iField)
+int SHPAPI_CALL DBFIsAttributeNULL(const DBFHandle psDBF, int iRecord,
+                                   int iField)
 {
     const char *pszValue = DBFReadStringAttribute(psDBF, iRecord, iField);
 
@@ -1170,8 +1187,7 @@ int SHPAPI_CALL DBFIsAttributeNULL(DBFHandle psDBF, int iRecord, int iField)
 /*      Return the number of fields in this table.                      */
 /************************************************************************/
 
-int SHPAPI_CALL DBFGetFieldCount(DBFHandle psDBF)
-
+int SHPAPI_CALL DBFGetFieldCount(const DBFHandle psDBF)
 {
     return (psDBF->nFields);
 }
@@ -1182,8 +1198,7 @@ int SHPAPI_CALL DBFGetFieldCount(DBFHandle psDBF)
 /*      Return the number of records in this table.                     */
 /************************************************************************/
 
-int SHPAPI_CALL DBFGetRecordCount(DBFHandle psDBF)
-
+int SHPAPI_CALL DBFGetRecordCount(const DBFHandle psDBF)
 {
     return (psDBF->nRecords);
 }
@@ -1196,10 +1211,9 @@ int SHPAPI_CALL DBFGetRecordCount(DBFHandle psDBF)
 /*      bytes long.                                                     */
 /************************************************************************/
 
-DBFFieldType SHPAPI_CALL DBFGetFieldInfo(DBFHandle psDBF, int iField,
+DBFFieldType SHPAPI_CALL DBFGetFieldInfo(const DBFHandle psDBF, int iField,
                                          char *pszFieldName, int *pnWidth,
                                          int *pnDecimals)
-
 {
     if (iField < 0 || iField >= psDBF->nFields)
         return (FTInvalid);
@@ -1422,17 +1436,17 @@ int SHPAPI_CALL DBFWriteAttributeDirectly(DBFHandle psDBF, int hEntity,
         /*      Assign all the record fields.                                   */
         /* -------------------------------------------------------------------- */
         int j;
-        if (STATIC_CAST(int, strlen(STATIC_CAST(char *, pValue))) >
+        if (STATIC_CAST(int, strlen(STATIC_CAST(const char *, pValue))) >
             psDBF->panFieldSize[iField])
             j = psDBF->panFieldSize[iField];
         else
         {
             memset(pabyRec + psDBF->panFieldOffset[iField], ' ',
                    psDBF->panFieldSize[iField]);
-            j = STATIC_CAST(int, strlen(STATIC_CAST(char *, pValue)));
+            j = STATIC_CAST(int, strlen(STATIC_CAST(const char *, pValue)));
         }
 
-        strncpy(
+        memcpy(
             REINTERPRET_CAST(char *, pabyRec + psDBF->panFieldOffset[iField]),
             STATIC_CAST(const char *, pValue), j);
     }
@@ -1479,7 +1493,6 @@ int SHPAPI_CALL DBFWriteIntegerAttribute(DBFHandle psDBF, int iRecord,
 
 int SHPAPI_CALL DBFWriteStringAttribute(DBFHandle psDBF, int iRecord,
                                         int iField, const char *pszValue)
-
 {
     return (
         DBFWriteAttribute(psDBF, iRecord, iField,
@@ -1493,7 +1506,6 @@ int SHPAPI_CALL DBFWriteStringAttribute(DBFHandle psDBF, int iRecord,
 /************************************************************************/
 
 int SHPAPI_CALL DBFWriteNULLAttribute(DBFHandle psDBF, int iRecord, int iField)
-
 {
     return (DBFWriteAttribute(psDBF, iRecord, iField, SHPLIB_NULLPTR));
 }
@@ -1506,11 +1518,34 @@ int SHPAPI_CALL DBFWriteNULLAttribute(DBFHandle psDBF, int iRecord, int iField)
 
 int SHPAPI_CALL DBFWriteLogicalAttribute(DBFHandle psDBF, int iRecord,
                                          int iField, const char lValue)
-
 {
     return (
         DBFWriteAttribute(psDBF, iRecord, iField,
                           STATIC_CAST(void *, CONST_CAST(char *, &lValue))));
+}
+
+/************************************************************************/
+/*                      DBFWriteDateAttribute()                         */
+/*                                                                      */
+/*      Write a date attribute.                                         */
+/************************************************************************/
+
+int SHPAPI_CALL DBFWriteDateAttribute(DBFHandle psDBF, int iRecord, int iField,
+                                      const SHPDate *lValue)
+{
+    if (SHPLIB_NULLPTR == lValue)
+        return false;
+    /* check for supported digit range, but do not check for valid date */
+    if (lValue->year < 0 || lValue->year > 9999)
+        return false;
+    if (lValue->month < 0 || lValue->month > 99)
+        return false;
+    if (lValue->day < 0 || lValue->day > 99)
+        return false;
+    char dateValue[9]; /* "yyyyMMdd\0" */
+    snprintf(dateValue, sizeof(dateValue), "%04d%02d%02d", lValue->year,
+             lValue->month, lValue->day);
+    return (DBFWriteAttributeDirectly(psDBF, iRecord, iField, dateValue));
 }
 
 /************************************************************************/
@@ -1572,7 +1607,6 @@ int SHPAPI_CALL DBFWriteTuple(DBFHandle psDBF, int hEntity,
 /************************************************************************/
 
 const char SHPAPI_CALL1(*) DBFReadTuple(DBFHandle psDBF, int hEntity)
-
 {
     if (hEntity < 0 || hEntity >= psDBF->nRecords)
         return SHPLIB_NULLPTR;
@@ -1589,7 +1623,8 @@ const char SHPAPI_CALL1(*) DBFReadTuple(DBFHandle psDBF, int hEntity)
 /*      Read one of the attribute fields of a record.                   */
 /************************************************************************/
 
-DBFHandle SHPAPI_CALL DBFCloneEmpty(DBFHandle psDBF, const char *pszFilename)
+DBFHandle SHPAPI_CALL DBFCloneEmpty(const DBFHandle psDBF,
+                                    const char *pszFilename)
 {
     DBFHandle newDBF = DBFCreateEx(pszFilename, psDBF->pszCodePage);
     if (newDBF == SHPLIB_NULLPTR)
@@ -1648,8 +1683,7 @@ DBFHandle SHPAPI_CALL DBFCloneEmpty(DBFHandle psDBF, const char *pszFilename)
 /*                           'M' (Memo: 10 digits .DBT block ptr)       */
 /************************************************************************/
 
-char SHPAPI_CALL DBFGetNativeFieldType(DBFHandle psDBF, int iField)
-
+char SHPAPI_CALL DBFGetNativeFieldType(const DBFHandle psDBF, int iField)
 {
     if (iField >= 0 && iField < psDBF->nFields)
         return psDBF->pachFieldType[iField];
@@ -1665,7 +1699,8 @@ char SHPAPI_CALL DBFGetNativeFieldType(DBFHandle psDBF, int iField)
 /*      Contributed by Jim Matthews.                                    */
 /************************************************************************/
 
-int SHPAPI_CALL DBFGetFieldIndex(DBFHandle psDBF, const char *pszFieldName)
+int SHPAPI_CALL DBFGetFieldIndex(const DBFHandle psDBF,
+                                 const char *pszFieldName)
 {
     char name[XBASE_FLDNAME_LEN_READ + 1];
 
@@ -1685,7 +1720,7 @@ int SHPAPI_CALL DBFGetFieldIndex(DBFHandle psDBF, const char *pszFieldName)
 /*      it returns FALSE.                                               */
 /************************************************************************/
 
-int SHPAPI_CALL DBFIsRecordDeleted(DBFHandle psDBF, int iShape)
+int SHPAPI_CALL DBFIsRecordDeleted(const DBFHandle psDBF, int iShape)
 {
     /* -------------------------------------------------------------------- */
     /*      Verify selection.                                               */
@@ -1748,7 +1783,7 @@ int SHPAPI_CALL DBFMarkRecordDeleted(DBFHandle psDBF, int iShape,
 /*                            DBFGetCodePage                            */
 /************************************************************************/
 
-const char SHPAPI_CALL1(*) DBFGetCodePage(DBFHandle psDBF)
+const char SHPAPI_CALL1(*) DBFGetCodePage(const DBFHandle psDBF)
 {
     if (psDBF == SHPLIB_NULLPTR)
         return SHPLIB_NULLPTR;

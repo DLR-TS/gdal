@@ -52,6 +52,8 @@ typedef enum
     GPX_TRACK_POINT,
 } GPXGeometryType;
 
+constexpr int PARSER_BUF_SIZE = 8192;
+
 /************************************************************************/
 /*                             OGRGPXLayer                              */
 /************************************************************************/
@@ -233,10 +235,9 @@ class OGRGPXDataSource final : public GDALDataset
     }
     OGRLayer *GetLayer(int) override;
 
-    OGRLayer *ICreateLayer(const char *pszLayerName,
-                           const OGRSpatialReference *poSRS,
-                           OGRwkbGeometryType eType,
-                           char **papszOptions) override;
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
 
     int TestCapability(const char *) override;
 

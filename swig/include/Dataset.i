@@ -787,6 +787,20 @@ CPLErr AdviseRead(  int xoff, int yoff, int xsize, int ysize,
     return layer;
   }
 
+  /* Note that datasources own their layers */
+#ifndef SWIGJAVA
+  %feature( "kwargs" ) CreateLayer;
+#endif
+  OGRLayerShadow *CreateLayerFromGeomFieldDefn(const char* name,
+              OGRGeomFieldDefnShadow* geom_field,
+              char** options=0) {
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetCreateLayerFromGeomFieldDefn( self,
+                                  name,
+                                  geom_field,
+                                  options);
+    return layer;
+  }
+
 #ifndef SWIGJAVA
   %feature( "kwargs" ) CopyLayer;
 #endif
@@ -805,32 +819,12 @@ CPLErr AdviseRead(  int xoff, int yoff, int xsize, int ysize,
     return GDALDatasetDeleteLayer(self, index);
   }
 
-  int GetLayerCount() {
-    return GDALDatasetGetLayerCount(self);
-  }
-
   bool IsLayerPrivate( int index ) {
     return GDALDatasetIsLayerPrivate(self, index);
   }
 
-#ifdef SWIGJAVA
-  OGRLayerShadow *GetLayerByIndex( int index ) {
-#else
-  OGRLayerShadow *GetLayerByIndex( int index=0) {
-#endif
-    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayer(self, index);
-    return layer;
-  }
 
-  OGRLayerShadow *GetLayerByName( const char* layer_name) {
-    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayerByName(self, layer_name);
-    return layer;
-  }
 
-  void ResetReading()
-  {
-    GDALDatasetResetReading( self );
-  }
 
 #ifdef SWIGPYTHON
 %newobject GetNextFeature;
@@ -889,6 +883,46 @@ CPLErr AdviseRead(  int xoff, int yoff, int xsize, int ysize,
 
 #endif /* defined(SWIGPYTHON) || defined(SWIGJAVA) */
 
+
+#ifdef SWIGJAVA
+  OGRLayerShadow *GetLayerByIndex( int index ) {
+#elif SWIGPYTHON
+  OGRLayerShadow *GetLayerByIndex( int index=0) {
+#else
+  OGRLayerShadow *GetLayer( int index ) {
+#endif
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayer(self, index);
+    return layer;
+  }
+
+  OGRLayerShadow *GetLayerByName(const char* layer_name) {
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayerByName(self, layer_name);
+    return layer;
+  }
+
+  void ResetReading()
+  {
+    GDALDatasetResetReading(self);
+  }
+
+  int GetLayerCount() {
+    return GDALDatasetGetLayerCount(self);
+  }
+
+#ifdef SWIGCSHARP
+  
+  %newobject GetNextFeature;
+  OGRFeatureShadow *GetNextFeature( OGRLayerShadow** ppoBelongingLayer = NULL,
+                                    double* pdfProgressPct = NULL,
+                                    GDALProgressFunc callback = NULL,
+                                    void* callback_data=NULL )
+  {
+    return GDALDatasetGetNextFeature( self, ppoBelongingLayer, pdfProgressPct,
+                                      callback, callback_data );
+  }
+
+
+#endif
 
 OGRErr AbortSQL() {
     return GDALDatasetAbortSQL(self);

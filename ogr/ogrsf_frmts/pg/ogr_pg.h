@@ -38,6 +38,8 @@
 #include "ogrpgutility.h"
 #include "ogr_pgdump.h"
 
+#include <map>
+#include <optional>
 #include <vector>
 
 /* These are the OIDs for some builtin types, as returned by PQftype(). */
@@ -194,7 +196,7 @@ class OGRPGLayer CPL_NON_FINAL : public OGRLayer
     static char *GeometryToBYTEA(const OGRGeometry *, int nPostGISMajor,
                                  int nPostGISMinor);
     static GByte *BYTEAToGByteArray(const char *pszBytea, int *pnLength);
-    static OGRGeometry *BYTEAToGeometry(const char *, int bIsPostGIS1);
+    static OGRGeometry *BYTEAToGeometry(const char *);
     Oid GeometryToOID(OGRGeometry *);
     OGRGeometry *OIDToGeometry(Oid);
 
@@ -594,9 +596,9 @@ class OGRPGDataSource final : public OGRDataSource
 
     // We maintain a list of known SRID to reduce the number of trips to
     // the database to get SRSes.
-    int nKnownSRID = 0;
-    int *panSRID = nullptr;
-    OGRSpatialReference **papoSRS = nullptr;
+    std::map<int,
+             std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser>>
+        m_oSRSCache{};
 
     OGRPGTableLayer *poLayerInCopyMode = nullptr;
 
@@ -624,6 +626,8 @@ class OGRPGDataSource final : public OGRDataSource
 
     OGRErr FlushCacheWithRet(bool bAtClosing);
 
+    std::optional<std::string> FindSchema(const char *pszSchemaNameIn);
+
   public:
     PGver sPostgreSQLVersion = {0, 0, 0};
     PGver sPostGISVersion = {0, 0, 0};
@@ -633,6 +637,11 @@ class OGRPGDataSource final : public OGRDataSource
 
     bool m_bHasGeometryColumns = false;
     bool m_bHasSpatialRefSys = false;
+
+    bool HavePostGIS() const
+    {
+        return bHavePostGIS;
+    }
 
     int GetUndefinedSRID() const
     {
@@ -653,7 +662,7 @@ class OGRPGDataSource final : public OGRDataSource
     }
 
     int FetchSRSId(const OGRSpatialReference *poSRS);
-    OGRSpatialReference *FetchSRS(int nSRSId);
+    const OGRSpatialReference *FetchSRS(int nSRSId);
     static OGRErr InitializeMetadataTables();
 
     int Open(const char *, int bUpdate, int bTestOpen, char **papszOpenOptions);
@@ -672,10 +681,9 @@ class OGRPGDataSource final : public OGRDataSource
 
     virtual CPLErr FlushCache(bool bAtClosing) override;
 
-    virtual OGRLayer *ICreateLayer(const char *,
-                                   const OGRSpatialReference * = nullptr,
-                                   OGRwkbGeometryType = wkbUnknown,
-                                   char ** = nullptr) override;
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
 
     int TestCapability(const char *) override;
 

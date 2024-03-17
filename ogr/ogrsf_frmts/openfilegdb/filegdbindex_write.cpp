@@ -147,7 +147,7 @@ bool FileGDBTable::CreateIndex(const std::string &osIndexName,
 
     for (const char ch : osIndexName)
     {
-        if (!isalnum(ch) && ch != '_')
+        if (!isalnum(static_cast<unsigned char>(ch)) && ch != '_')
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "Invalid index name: must contain only alpha numeric "
@@ -549,8 +549,8 @@ static bool WriteIndex(
             else
             {
                 WriteUInt32(abyPage, 0);
-                nNumFeaturesInPage = static_cast<int>(
-                    asValues.size() - i * numMaxFeaturesPerPage);
+                nNumFeaturesInPage = static_cast<int>(asValues.size()) -
+                                     i * numMaxFeaturesPerPage;
             }
             CPLAssert(nNumFeaturesInPage > 0 &&
                       nNumFeaturesInPage <= NUM_MAX_FEATURES_PER_PAGE);

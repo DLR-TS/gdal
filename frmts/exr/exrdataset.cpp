@@ -822,7 +822,7 @@ GDALDataset *GDALEXRDataset::Open(GDALOpenInfo *poOpenInfo)
             poDS->SetMetadata(aosSubDS.List(), "SUBDATASETS");
         }
 
-        poDS->SetPamFlags(0);
+        poDS->SetPamFlags(poDS->GetPamFlags() & ~GPF_DIRTY);
 
         // Initialize any PAM information.
         poDS->SetDescription(poOpenInfo->pszFilename);
@@ -1112,15 +1112,18 @@ GDALDataset *GDALEXRDataset::CreateCopy(const char *pszFilename,
         char *sliceBuffer;
         if (pixelType == UINT)
         {
-            bufferUInt.resize(nBands * nChunkXSize * nChunkYSize);
+            bufferUInt.resize(static_cast<size_t>(nBands) * nChunkXSize *
+                              nChunkYSize);
             sliceBuffer = reinterpret_cast<char *>(bufferUInt.data());
         }
         else
         {
-            bufferFloat.resize(nBands * nChunkXSize * nChunkYSize);
+            bufferFloat.resize(static_cast<size_t>(nBands) * nChunkXSize *
+                               nChunkYSize);
             if (pixelType == HALF)
             {
-                bufferHalf.resize(nBands * nChunkXSize * nChunkYSize);
+                bufferHalf.resize(static_cast<size_t>(nBands) * nChunkXSize *
+                                  nChunkYSize);
                 sliceBuffer = reinterpret_cast<char *>(bufferHalf.data());
             }
             else

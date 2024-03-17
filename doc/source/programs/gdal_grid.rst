@@ -48,6 +48,9 @@ computer.
 
 .. include:: options/ot.rst
 
+If not set then a default type is used, which might not be supported
+by the relevant driver, causing a error.
+
 .. include:: options/of.rst
 
 .. option:: -txe <xmin> <xmax>
@@ -415,11 +418,11 @@ Reading comma separated values
 
 Often you have a text file with a list of comma separated XYZ values to work
 with (so called CSV file). You can easily use that kind of data source in
-:program:`gdal_grid`. All you need is create a virtual dataset header (VRT) for you CSV
-file and use it as input datasource for :program:`gdal_grid`. You can find details
-on VRT format at :ref:`vector.vrt` description page.
+:program:`gdal_grid`. All you need is to create a virtual dataset header (VRT) for your CSV
+file and use it as an input datasource for :program:`gdal_grid`. You can find details
+on the VRT format on the :ref:`vector.vrt` description page.
 
-Here is a small example. Let we have a CSV file called *dem.csv*
+Here is a small example. Let's say we have a CSV file called *dem.csv*
 containing
 
 ::
@@ -431,7 +434,7 @@ containing
     87077.6,891995,135.01
     ...
 
-For above data we will create *dem.vrt* header with the following
+For the above data we will create a *dem.vrt* header with the following
 content:
 
 .. code-block:: xml
@@ -444,15 +447,27 @@ content:
         </OGRVRTLayer>
     </OGRVRTDataSource>
 
-This description specifies so called 2.5D geometry with three coordinates X, Y
-and Z. Z value will be used for interpolation. Now you can use *dem.vrt*
-with all OGR programs (start with :ref:`ogrinfo` to test that everything works
-fine). The datasource will contain single layer called *"dem"* filled
-with point features constructed from values in CSV file. Using this technique
-you can handle CSV files with more than three columns, switch columns, etc.
+This description specifies so called 2.5D geometry with  three  coordinates
+X,  Y and Z. The Z value will be used for interpolation. Now you can
+use *dem.vrt* with all OGR programs (start  with  :ref:`ogrinfo`  to  test  that
+everything works fine). The datasource will contain a single layer called
+*"dem"*  filled  with point features constructed from values in the CSV file.
+Using this technique you can handle CSV  files  with  more  than  three
+columns, switch columns, etc. OK, now the final step:
 
-If your CSV file does not contain column headers then it can be handled in the
-following way:
+.. code-block::
+
+    gdal_grid dem.vrt demv.tif
+
+Or, if we do not wish to use a VRT file:
+
+.. code-block::
+
+    gdal_grid -l dem -oo X_POSSIBLE_NAMES=Easting \
+    -oo Y_POSSIBLE_NAMES=Northing -zfield Elevation dem.csv dem.tif
+
+If your CSV file does not contain column headers then it can be handled
+in the VRT file in the following way:
 
 .. code-block:: xml
 
@@ -460,6 +475,27 @@ following way:
 
 The :ref:`vector.csv` description page contains
 details on CSV format supported by GDAL/OGR.
+
+Creating multiband files
+------------------------
+
+Creating multiband files is not directly possible with gdal_grid.
+One might use gdal_grid multiple times to create one band per file,
+and then use :ref:`gdalbuildvrt` -separate and then :ref:`gdal_translate`:
+
+.. code-block:: bash
+
+    gdal_grid ... 1.tif; gdal_grid ... 2.tif; gdal_grid ... 3.tif
+    gdalbuildvrt -separate 123.vrt 1.tif 2.tif 3.tif
+    gdal_translate 123.vrt 123.tif
+
+Or just :ref:`gdal_merge`, to combine the one-band files into a single one:
+
+.. code-block:: bash
+
+    gdal_grid ... a.tif; gdal_grid ... b.tif; gdal_grid ... c.tif
+    gdal_merge.py -separate a.tif b.tif c.tif -o d.tif
+
 
 C API
 -----
@@ -475,7 +511,8 @@ Values to interpolate will be read from Z value of geometry record.
 
 ::
 
-    gdal_grid -a invdist:power=2.0:smoothing=1.0 -txe 85000 89000 -tye 894000 890000 -outsize 400 400 -of GTiff -ot Float64 -l dem dem.vrt dem.tiff
+    gdal_grid -a invdist:power=2.0:smoothing=1.0 -txe 85000 89000 -tye 894000 890000 \
+        -outsize 400 400 -of GTiff -ot Float64 -l dem dem.vrt dem.tiff
 
 The next command does the same thing as the previous one, but reads values to
 interpolate from the attribute field specified with **-zfield** option
@@ -485,5 +522,7 @@ The :config:`GDAL_NUM_THREADS` is also set to parallelize the computation.
 
 ::
 
-    gdal_grid -zfield "Elevation" -a invdist:power=2.0:smoothing=1.0 -txe 85000 89000 -tye 894000 890000 -outsize 400 400 -of GTiff -ot Float64 -l dem dem.vrt dem.tiff --config GDAL_NUM_THREADS ALL_CPUS
+    gdal_grid -zfield "Elevation" -a invdist:power=2.0:smoothing=1.0 -txe 85000 89000 \
+        -tye 894000 890000 -outsize 400 400 -of GTiff -ot Float64 -l dem dem.vrt \
+        dem.tiff --config GDAL_NUM_THREADS ALL_CPUS
 

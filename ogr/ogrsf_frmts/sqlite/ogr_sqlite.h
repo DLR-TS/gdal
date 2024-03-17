@@ -641,11 +641,14 @@ class OGRSQLiteDataSource final : public OGRSQLiteBaseDataSource
 
     // We maintain a list of known SRID to reduce the number of trips to
     // the database to get SRSes.
-    int m_nKnownSRID = 0;
-    int *m_panSRID = nullptr;
-    OGRSpatialReference **m_papoSRS = nullptr;
+    std::map<int,
+             std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser>>
+        m_oSRSCache{};
 
-    void AddSRIDToCache(int nId, OGRSpatialReference *poSRS);
+    OGRSpatialReference *AddSRIDToCache(
+        int nId,
+        std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser>
+            &&poSRS);
 
     bool m_bHaveGeometryColumns = false;
     bool m_bIsSpatiaLiteDB = false;
@@ -727,10 +730,9 @@ class OGRSQLiteDataSource final : public OGRSQLiteBaseDataSource
     virtual std::pair<OGRLayer *, IOGRSQLiteGetSpatialWhere *>
     GetLayerWithGetSpatialWhereByName(const char *pszName) override;
 
-    virtual OGRLayer *ICreateLayer(const char *pszLayerName,
-                                   const OGRSpatialReference *poSRS,
-                                   OGRwkbGeometryType eType,
-                                   char **papszOptions) override;
+    virtual OGRLayer *ICreateLayer(const char *pszName,
+                                   const OGRGeomFieldDefn *poGeomFieldDefn,
+                                   CSLConstList papszOptions) override;
     virtual OGRErr DeleteLayer(int) override;
 
     virtual int TestCapability(const char *) override;
@@ -788,12 +790,6 @@ class OGRSQLiteDataSource final : public OGRSQLiteBaseDataSource
     {
         return m_bHaveGeometryColumns;
     }
-
-    std::vector<std::string>
-    GetRelationshipNames(CSLConstList papszOptions = nullptr) const override;
-
-    const GDALRelationship *
-    GetRelationship(const std::string &name) const override;
 
     bool AddRelationship(std::unique_ptr<GDALRelationship> &&relationship,
                          std::string &failureReason) override;

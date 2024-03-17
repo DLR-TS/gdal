@@ -106,7 +106,7 @@ std::string CreateResource(const std::string &osUrl,
                            char **papszHTTPOptions);
 bool UpdateResource(const std::string &osUrl, const std::string &osResourceId,
                     const std::string &osPayload, char **papszHTTPOptions);
-void FillResmeta(CPLJSONObject &oRoot, char **papszMetadata);
+void FillResmeta(const CPLJSONObject &oRoot, char **papszMetadata);
 std::string GetResmetaSuffix(CPLJSONObject::Type eType);
 bool DeleteFeature(const std::string &osUrl, const std::string &osResourceId,
                    const std::string &osFeatureId, char **papszHTTPOptions);
@@ -270,11 +270,9 @@ class OGRNGWDataset final : public GDALDataset
     }
     virtual OGRLayer *GetLayer(int) override;
     virtual int TestCapability(const char *) override;
-    virtual OGRLayer *
-    ICreateLayer(const char *pszName,
-                 const OGRSpatialReference *poSpatialRef = nullptr,
-                 OGRwkbGeometryType eGType = wkbUnknown,
-                 char **papszOptions = nullptr) override;
+    virtual OGRLayer *ICreateLayer(const char *pszName,
+                                   const OGRGeomFieldDefn *poGeomFieldDefn,
+                                   CSLConstList papszOptions) override;
     virtual OGRErr DeleteLayer(int) override;
     virtual CPLErr SetMetadata(char **papszMetadata,
                                const char *pszDomain = "") override;

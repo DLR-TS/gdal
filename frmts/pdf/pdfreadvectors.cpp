@@ -156,7 +156,7 @@ static const PDFOperator asPDFOperators[] = {
     {"cm", 6},
     {"CS", 1},
     {"cs", 1},
-    {"d", 1}, /* we have ignored the first arg */
+    {"d", 1}, /* we have ignored the first arg which is an array */
     // d0
     // d1
     {"Do", 1},
@@ -280,14 +280,14 @@ bool PDFDataset::ExploreTree(GDALPDFObject *poObj,
     GDALPDFDictionary *poDict = poObj->GetDictionary();
 
     GDALPDFObject *poS = poDict->Get("S");
-    CPLString osS;
+    std::string osS;
     if (poS != nullptr && poS->GetType() == PDFObjectType_Name)
     {
         osS = poS->GetName();
     }
 
     GDALPDFObject *poT = poDict->Get("T");
-    CPLString osT;
+    std::string osT;
     if (poT != nullptr && poT->GetType() == PDFObjectType_String)
     {
         osT = poT->GetString();
@@ -330,13 +330,13 @@ bool PDFDataset::ExploreTree(GDALPDFObject *poObj,
                 return false;
             }
 
-            CPLString osLayerName;
+            std::string osLayerName;
             if (!osT.empty())
-                osLayerName = osT;
+                osLayerName = std::move(osT);
             else
             {
                 if (!osS.empty())
-                    osLayerName = osS;
+                    osLayerName = std::move(osS);
                 else
                     osLayerName = CPLSPrintf("Layer%d", m_nLayers + 1);
             }
@@ -784,6 +784,7 @@ OGRGeometry *PDFDataset::ParseContent(
         else if (!bInString && nArrayLevel && ch == ']')
         {
             nArrayLevel--;
+            nTokenSize = 0;  // completely ignore content in arrays
         }
 
         else if (!bInString && nTokenSize == 0 && ch == '(')

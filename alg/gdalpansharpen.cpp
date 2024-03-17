@@ -307,7 +307,7 @@ GDALPansharpenOperation::Initialize(const GDALPansharpenOptions *psOptionsIn)
             CPLError(CE_Failure, CPLE_AppDefined,
                      "Dimensions of input spectral band %d different from "
                      "first spectral band",
-                     i);
+                     i + 1);
             return CE_Failure;
         }
 
@@ -317,8 +317,8 @@ GDALPansharpenOperation::Initialize(const GDALPansharpenOptions *psOptionsIn)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "Cannot retrieve dataset associated with "
-                     "ahInputSpectralBands[%i]",
-                     i);
+                     "input spectral band %d",
+                     i + 1);
             return CE_Failure;
         }
         // Make sure that the band is really a first level child of the owning dataset
@@ -334,16 +334,16 @@ GDALPansharpenOperation::Initialize(const GDALPansharpenOptions *psOptionsIn)
         {
             CPLError(
                 CE_Failure, CPLE_AppDefined,
-                "ahInputSpectralBands[%d] band has no associated geotransform",
-                i);
+                "input spectral band %d band has no associated geotransform",
+                i + 1);
             return CE_Failure;
         }
         if (adfMSGT != adfRefMSGT)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
-                     "ahInputSpectralBands[%d] band has a different "
-                     "geotransform than ahInputSpectralBands[0]",
-                     i);
+                     "input spectral band %d has a different "
+                     "geotransform than the first spectral band",
+                     i + 1);
             return CE_Failure;
         }
 
@@ -1187,7 +1187,8 @@ CPLErr GDALPansharpenOperation::ProcessRegion(int nXOff, int nYOff, int nXSize,
 #endif
     const int nDataTypeSize = GDALGetDataTypeSizeBytes(eWorkDataType);
     GByte *pUpsampledSpectralBuffer = static_cast<GByte *>(VSI_MALLOC3_VERBOSE(
-        nXSize, nYSize, psOptions->nInputSpectralBands * nDataTypeSize));
+        nXSize, nYSize,
+        cpl::fits_on<int>(psOptions->nInputSpectralBands * nDataTypeSize)));
     GByte *pPanBuffer = static_cast<GByte *>(
         VSI_MALLOC3_VERBOSE(nXSize, nYSize, nDataTypeSize));
     if (pUpsampledSpectralBuffer == nullptr || pPanBuffer == nullptr)
@@ -1266,7 +1267,7 @@ CPLErr GDALPansharpenOperation::ProcessRegion(int nXOff, int nYOff, int nXSize,
 
         GByte *pSpectralBuffer = static_cast<GByte *>(VSI_MALLOC3_VERBOSE(
             nXSizeExtract, nYSizeExtract,
-            psOptions->nInputSpectralBands * nDataTypeSize));
+            cpl::fits_on<int>(psOptions->nInputSpectralBands * nDataTypeSize)));
         if (pSpectralBuffer == nullptr)
         {
             VSIFree(pUpsampledSpectralBuffer);

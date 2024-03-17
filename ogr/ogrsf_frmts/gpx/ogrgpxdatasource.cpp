@@ -124,10 +124,11 @@ OGRLayer *OGRGPXDataSource::GetLayer(int iLayer)
 
 OGRLayer *
 OGRGPXDataSource::ICreateLayer(const char *pszLayerName,
-                               const OGRSpatialReference * /* poSRS */,
-                               OGRwkbGeometryType eType, char **papszOptions)
+                               const OGRGeomFieldDefn *poGeomFieldDefn,
+                               CSLConstList papszOptions)
 {
     GPXGeometryType gpxGeomType;
+    const auto eType = poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
     if (eType == wkbPoint || eType == wkbPoint25D)
     {
         if (EQUAL(pszLayerName, "track_points"))
@@ -292,9 +293,10 @@ void OGRGPXDataSource::startElementValidateCbk(const char *pszNameIn,
                 }
                 if (!osId.empty() && !osDomain.empty())
                 {
-                    SetMetadataItem(
-                        "AUTHOR_EMAIL",
-                        std::string(osId).append("@").append(osDomain).c_str());
+                    SetMetadataItem("AUTHOR_EMAIL", std::string(std::move(osId))
+                                                        .append("@")
+                                                        .append(osDomain)
+                                                        .c_str());
                 }
             }
             else if (strcmp(pszNameIn, "link") == 0)
@@ -413,7 +415,7 @@ void OGRGPXDataSource::dataHandlerValidateCbk(const char *data, int nLen)
     }
 
     m_nDataHandlerCounter++;
-    if (m_nDataHandlerCounter >= BUFSIZ)
+    if (m_nDataHandlerCounter >= PARSER_BUF_SIZE)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "File probably corrupted (million laugh pattern)");
@@ -477,7 +479,7 @@ int OGRGPXDataSource::Open(GDALOpenInfo *poOpenInfo)
                           ::endElementValidateCbk);
     XML_SetCharacterDataHandler(oParser, ::dataHandlerValidateCbk);
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     unsigned int nLen = 0;
     int nCount = 0;
@@ -490,16 +492,17 @@ int OGRGPXDataSource::Open(GDALOpenInfo *poOpenInfo)
     do
     {
         m_nDataHandlerCounter = 0;
-        nLen = static_cast<unsigned int>(VSIFReadL(aBuf, 1, sizeof(aBuf), fp));
+        nLen = static_cast<unsigned int>(
+            VSIFReadL(aBuf.data(), 1, aBuf.size(), fp));
         nTotalBytesRead += nLen;
         nDone = VSIFEofL(fp);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
-            if (nLen <= BUFSIZ - 1)
+            if (nLen <= PARSER_BUF_SIZE - 1)
                 aBuf[nLen] = 0;
             else
-                aBuf[BUFSIZ - 1] = 0;
-            if (strstr(aBuf, "<?xml") && strstr(aBuf, "<gpx"))
+                aBuf[PARSER_BUF_SIZE - 1] = 0;
+            if (strstr(aBuf.data(), "<?xml") && strstr(aBuf.data(), "<gpx"))
             {
                 CPLError(CE_Failure, CPLE_AppDefined,
                          "XML parsing of GPX file failed : %s at line %d, "
@@ -527,7 +530,7 @@ int OGRGPXDataSource::Open(GDALOpenInfo *poOpenInfo)
         }
         else
         {
-            // After reading 50 * BUFSIZE bytes, and not finding whether the
+            // After reading 50 * PARSER_BUF_SIZE bytes, and not finding whether the
             // file is GPX or not, we give up and fail silently.
             nCount++;
             if (nCount == 50)
@@ -654,7 +657,7 @@ int OGRGPXDataSource::Create(const char *pszFilename, char **papszOptions)
     const char *pszCRLFFormat = CSLFetchNameValue(papszOptions, "LINEFORMAT");
 
     bool bUseCRLF =
-#ifdef WIN32
+#ifdef _WIN32
         true
 #else
         false

@@ -362,11 +362,14 @@ GetGeometryColumnDescription(odbc::Connection &conn, const CPLString &query,
     CPLString clmName = columnName;
     if (needColumnName)
     {
-        auto it = std::search(preparedQuery.begin(), preparedQuery.end(),
-                              columnName.begin(), columnName.end(),
-                              [](char ch1, char ch2) {
-                                  return std::toupper(ch1) == std::toupper(ch2);
-                              });
+        auto it = std::search(
+            preparedQuery.begin(), preparedQuery.end(), columnName.begin(),
+            columnName.end(),
+            [](char ch1, char ch2)
+            {
+                return std::toupper(static_cast<unsigned char>(ch1)) ==
+                       std::toupper(static_cast<unsigned char>(ch2));
+            });
 
         if (it != preparedQuery.end())
         {
@@ -1125,15 +1128,15 @@ OGRErr OGRHanaDataSource::GetQueryColumns(
                     detectGeometryType_);
             geometryColumnDesc.isNullable = rsmd->isNullable(clmIndex);
 
-            columnDescriptions.push_back(
-                {true, AttributeColumnDescription(), geometryColumnDesc});
+            columnDescriptions.push_back({true, AttributeColumnDescription(),
+                                          std::move(geometryColumnDesc)});
         }
         else
         {
             AttributeColumnDescription attributeColumnDesc;
-            attributeColumnDesc.name = columnName;
+            attributeColumnDesc.name = std::move(columnName);
             attributeColumnDesc.type = dataType;
-            attributeColumnDesc.typeName = typeName;
+            attributeColumnDesc.typeName = std::move(typeName);
             attributeColumnDesc.isArray = isArray;
             attributeColumnDesc.isNullable = rsmd->isNullable(clmIndex);
             attributeColumnDesc.isAutoIncrement =
@@ -1142,10 +1145,10 @@ OGRErr OGRHanaDataSource::GetQueryColumns(
                 static_cast<int>(rsmd->getColumnLength(clmIndex));
             attributeColumnDesc.precision = rsmd->getPrecision(clmIndex);
             attributeColumnDesc.scale = rsmd->getScale(clmIndex);
-            attributeColumnDesc.defaultValue = defaultValue;
+            attributeColumnDesc.defaultValue = std::move(defaultValue);
 
-            columnDescriptions.push_back(
-                {false, attributeColumnDesc, GeometryColumnDescription()});
+            columnDescriptions.push_back({false, std::move(attributeColumnDesc),
+                                          GeometryColumnDescription()});
         }
     }
 
@@ -1282,7 +1285,8 @@ std::pair<OGRErr, CPLString> OGRHanaDataSource::LaunderName(const char *name)
             if (c == '-' || c == '#')
                 newName[i] = '_';
             else
-                newName[i] = static_cast<char>(toupper(c));
+                newName[i] =
+                    static_cast<char>(toupper(static_cast<unsigned char>(c)));
         }
         else
         {
@@ -1414,7 +1418,7 @@ void OGRHanaDataSource::CreateSpatialReferenceSystem(
 void OGRHanaDataSource::CreateParseArrayFunctions(const char *schemaName)
 {
     auto replaceAll = [](const CPLString &str, const CPLString &before,
-                         const CPLString &after)
+                         const CPLString &after) -> CPLString
     {
         CPLString res = str;
         return res.replaceAll(before, after);
@@ -1538,13 +1542,18 @@ OGRLayer *OGRHanaDataSource::GetLayerByName(const char *name)
 /*                              ICreateLayer()                          */
 /************************************************************************/
 
-OGRLayer *OGRHanaDataSource::ICreateLayer(const char *layerNameIn,
-                                          const OGRSpatialReference *srs,
-                                          OGRwkbGeometryType geomType,
-                                          char **options)
+OGRLayer *
+OGRHanaDataSource::ICreateLayer(const char *layerNameIn,
+                                const OGRGeomFieldDefn *poGeomFieldDefn,
+                                CSLConstList options)
 {
     if (layerNameIn == nullptr)
         return nullptr;
+
+    const auto geomType =
+        poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
+    const auto srs =
+        poGeomFieldDefn ? poGeomFieldDefn->GetSpatialRef() : nullptr;
 
     // Check if we are allowed to create new objects in the database
     odbc::DatabaseMetaDataRef dmd = conn_->getDatabaseMetaData();

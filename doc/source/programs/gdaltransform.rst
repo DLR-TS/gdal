@@ -6,7 +6,7 @@ gdaltransform
 
 .. only:: html
 
-    Transforms coordinates.
+    Transforms coordinates
 
 .. Index:: gdaltransform
 
@@ -16,11 +16,12 @@ Synopsis
 .. code-block::
 
     gdaltransform [--help] [--help-general]
-        [-i] [-s_srs <srs_def>] [-t_srs <srs_def>] [-to >NAME>=<VALUE>]...
+        [-i] [-s_srs <srs_def>] [-t_srs <srs_def>] [-to <NAME>=<VALUE>]...
         [-s_coord_epoch <epoch>] [-t_coord_epoch <epoch>]
         [-ct <proj_string>] [-order <n>] [-tps] [-rpc] [-geoloc]
-        [-gcp <pixel> <line> <easting> <northing> [elevation]]... [-output_xy]
-        [srcfile [dstfile]]
+        [-gcp <pixel> <line> <easting> <northing> [elevation]]...
+        [-output_xy] [-E] [-field_sep <sep>] [-ignore_extra_input]
+        [<srcfile> [<dstfile>]]
 
 
 Description
@@ -114,20 +115,46 @@ projection,including GCP-based transformations.
 
     Restrict output to "x y" instead of "x y z"
 
+.. option:: -ignore_extra_input
+
+    .. versionadded:: 3.9
+
+    Set this flag to avoid extra non-numeric content at end of input lines to be
+    appended to the output lines.
+
+.. option:: -E
+
+    .. versionadded:: 3.9
+
+    Enable Echo mode, where input coordinates are prepended to the output lines.
+
+.. option:: -field_sep <sep>
+
+    .. versionadded:: 3.9
+
+    Defines the field separator, to separate different values.
+    It defaults to the space character.
+
 .. option:: <srcfile>
 
-    File with source projection definition or GCP's. If
-    not given, source projection is read from the command-line :option:`-s_srs`
-    or :option:`-gcp` parameters
+    Raster dataset with source projection definition or GCPs. If
+    not given, source projection/GCPs are read from the command-line :option:`-s_srs`
+    or :option:`-gcp` parameters.
+
+    Note that only the SRS and/or GCPs of this input file is taken into account, and not its pixel content.
 
 .. option:: <dstfile>
 
-    File with destination projection definition.
+    Raster dataset with destination projection definition.
 
 Coordinates are read as pairs, triples (for 3D,) or (since GDAL 3.0.0,) quadruplets
 (for X,Y,Z,time) of numbers per line from standard
 input, transformed, and written out to standard output in the same way. All
 transformations offered by gdalwarp are handled, including gcp-based ones.
+
+Starting with GDAL 3.9, additional non-numeric content (typically point name)
+at the end of an input line will also be appended to the output line, unless
+the :option:`-ignore_extra_input` is added.
 
 Note that input and output must always be in decimal form.  There is currently
 no support for DMS input or output.
@@ -144,7 +171,7 @@ Reprojection Example
 
 Simple reprojection from one projected coordinate system to another:
 
-::
+.. code-block:: bash
 
     gdaltransform -s_srs EPSG:28992 -t_srs EPSG:31370
     177502 311865
@@ -152,9 +179,9 @@ Simple reprojection from one projected coordinate system to another:
 Produces the following output in meters in the "Belge 1972 / Belgian Lambert
 72" projection:
 
-::
+.. code-block:: bash
 
-    244510.77404604 166154.532871342 -1046.79270555763
+    244296.724777415 165937.350217148 0
 
 Image RPC Example
 +++++++++++++++++
@@ -165,14 +192,14 @@ used, the transformation is from output georeferenced (WGS84) coordinates
 back to image coordinates.
 
 
-::
+.. code-block:: bash
 
     gdaltransform -i -rpc 06OCT20025052-P2AS-005553965230_01_P001.TIF
     125.67206 39.85307 50
 
 Produces this output measured in pixels and lines on the image:
 
-::
+.. code-block:: bash
 
     3499.49282422381 2910.83892848414 50
 
@@ -182,7 +209,7 @@ X,Y,Z,time transform
 15-term time-dependent Helmert coordinate transformation from ITRF2000 to ITRF93
 for a coordinate at epoch 2000.0
 
-::
+.. code-block:: bash
 
     gdaltransform -ct "+proj=pipeline +step +proj=unitconvert +xy_in=deg \
     +xy_out=rad +step +proj=cart +step +proj=helmert +convention=position_vector \
@@ -192,8 +219,23 @@ for a coordinate at epoch 2000.0
     +proj=unitconvert +xy_in=rad +xy_out=deg"
     2 49 0 2000
 
-Produces this output measured in longitude degrees, latitude degrees and ellipsoid height in metre:
+Produces this output measured in longitude degrees, latitude degrees and ellipsoid height in meters:
 
-::
+.. code-block:: bash
 
     2.0000005420366 49.0000003766711 -0.0222802283242345
+
+Ground control points
++++++++++++++++++++++
+
+Where is the address "370 S. 300 E." in Salt Lake City, given we know
+some nearby corners' coordinates?
+
+.. code-block:: bash
+
+    echo 300 -370 my address | gdaltransform \
+    -gcp 0   -500 -111.89114803 40.75846686 \
+    -gcp 0   0    -111.89114717 40.76932606 \
+    -gcp 500 0    -111.87685039 40.76940631
+
+    -111.8825697384 40.761338402 0 my address

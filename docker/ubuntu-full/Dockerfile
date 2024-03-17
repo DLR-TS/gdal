@@ -137,7 +137,7 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && cd tiledb \
     && mkdir build_cmake \
     && cd build_cmake \
-    && ../bootstrap --prefix=/usr --disable-werror --disable-tests \
+    && ../bootstrap --prefix=/usr --disable-werror --disable-tests --disable-avx2 \
     && make -j$(nproc) \
     && make install-tiledb DESTDIR="/build_thirdparty" \
     && make install-tiledb \
@@ -197,12 +197,12 @@ RUN . /buildscripts/bh-set-envvars.sh \
 
 ARG WITH_PDFIUM=yes
 RUN if echo "$WITH_PDFIUM" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
-  wget -q https://github.com/rouault/pdfium_build_gdal_3_8/releases/download/pdfium_5952_v1/install-ubuntu2004-rev5952.tar.gz \
-  && tar -xzf install-ubuntu2004-rev5952.tar.gz \
+  wget -q https://github.com/rouault/pdfium_build_gdal_3_9/releases/download/pdfium_6309_v1/install-ubuntu2004-rev6309.tar.gz \
+  && tar -xzf install-ubuntu2004-rev6309.tar.gz \
   && chown -R root:root install \
   && mv install/lib/* /usr/lib/ \
   && mv install/include/* /usr/include/ \
-  && rm -rf install-ubuntu2004-rev5952.tar.gz install \
+  && rm -rf install-ubuntu2004-rev6309.tar.gz install \
   && apt-get update -y \
   && apt-get install -y --fix-missing --no-install-recommends liblcms2-dev${APT_ARCH_SUFFIX} \
   && rm -rf /var/lib/apt/lists/* \
@@ -227,9 +227,9 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Arrow C++
-ARG ARROW_VERSION=14.0.1-1
+ARG ARROW_VERSION=15.0.1-1
 # ARROW_SOVERSION to be updated in the "Build final image" section too
-ARG ARROW_SOVERSION=1400
+ARG ARROW_SOVERSION=1500
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V ca-certificates lsb-release wget \
@@ -241,8 +241,10 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V libarrow-dataset${ARROW_SOVERSION}${APT_ARCH_SUFFIX} \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V libarrow-dev${APT_ARCH_SUFFIX}=${ARROW_VERSION} \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V libparquet-dev${APT_ARCH_SUFFIX}=${ARROW_VERSION} \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y -V libarrow-acero-dev${APT_ARCH_SUFFIX}=${ARROW_VERSION} \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V libarrow-dataset-dev${APT_ARCH_SUFFIX}=${ARROW_VERSION} \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 
 RUN apt-get update -y \
     && apt-get install -y --fix-missing --no-install-recommends rsync ccache \
@@ -288,7 +290,7 @@ FROM $TARGET_BASE_IMAGE as runner
 USER root
 RUN date
 ARG JAVA_VERSION=17
-ARG ARROW_SOVERSION=1400
+ARG ARROW_SOVERSION=1500
 
 # Update distro
 RUN apt-get update -y && apt-get upgrade -y \

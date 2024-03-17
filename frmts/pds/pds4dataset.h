@@ -106,25 +106,11 @@ class PDS4TableBaseLayer CPL_NON_FINAL : public OGRLayer
 
 /************************************************************************/
 /* ==================================================================== */
-/*                     PDS4EditableSynchronizer                         */
-/* ==================================================================== */
-/************************************************************************/
-
-template <class T>
-class PDS4EditableSynchronizer final : public IOGREditableLayerSynchronizer
-{
-  public:
-    PDS4EditableSynchronizer() = default;
-
-    OGRErr EditableSyncToDisk(OGRLayer *poEditableLayer,
-                              OGRLayer **ppoDecoratedLayer) override;
-};
-
-/************************************************************************/
-/* ==================================================================== */
 /*                        PDS4FixedWidthTable                           */
 /* ==================================================================== */
 /************************************************************************/
+
+template <class T> class PDS4EditableSynchronizer;
 
 class PDS4FixedWidthTable CPL_NON_FINAL : public PDS4TableBaseLayer
 {
@@ -409,9 +395,9 @@ class PDS4Dataset final : public RawDataset
     OGRLayer *GetLayer(int) override;
 
     OGRLayer *ICreateLayer(const char *pszName,
-                           const OGRSpatialReference *poSpatialRef,
-                           OGRwkbGeometryType eGType,
-                           char **papszOptions) override;
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
+
     int TestCapability(const char *pszCap) override;
 
     bool GetRawBinaryLayout(GDALDataset::RawBinaryLayout &) override;

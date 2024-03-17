@@ -274,9 +274,10 @@ int OGRDXFWriterDS::Open(const char *pszFilename, char **papszOptions)
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRDXFWriterDS::ICreateLayer(const char *pszName,
-                                       const OGRSpatialReference *,
-                                       OGRwkbGeometryType, char **)
+OGRLayer *
+OGRDXFWriterDS::ICreateLayer(const char *pszName,
+                             const OGRGeomFieldDefn * /*poGeomFieldDefn*/,
+                             CSLConstList /*papszOptions*/)
 
 {
     if (EQUAL(pszName, "blocks") && poBlocksLayer == nullptr)
@@ -729,7 +730,7 @@ bool OGRDXFWriterDS::WriteNewLineTypeRecords(VSILFILE *fpIn)
     if (poLayer == nullptr)
         return true;
 
-    std::map<CPLString, std::vector<double>> &oNewLineTypes =
+    const std::map<CPLString, std::vector<double>> &oNewLineTypes =
         poLayer->GetNewLineTypeMap();
 
     bool bRet = true;

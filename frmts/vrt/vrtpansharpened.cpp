@@ -271,14 +271,14 @@ char **VRTPansharpenedDataset::GetFileList()
 /*                              XMLInit()                               */
 /************************************************************************/
 
-CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
+CPLErr VRTPansharpenedDataset::XMLInit(const CPLXMLNode *psTree,
                                        const char *pszVRTPathIn)
 
 {
     return XMLInit(psTree, pszVRTPathIn, nullptr, 0, nullptr);
 }
 
-CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
+CPLErr VRTPansharpenedDataset::XMLInit(const CPLXMLNode *psTree,
                                        const char *pszVRTPathIn,
                                        GDALRasterBandH hPanchroBandIn,
                                        int nInputSpectralBandsIn,
@@ -299,7 +299,7 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
     /*      Parse PansharpeningOptions                                      */
     /* -------------------------------------------------------------------- */
 
-    CPLXMLNode *psOptions = CPLGetXMLNode(psTree, "PansharpeningOptions");
+    const CPLXMLNode *psOptions = CPLGetXMLNode(psTree, "PansharpeningOptions");
     if (psOptions == nullptr)
     {
         CPLError(CE_Failure, CPLE_AppDefined, "Missing PansharpeningOptions");
@@ -325,7 +325,8 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
 
     if (hPanchroBandIn == nullptr)
     {
-        CPLXMLNode *psPanchroBand = CPLGetXMLNode(psOptions, "PanchroBand");
+        const CPLXMLNode *psPanchroBand =
+            CPLGetXMLNode(psOptions, "PanchroBand");
         if (psPanchroBand == nullptr)
         {
             CPLError(CE_Failure, CPLE_AppDefined, "PanchroBand missing");
@@ -350,8 +351,12 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
             pszSourceFilename = pszAbs;
         }
         osSourceFilename = pszSourceFilename;
-        poPanDataset =
-            GDALDataset::FromHandle(GDALOpen(osSourceFilename, GA_ReadOnly));
+
+        const CPLStringList aosOpenOptions(
+            GDALDeserializeOpenOptionsFromXML(psPanchroBand));
+
+        poPanDataset = GDALDataset::Open(osSourceFilename, GDAL_OF_RASTER,
+                                         nullptr, aosOpenOptions.List());
         if (poPanDataset == nullptr)
         {
             CPLError(CE_Failure, CPLE_AppDefined, "%s not a valid dataset",
@@ -433,8 +438,8 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
     }
 
     std::vector<double> adfWeights;
-    CPLXMLNode *psAlgOptions = CPLGetXMLNode(psOptions, "AlgorithmOptions");
-    if (psAlgOptions != nullptr)
+    if (const CPLXMLNode *psAlgOptions =
+            CPLGetXMLNode(psOptions, "AlgorithmOptions"))
     {
         const char *pszWeights =
             CPLGetXMLValue(psAlgOptions, "Weights", nullptr);
@@ -499,7 +504,7 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
     /*      First pass on spectral datasets to check their georeferencing.  */
     /* -------------------------------------------------------------------- */
     int iSpectralBand = 0;
-    for (CPLXMLNode *psIter = psOptions->psChild; psIter;
+    for (const CPLXMLNode *psIter = psOptions->psChild; psIter;
          psIter = psIter->psNext)
     {
         GDALDataset *poDataset;
@@ -551,8 +556,11 @@ CPLErr VRTPansharpenedDataset::XMLInit(CPLXMLNode *psTree,
             poDataset = oMapNamesToDataset[osSourceFilename];
             if (poDataset == nullptr)
             {
-                poDataset = GDALDataset::FromHandle(
-                    GDALOpen(osSourceFilename, GA_ReadOnly));
+                const CPLStringList aosOpenOptions(
+                    GDALDeserializeOpenOptionsFromXML(psIter));
+
+                poDataset = GDALDataset::Open(osSourceFilename, GDAL_OF_RASTER,
+                                              nullptr, aosOpenOptions.List());
                 if (poDataset == nullptr)
                 {
                     CPLError(CE_Failure, CPLE_AppDefined,
@@ -1336,14 +1344,13 @@ CPLXMLNode *VRTPansharpenedDataset::SerializeToXML(const char *pszVRTPathIn)
             GDALRasterBand::FromHandle(psOptions->hPanchroBand);
         if (poBand->GetDataset())
         {
+            auto poPanchoDS = poBand->GetDataset();
             std::map<CPLString, CPLString>::iterator oIter =
-                m_oMapToRelativeFilenames.find(
-                    poBand->GetDataset()->GetDescription());
+                m_oMapToRelativeFilenames.find(poPanchoDS->GetDescription());
             if (oIter == m_oMapToRelativeFilenames.end())
             {
-                CPLCreateXMLElementAndValue(
-                    psBand, "SourceFilename",
-                    poBand->GetDataset()->GetDescription());
+                CPLCreateXMLElementAndValue(psBand, "SourceFilename",
+                                            poPanchoDS->GetDescription());
             }
             else
             {
@@ -1354,6 +1361,9 @@ CPLXMLNode *VRTPansharpenedDataset::SerializeToXML(const char *pszVRTPathIn)
                                                   "relativeToVRT"),
                                  CXT_Text, "1");
             }
+
+            GDALSerializeOpenOptionsToXML(psBand, poPanchoDS->GetOpenOptions());
+
             CPLCreateXMLElementAndValue(psBand, "SourceBand",
                                         CPLSPrintf("%d", poBand->GetBand()));
         }
@@ -1392,14 +1402,13 @@ CPLXMLNode *VRTPansharpenedDataset::SerializeToXML(const char *pszVRTPathIn)
             GDALRasterBand::FromHandle(psOptions->pahInputSpectralBands[i]);
         if (poBand->GetDataset())
         {
+            auto poSpectralDS = poBand->GetDataset();
             std::map<CPLString, CPLString>::iterator oIter =
-                m_oMapToRelativeFilenames.find(
-                    poBand->GetDataset()->GetDescription());
+                m_oMapToRelativeFilenames.find(poSpectralDS->GetDescription());
             if (oIter == m_oMapToRelativeFilenames.end())
             {
-                CPLCreateXMLElementAndValue(
-                    psBand, "SourceFilename",
-                    poBand->GetDataset()->GetDescription());
+                CPLCreateXMLElementAndValue(psBand, "SourceFilename",
+                                            poSpectralDS->GetDescription());
             }
             else
             {
@@ -1410,6 +1419,10 @@ CPLXMLNode *VRTPansharpenedDataset::SerializeToXML(const char *pszVRTPathIn)
                                                   "relativeToVRT"),
                                  CXT_Text, "1");
             }
+
+            GDALSerializeOpenOptionsToXML(psBand,
+                                          poSpectralDS->GetOpenOptions());
+
             CPLCreateXMLElementAndValue(psBand, "SourceBand",
                                         CPLSPrintf("%d", poBand->GetBand()));
         }
@@ -1558,7 +1571,8 @@ CPLErr VRTPansharpenedRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff,
     INIT_RASTERIO_EXTRA_ARG(sExtraArg);
     if (IRasterIO(GF_Read, nReqXOff, nReqYOff, nReqXSize, nReqYSize, pImage,
                   nReqXSize, nReqYSize, eDataType, nDataTypeSize,
-                  nDataTypeSize * nReqXSize, &sExtraArg) != CE_None)
+                  static_cast<GSpacing>(nDataTypeSize) * nReqXSize,
+                  &sExtraArg) != CE_None)
     {
         return CE_Failure;
     }
@@ -1567,20 +1581,26 @@ CPLErr VRTPansharpenedRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff,
     {
         for (int j = nReqYSize - 1; j >= 0; j--)
         {
-            memmove(
-                static_cast<GByte *>(pImage) + j * nDataTypeSize * nBlockXSize,
-                static_cast<GByte *>(pImage) + j * nDataTypeSize * nReqXSize,
-                nReqXSize * nDataTypeSize);
+            memmove(static_cast<GByte *>(pImage) +
+                        static_cast<size_t>(j) * nDataTypeSize * nBlockXSize,
+                    static_cast<GByte *>(pImage) +
+                        static_cast<size_t>(j) * nDataTypeSize * nReqXSize,
+                    static_cast<size_t>(nReqXSize) * nDataTypeSize);
             memset(static_cast<GByte *>(pImage) +
-                       (j * nBlockXSize + nReqXSize) * nDataTypeSize,
-                   0, (nBlockXSize - nReqXSize) * nDataTypeSize);
+                       (static_cast<size_t>(j) * nBlockXSize + nReqXSize) *
+                           nDataTypeSize,
+                   0,
+                   static_cast<size_t>(nBlockXSize - nReqXSize) *
+                       nDataTypeSize);
         }
     }
     if (nReqYSize < nBlockYSize)
     {
         memset(static_cast<GByte *>(pImage) +
-                   nReqYSize * nBlockXSize * nDataTypeSize,
-               0, (nBlockYSize - nReqYSize) * nBlockXSize * nDataTypeSize);
+                   static_cast<size_t>(nReqYSize) * nBlockXSize * nDataTypeSize,
+               0,
+               static_cast<size_t>(nBlockYSize - nReqYSize) * nBlockXSize *
+                   nDataTypeSize);
     }
 
     // Cache other bands
@@ -1740,10 +1760,14 @@ CPLErr VRTPansharpenedRasterBand::IRasterIO(
 /*                           SerializeToXML()                           */
 /************************************************************************/
 
-CPLXMLNode *VRTPansharpenedRasterBand::SerializeToXML(const char *pszVRTPathIn)
+CPLXMLNode *
+VRTPansharpenedRasterBand::SerializeToXML(const char *pszVRTPathIn,
+                                          bool &bHasWarnedAboutRAMUsage,
+                                          size_t &nAccRAMUsage)
 
 {
-    CPLXMLNode *psTree = VRTRasterBand::SerializeToXML(pszVRTPathIn);
+    CPLXMLNode *psTree = VRTRasterBand::SerializeToXML(
+        pszVRTPathIn, bHasWarnedAboutRAMUsage, nAccRAMUsage);
 
     /* -------------------------------------------------------------------- */
     /*      Set subclass.                                                   */
@@ -1788,17 +1812,26 @@ int VRTPansharpenedRasterBand::GetOverviewCount()
                     ->GetOverviewCount();
             for (int i = 1; i < psOptions->nInputSpectralBands; i++)
             {
-                if (GDALRasterBand::FromHandle(
-                        psOptions->pahInputSpectralBands[i])
-                        ->GetOverviewCount() != nSpectralOvrCount)
+                auto poSpectralBand = GDALRasterBand::FromHandle(
+                    psOptions->pahInputSpectralBands[i]);
+                if (poSpectralBand->GetOverviewCount() != nSpectralOvrCount)
                 {
                     return 0;
                 }
             }
+            auto poPanBandDS = poPanBand->GetDataset();
             for (int j = 0; j < std::min(nPanOvrCount, nSpectralOvrCount); j++)
             {
                 auto poPanOvrDS =
-                    GDALCreateOverviewDataset(poPanBand->GetDataset(), j, true);
+                    GDALCreateOverviewDataset(poPanBandDS, j, true);
+                if (!poPanOvrDS)
+                {
+                    CPLError(CE_Warning, CPLE_AppDefined,
+                             "GDALCreateOverviewDataset(poPanBandDS, %d, true) "
+                             "failed",
+                             j);
+                    break;
+                }
                 GDALRasterBand *poPanOvrBand =
                     poPanOvrDS->GetRasterBand(poPanBand->GetBand());
                 VRTPansharpenedDataset *poOvrDS = new VRTPansharpenedDataset(
@@ -1826,6 +1859,16 @@ int VRTPansharpenedRasterBand::GetOverviewCount()
                         psOptions->pahInputSpectralBands[i]);
                     auto poSpectralOvrDS = GDALCreateOverviewDataset(
                         poSpectralBand->GetDataset(), j, true);
+                    if (!poSpectralOvrDS)
+                    {
+                        CPLError(CE_Warning, CPLE_AppDefined,
+                                 "GDALCreateOverviewDataset(poSpectralBand->"
+                                 "GetDataset(), %d, true) failed",
+                                 j);
+                        delete poOvrDS;
+                        GDALDestroyPansharpenOptions(psPanOvrOptions);
+                        return 0;
+                    }
                     psPanOvrOptions->pahInputSpectralBands[i] =
                         poSpectralOvrDS->GetRasterBand(
                             poSpectralBand->GetBand());

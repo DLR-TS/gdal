@@ -39,6 +39,8 @@
 namespace OGRODS
 {
 
+constexpr int PARSER_BUF_SIZE = 8192;
+
 /************************************************************************/
 /*                          ODSCellEvaluator                            */
 /************************************************************************/
@@ -70,6 +72,7 @@ OGRODSLayer::OGRODSLayer(OGRODSDataSource *poDSIn, const char *pszName,
       bUpdated(CPL_TO_BOOL(bUpdatedIn)), bHasHeaderLine(false),
       m_poAttrQueryODS(nullptr)
 {
+    SetAdvertizeUTF8(true);
 }
 
 /************************************************************************/
@@ -447,7 +450,7 @@ void OGRODSDataSource::dataHandlerCbk(const char *data, int nLen)
         return;
 
     nDataHandlerCounter++;
-    if (nDataHandlerCounter >= BUFSIZ)
+    if (nDataHandlerCounter >= PARSER_BUF_SIZE)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "File probably corrupted (million laugh pattern)");
@@ -844,7 +847,6 @@ void OGRODSDataSource::endElementTable(
 
             reinterpret_cast<OGRMemLayer *>(poCurLayer)
                 ->SetUpdatable(bUpdatable);
-            reinterpret_cast<OGRMemLayer *>(poCurLayer)->SetAdvertizeUTF8(true);
             reinterpret_cast<OGRODSLayer *>(poCurLayer)->SetUpdated(false);
         }
 
@@ -1300,15 +1302,15 @@ void OGRODSDataSource::AnalyseFile()
 
     VSIFSeekL(fpContent, 0, SEEK_SET);
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
         unsigned int nLen = static_cast<unsigned int>(
-            VSIFReadL(aBuf, 1, sizeof(aBuf), fpContent));
+            VSIFReadL(aBuf.data(), 1, aBuf.size(), fpContent));
         nDone = VSIFEofL(fpContent);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of ODS file failed : %s at line %d, "
@@ -1441,7 +1443,7 @@ void OGRODSDataSource::dataHandlerStylesCbk(const char *data, int nLen)
         return;
 
     nDataHandlerCounter++;
-    if (nDataHandlerCounter >= BUFSIZ)
+    if (nDataHandlerCounter >= PARSER_BUF_SIZE)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "File probably corrupted (million laugh pattern)");
@@ -1483,15 +1485,15 @@ void OGRODSDataSource::AnalyseSettings()
 
     VSIFSeekL(fpSettings, 0, SEEK_SET);
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
         unsigned int nLen =
-            (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fpSettings);
+            (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(), fpSettings);
         nDone = VSIFEofL(fpSettings);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of styles.xml file failed : %s at line %d, "
@@ -1522,9 +1524,10 @@ void OGRODSDataSource::AnalyseSettings()
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRODSDataSource::ICreateLayer(
-    const char *pszLayerName, const OGRSpatialReference * /* poSRS */,
-    OGRwkbGeometryType /* eType */, char **papszOptions)
+OGRLayer *
+OGRODSDataSource::ICreateLayer(const char *pszLayerName,
+                               const OGRGeomFieldDefn * /*poGeomFieldDefn*/,
+                               CSLConstList papszOptions)
 {
     /* -------------------------------------------------------------------- */
     /*      Verify we are in update mode.                                   */

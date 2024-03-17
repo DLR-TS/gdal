@@ -367,13 +367,7 @@ std::tuple<CPLErr, bool> GTiffDataset::Finalize()
         m_fpToWrite = nullptr;
     }
 
-    if (m_nGCPCount > 0)
-    {
-        GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-        CPLFree(m_pasGCPList);
-        m_pasGCPList = nullptr;
-        m_nGCPCount = 0;
-    }
+    m_aoGCPs.clear();
 
     CSLDestroy(m_papszCreationOptions);
     m_papszCreationOptions = nullptr;
@@ -578,7 +572,8 @@ CPLErr GTiffDataset::IRasterIO(GDALRWFlag eRWFlag, int nXOff, int nYOff,
             const int nDTSize = GDALGetDataTypeSizeBytes(eDataType);
             if (bOrderedBands && nXSize == m_nBlockXSize &&
                 nYSize == m_nBlockYSize && eBufType == eDataType &&
-                nBandSpace == nDTSize && nPixelSpace == nDTSize * nBands &&
+                nBandSpace == nDTSize &&
+                nPixelSpace == static_cast<GSpacing>(nDTSize) * nBands &&
                 nLineSpace == nPixelSpace * m_nBlockXSize)
             {
                 // If writing one single block with the right data type and
@@ -644,7 +639,8 @@ CPLErr GTiffDataset::IRasterIO(GDALRWFlag eRWFlag, int nXOff, int nYOff,
                                 m_pabyBlockBuf + static_cast<size_t>(iY) *
                                                      m_nBlockXSize * nBands *
                                                      nDTSize,
-                                eDataType, nDTSize, nValidX * nBands);
+                                eDataType, nDTSize,
+                                static_cast<GPtrDiff_t>(nValidX) * nBands);
                         }
                     }
                     else

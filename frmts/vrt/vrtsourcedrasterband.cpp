@@ -531,10 +531,10 @@ CPLErr VRTSourcedRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff,
     GDALRasterIOExtraArg sExtraArg;
     INIT_RASTERIO_EXTRA_ARG(sExtraArg);
 
-    return IRasterIO(GF_Read, nBlockXOff * nBlockXSize,
-                     nBlockYOff * nBlockYSize, nReadXSize, nReadYSize, pImage,
-                     nReadXSize, nReadYSize, eDataType, nPixelSize,
-                     nPixelSize * nBlockXSize, &sExtraArg);
+    return IRasterIO(
+        GF_Read, nBlockXOff * nBlockXSize, nBlockYOff * nBlockYSize, nReadXSize,
+        nReadYSize, pImage, nReadXSize, nReadYSize, eDataType, nPixelSize,
+        static_cast<GSpacing>(nPixelSize) * nBlockXSize, &sExtraArg);
 }
 
 /************************************************************************/
@@ -1813,7 +1813,7 @@ CPLErr CPL_STDCALL VRTAddSource(VRTSourcedRasterBandH hVRTBand,
 /************************************************************************/
 
 CPLErr VRTSourcedRasterBand::XMLInit(
-    CPLXMLNode *psTree, const char *pszVRTPath,
+    const CPLXMLNode *psTree, const char *pszVRTPath,
     std::map<CPLString, GDALDataset *> &oMapSharedSources)
 
 {
@@ -1830,7 +1830,7 @@ CPLErr VRTSourcedRasterBand::XMLInit(
     VRTDriver *const poDriver =
         static_cast<VRTDriver *>(GDALGetDriverByName("VRT"));
 
-    for (CPLXMLNode *psChild = psTree->psChild;
+    for (const CPLXMLNode *psChild = psTree->psChild;
          psChild != nullptr && poDriver != nullptr; psChild = psChild->psNext)
     {
         if (psChild->eType != CXT_Element)
@@ -1861,10 +1861,13 @@ CPLErr VRTSourcedRasterBand::XMLInit(
 /*                           SerializeToXML()                           */
 /************************************************************************/
 
-CPLXMLNode *VRTSourcedRasterBand::SerializeToXML(const char *pszVRTPath)
+CPLXMLNode *VRTSourcedRasterBand::SerializeToXML(const char *pszVRTPath,
+                                                 bool &bHasWarnedAboutRAMUsage,
+                                                 size_t &nAccRAMUsage)
 
 {
-    CPLXMLNode *psTree = VRTRasterBand::SerializeToXML(pszVRTPath);
+    CPLXMLNode *psTree = VRTRasterBand::SerializeToXML(
+        pszVRTPath, bHasWarnedAboutRAMUsage, nAccRAMUsage);
     CPLXMLNode *psLastChild = psTree->psChild;
     while (psLastChild != nullptr && psLastChild->psNext != nullptr)
         psLastChild = psLastChild->psNext;
@@ -1872,19 +1875,45 @@ CPLXMLNode *VRTSourcedRasterBand::SerializeToXML(const char *pszVRTPath)
     /* -------------------------------------------------------------------- */
     /*      Process Sources.                                                */
     /* -------------------------------------------------------------------- */
+
+    GIntBig nUsableRAM = -1;
+
     for (int iSource = 0; iSource < nSources; iSource++)
     {
         CPLXMLNode *const psXMLSrc =
             papoSources[iSource]->SerializeToXML(pszVRTPath);
 
-        if (psXMLSrc != nullptr)
+        if (psXMLSrc == nullptr)
+            break;
+
+        // Creating the CPLXMLNode tree representation of a VRT can easily
+        // take several times RAM usage than its string serialization, or its
+        // internal representation in the driver.
+        // We multiply the estimate by a factor of 2, experimentally found to
+        // be more realistic than the conservative raw estimate.
+        nAccRAMUsage += 2 * CPLXMLNodeGetRAMUsageEstimate(psXMLSrc);
+        if (!bHasWarnedAboutRAMUsage && nAccRAMUsage > 512 * 1024 * 1024)
         {
-            if (psLastChild == nullptr)
-                psTree->psChild = psXMLSrc;
-            else
-                psLastChild->psNext = psXMLSrc;
-            psLastChild = psXMLSrc;
+            if (nUsableRAM < 0)
+                nUsableRAM = CPLGetUsablePhysicalRAM();
+            if (nUsableRAM > 0 &&
+                nAccRAMUsage > static_cast<uint64_t>(nUsableRAM) / 10 * 8)
+            {
+                bHasWarnedAboutRAMUsage = true;
+                CPLError(CE_Warning, CPLE_AppDefined,
+                         "Serialization of this VRT file has already consumed "
+                         "at least %.02f GB of RAM over a total of %.02f. This "
+                         "process may abort",
+                         double(nAccRAMUsage) / (1024 * 1024 * 1024),
+                         double(nUsableRAM) / (1024 * 1024 * 1024));
+            }
         }
+
+        if (psLastChild == nullptr)
+            psTree->psChild = psXMLSrc;
+        else
+            psLastChild->psNext = psXMLSrc;
+        psLastChild = psXMLSrc;
     }
 
     return psTree;

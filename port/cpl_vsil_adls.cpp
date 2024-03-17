@@ -429,7 +429,7 @@ bool VSIDIRADLS::AnalysePathList(const std::string &osBaseURL,
             prop.bIsDirectory = CPL_TO_BOOL(VSI_ISDIR(entry->nMode));
             prop.nMode = entry->nMode;
             prop.mTime = static_cast<time_t>(entry->nMTime);
-            prop.ETag = ETag;
+            prop.ETag = std::move(ETag);
 
             std::string osCachedFilename =
                 osBaseURL + "/" + CPLAWSURLEncode(osName, false);
@@ -508,7 +508,7 @@ bool VSIDIRADLS::AnalyseFilesystemList(const std::string &osBaseURL,
             prop.fileSize = 0;
             prop.bIsDirectory = true;
             prop.mTime = static_cast<time_t>(entry->nMTime);
-            prop.ETag = ETag;
+            prop.ETag = std::move(ETag);
 
             std::string osCachedFilename =
                 osBaseURL + CPLAWSURLEncode(osName, false);
@@ -2147,8 +2147,8 @@ VSIDIR *VSIADLSFSHandler::OpenDir(const char *pszPath, int nRecurseDepth,
     dir->m_poFS = this;
     dir->m_bRecursiveRequestFromAccountRoot =
         osFilesystem.empty() && nRecurseDepth < 0;
-    dir->m_osFilesystem = osFilesystem;
-    dir->m_osObjectKey = osObjectKey;
+    dir->m_osFilesystem = std::move(osFilesystem);
+    dir->m_osObjectKey = std::move(osObjectKey);
     dir->m_nMaxFiles =
         atoi(CSLFetchNameValueDef(papszOptions, "MAXFILES", "0"));
     dir->m_bCacheEntries =

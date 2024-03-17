@@ -1337,19 +1337,19 @@ CPLErr ECWDataset::SetMetadataItem(const char *pszName, const char *pszValue,
         if (strcmp(pszName, "PROJ") == 0)
         {
             bProjCodeChanged = (osNewVal != m_osProjCode);
-            m_osProjCode = osNewVal;
+            m_osProjCode = std::move(osNewVal);
             bHdrDirty |= bProjCodeChanged;
         }
         else if (strcmp(pszName, "DATUM") == 0)
         {
             bDatumCodeChanged |= (osNewVal != m_osDatumCode) ? TRUE : FALSE;
-            m_osDatumCode = osNewVal;
+            m_osDatumCode = std::move(osNewVal);
             bHdrDirty |= bDatumCodeChanged;
         }
         else
         {
             bUnitsCodeChanged |= (osNewVal != m_osUnitsCode) ? TRUE : FALSE;
-            m_osUnitsCode = osNewVal;
+            m_osUnitsCode = std::move(osNewVal);
             bHdrDirty |= bUnitsCodeChanged;
         }
         return CE_None;
@@ -2570,7 +2570,7 @@ CNCSJP2FileView *ECWDataset::OpenFileView(const char *pszDatasetName,
     // we always open in read only mode. This should be improved in the future.
     try
     {
-#ifdef WIN32
+#ifdef _WIN32
         if (CPLTestBool(CPLGetConfigOption("GDAL_FILENAME_IS_UTF8", "YES")))
         {
             wchar_t *pwszDatasetName =
@@ -3437,7 +3437,7 @@ void ECWDataset::ECW2WKTProjection()
     if (oSRS.importFromERM(psFileInfo->szProjection, psFileInfo->szDatum,
                            osUnits) == OGRERR_NONE)
     {
-        m_oSRS = oSRS;
+        m_oSRS = std::move(oSRS);
         m_oSRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
     }
 
@@ -3678,7 +3678,7 @@ void ECWInitialize()
     if (bNCSInitialized)
         return;
 
-#ifndef WIN32
+#ifndef _WIN32
     NCSecwInit();
 #endif
     bNCSInitialized = TRUE;
@@ -3789,7 +3789,7 @@ static void GDALDeregister_ECW(GDALDriver *)
      * SDK 3.3. */
     /* Not worth it */
 #if ECWSDK_VERSION >= 50
-#ifndef WIN32
+#ifndef _WIN32
     if (bNCSInitialized)
     {
         bNCSInitialized = FALSE;

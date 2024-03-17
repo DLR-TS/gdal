@@ -1121,7 +1121,7 @@ std::shared_ptr<VRTMDArray> VRTMDArray::Create(const char *pszVRTPath,
         std::shared_ptr<VRTGroup>(new VRTGroup(pszVRTPath ? pszVRTPath : ""));
     auto poArray = Create(poDummyGroup, std::string(), psNode);
     if (poArray)
-        poArray->m_poDummyOwningGroup = poDummyGroup;
+        poArray->m_poDummyOwningGroup = std::move(poDummyGroup);
     return poArray;
 }
 
@@ -1455,7 +1455,7 @@ bool VRTMDArraySourceInlinedValues::Read(
     std::vector<GByte *> abyStackDstPtr(nDims + 1);
     abyStackDstPtr[0] = static_cast<GByte *>(pDstBuffer) + nDstOffset;
 
-    const auto dt(m_poDstArray->GetDataType());
+    const auto &dt(m_poDstArray->GetDataType());
     std::vector<size_t> anStackCount(nDims);
     size_t iDim = 0;
 
@@ -1498,7 +1498,7 @@ lbl_next_depth:
 void VRTMDArraySourceInlinedValues::Serialize(CPLXMLNode *psParent,
                                               const char *) const
 {
-    const auto dt(m_poDstArray->GetDataType());
+    const auto &dt(m_poDstArray->GetDataType());
     CPLXMLNode *psSource = CPLCreateXMLNode(psParent, CXT_Element,
                                             m_bIsConstantValue ? "ConstantValue"
                                             : dt.GetClass() == GEDTC_STRING
@@ -1984,7 +1984,7 @@ bool VRTMDArraySourceFromArray::Read(const GUInt64 *arrayStartIdx,
             if (!poSrcDS)
                 return false;
             poSrcDSWrapper = std::make_shared<VRTArrayDatasetWrapper>(poSrcDS);
-            oPair.first = poSrcDSWrapper;
+            oPair.first = std::move(poSrcDSWrapper);
             oPair.second.insert(this);
             g_cacheSources.insert(key, oPair);
         }
@@ -2627,7 +2627,7 @@ class VRTArraySource : public VRTSource
     }
 
     CPLErr
-    XMLInit(CPLXMLNode *psTree, const char *pszVRTPath,
+    XMLInit(const CPLXMLNode *psTree, const char *pszVRTPath,
             std::map<CPLString, GDALDataset *> &oMapSharedSources) override;
     CPLXMLNode *SerializeToXML(const char *pszVRTPath) override;
 };
@@ -2706,7 +2706,7 @@ ParseSingleSourceArray(const CPLXMLNode *psSingleSourceArray,
 /************************************************************************/
 
 CPLErr VRTArraySource::XMLInit(
-    CPLXMLNode *psTree, const char *pszVRTPath,
+    const CPLXMLNode *psTree, const char *pszVRTPath,
     std::map<CPLString, GDALDataset *> & /*oMapSharedSources*/)
 {
     const auto poArray = ParseArray(psTree, pszVRTPath, "ArraySource");
@@ -2714,8 +2714,7 @@ CPLErr VRTArraySource::XMLInit(
     {
         return CE_Failure;
     }
-    auto apoDims = poArray->GetDimensions();
-    if (apoDims.size() != 2)
+    if (poArray->GetDimensionCount() != 2)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
                  "Array referenced in <ArraySource> should be a "
@@ -2979,7 +2978,7 @@ static std::shared_ptr<GDALMDArray> ParseArray(const CPLXMLNode *psTree,
 /************************************************************************/
 
 VRTSource *
-VRTParseArraySource(CPLXMLNode *psChild, const char *pszVRTPath,
+VRTParseArraySource(const CPLXMLNode *psChild, const char *pszVRTPath,
                     std::map<CPLString, GDALDataset *> &oMapSharedSources)
 {
     VRTSource *poSource = nullptr;

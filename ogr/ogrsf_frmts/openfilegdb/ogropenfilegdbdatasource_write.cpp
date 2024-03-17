@@ -51,110 +51,6 @@
 #include "filegdb_fielddomain.h"
 #include "filegdb_relationship.h"
 
-#include <random>
-#include <sstream>
-
-/************************************************************************/
-/*                        CPLGettimeofday()                             */
-/************************************************************************/
-
-#if defined(_WIN32) && !defined(__CYGWIN__)
-#include <sys/timeb.h>
-
-namespace
-{
-struct CPLTimeVal
-{
-    time_t tv_sec; /* seconds */
-    long tv_usec;  /* and microseconds */
-};
-}  // namespace
-
-static int CPLGettimeofday(struct CPLTimeVal *tp, void * /* timezonep*/)
-{
-    struct _timeb theTime;
-
-    _ftime(&theTime);
-    tp->tv_sec = static_cast<time_t>(theTime.time);
-    tp->tv_usec = theTime.millitm * 1000;
-    return 0;
-}
-#else
-#include <sys/time.h> /* for gettimeofday() */
-#define CPLTimeVal timeval
-#define CPLGettimeofday(t, u) gettimeofday(t, u)
-#endif
-
-/***********************************************************************/
-/*                      OFGDBGenerateUUID()                            */
-/***********************************************************************/
-
-// Probably not the best UUID generator ever. One issue is that mt19937
-// uses only a 32-bit seed.
-CPL_NOSANITIZE_UNSIGNED_INT_OVERFLOW
-std::string OFGDBGenerateUUID()
-{
-    struct CPLTimeVal tv;
-    memset(&tv, 0, sizeof(tv));
-    static uint32_t nCounter = 0;
-    const bool bReproducibleUUID =
-        CPLTestBool(CPLGetConfigOption("OPENFILEGDB_REPRODUCIBLE_UUID", "NO"));
-
-    std::stringstream ss;
-
-    {
-        if (!bReproducibleUUID)
-            CPLGettimeofday(&tv, nullptr);
-        std::mt19937 gen(++nCounter +
-                         (bReproducibleUUID
-                              ? 0
-                              : static_cast<unsigned>(tv.tv_sec ^ tv.tv_usec)));
-        std::uniform_int_distribution<> dis(0, 15);
-
-        ss << "{";
-        ss << std::hex;
-        for (int i = 0; i < 8; i++)
-        {
-            ss << dis(gen);
-        }
-        ss << "-";
-        for (int i = 0; i < 4; i++)
-        {
-            ss << dis(gen);
-        }
-        ss << "-4";
-        for (int i = 0; i < 3; i++)
-        {
-            ss << dis(gen);
-        }
-    }
-
-    {
-        if (!bReproducibleUUID)
-            CPLGettimeofday(&tv, nullptr);
-        std::mt19937 gen(++nCounter +
-                         (bReproducibleUUID
-                              ? 0
-                              : static_cast<unsigned>(tv.tv_sec ^ tv.tv_usec)));
-        std::uniform_int_distribution<> dis(0, 15);
-        std::uniform_int_distribution<> dis2(8, 11);
-
-        ss << "-";
-        ss << dis2(gen);
-        for (int i = 0; i < 3; i++)
-        {
-            ss << dis(gen);
-        }
-        ss << "-";
-        for (int i = 0; i < 12; i++)
-        {
-            ss << dis(gen);
-        };
-        ss << "}";
-        return ss.str();
-    }
-}
-
 /***********************************************************************/
 /*                    GetExistingSpatialRef()                          */
 /***********************************************************************/
@@ -1346,9 +1242,10 @@ bool OGROpenFileGDBDataSource::Create(const char *pszName)
 /*                             ICreateLayer()                           */
 /************************************************************************/
 
-OGRLayer *OGROpenFileGDBDataSource::ICreateLayer(
-    const char *pszLayerName, const OGRSpatialReference *poSRS,
-    OGRwkbGeometryType eType, char **papszOptions)
+OGRLayer *
+OGROpenFileGDBDataSource::ICreateLayer(const char *pszLayerName,
+                                       const OGRGeomFieldDefn *poGeomFieldDefn,
+                                       CSLConstList papszOptions)
 {
     if (eAccess != GA_Update)
         return nullptr;
@@ -1361,6 +1258,8 @@ OGRLayer *OGROpenFileGDBDataSource::ICreateLayer(
         CPLError(CE_Failure, CPLE_AppDefined, "Root UUID missing");
         return nullptr;
     }
+
+    auto eType = poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
 
     FileGDBTable oTable;
     if (!oTable.Open(m_osGDBSystemCatalogFilename.c_str(), false))
@@ -1380,7 +1279,7 @@ OGRLayer *OGROpenFileGDBDataSource::ICreateLayer(
 
     auto poLayer = std::make_unique<OGROpenFileGDBLayer>(
         this, osFilename.c_str(), pszLayerName, eType, papszOptions);
-    if (!poLayer->Create(poSRS))
+    if (!poLayer->Create(poGeomFieldDefn))
         return nullptr;
     if (m_bInTransaction)
     {
@@ -1561,7 +1460,7 @@ CPLErr OGROpenFileGDBDataSource::FlushCache(bool /*bAtClosing*/)
 bool OGROpenFileGDBDataSource::AddFieldDomain(
     std::unique_ptr<OGRFieldDomain> &&domain, std::string &failureReason)
 {
-    const auto domainName = domain->GetName();
+    const std::string domainName(domain->GetName());
     if (eAccess != GA_Update)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
@@ -1741,7 +1640,7 @@ bool OGROpenFileGDBDataSource::DeleteFieldDomain(
 bool OGROpenFileGDBDataSource::UpdateFieldDomain(
     std::unique_ptr<OGRFieldDomain> &&domain, std::string &failureReason)
 {
-    const auto domainName = domain->GetName();
+    const std::string domainName(domain->GetName());
     if (eAccess != GA_Update)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
@@ -1883,7 +1782,7 @@ bool OGROpenFileGDBDataSource::AddRelationship(
     std::unique_ptr<GDALRelationship> &&relationship,
     std::string &failureReason)
 {
-    const auto relationshipName = relationship->GetName();
+    const std::string relationshipName(relationship->GetName());
     if (eAccess != GA_Update)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
@@ -1945,7 +1844,7 @@ bool OGROpenFileGDBDataSource::AddRelationship(
             CPLStringList aosOptions;
             aosOptions.SetNameValue("FID", "RID");
             OGRLayer *poMappingTable = ICreateLayer(
-                relationship->GetName().c_str(), nullptr, wkbNone, aosOptions);
+                relationship->GetName().c_str(), nullptr, aosOptions.List());
             if (!poMappingTable)
             {
                 failureReason = "Could not create mapping table " +
@@ -2161,7 +2060,7 @@ bool OGROpenFileGDBDataSource::UpdateRelationship(
     std::unique_ptr<GDALRelationship> &&relationship,
     std::string &failureReason)
 {
-    const auto relationshipName = relationship->GetName();
+    const std::string relationshipName(relationship->GetName());
     if (eAccess != GA_Update)
     {
         CPLError(CE_Failure, CPLE_NotSupported,

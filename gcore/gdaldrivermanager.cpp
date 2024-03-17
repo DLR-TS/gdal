@@ -773,7 +773,7 @@ char **GDALDriverManager::GetSearchPaths(const char *pszGDAL_DRIVER_PATH)
 #ifndef GDAL_NO_AUTOLOAD
     if (pszGDAL_DRIVER_PATH != nullptr)
     {
-#ifdef WIN32
+#ifdef _WIN32
         papszSearchPaths =
             CSLTokenizeStringComplex(pszGDAL_DRIVER_PATH, ";", TRUE, FALSE);
 #else
@@ -882,9 +882,9 @@ CPLErr GDALDriverManager::LoadPlugin(const char *name)
         CPLString gdal_or_ogr[2] = {"gdal_", "ogr_"};
         CPLString platformExtensions[3] = {"so", "dll", "dylib"};
 
-        for (CPLString &prefix : gdal_or_ogr)
+        for (const CPLString &prefix : gdal_or_ogr)
         {
-            for (CPLString &extension : platformExtensions)
+            for (const CPLString &extension : platformExtensions)
             {
                 const char *pszFilename = CPLFormFilename(
                     osABISpecificDir, CPLSPrintf("%s%s", prefix.c_str(), name),
@@ -1137,7 +1137,8 @@ void GDALDriverManager::ReorderDrivers()
         if (pszLine[0] == '#')
             continue;
         int i = 0;
-        while (pszLine[i] != 0 && isspace(pszLine[i]))
+        while (pszLine[i] != 0 &&
+               isspace(static_cast<unsigned char>(pszLine[i])))
             i++;
         if (pszLine[i] == 0)
             continue;
@@ -1265,7 +1266,12 @@ CPLErr GDALPluginDriverProxy::SetMetadataItem(const char *pszName,
                                               const char *pszDomain)
 {
     if (!pszDomain || pszDomain[0] == 0)
-        m_oSetMetadataItems.insert(pszName);
+    {
+        if (!EQUAL(pszName, GDAL_DMD_PLUGIN_INSTALLATION_MESSAGE))
+        {
+            m_oSetMetadataItems.insert(pszName);
+        }
+    }
     return GDALDriver::SetMetadataItem(pszName, pszValue, pszDomain);
 }
 

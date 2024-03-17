@@ -36,6 +36,8 @@
 #include "gdal_utils.h"
 
 #include <algorithm>
+#include <cmath>
+#include <set>
 #include <typeinfo>
 #include "gdal_proxy.h"
 
@@ -99,11 +101,6 @@ VRTDataset::~VRTDataset()
         m_poSRS->Release();
     if (m_poGCP_SRS)
         m_poGCP_SRS->Release();
-    if (m_nGCPCount > 0)
-    {
-        GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-        CPLFree(m_pasGCPList);
-    }
     CPLFree(m_pszVRTPath);
 
     delete m_poMaskBand;
@@ -313,10 +310,9 @@ CPLXMLNode *VRTDataset::SerializeToXML(const char *pszVRTPathIn)
     /* -------------------------------------------------------------------- */
     /*      GCPs                                                            */
     /* -------------------------------------------------------------------- */
-    if (m_nGCPCount > 0)
+    if (!m_asGCPs.empty())
     {
-        GDALSerializeGCPListToXML(psDSTree, m_pasGCPList, m_nGCPCount,
-                                  m_poGCP_SRS);
+        GDALSerializeGCPListToXML(psDSTree, m_asGCPs, m_poGCP_SRS);
     }
 
     /* -------------------------------------------------------------------- */
@@ -328,10 +324,14 @@ CPLXMLNode *VRTDataset::SerializeToXML(const char *pszVRTPathIn)
     {
     }
     CPLAssert(psLastChild);  // we have at least rasterXSize
+    bool bHasWarnedAboutRAMUsage = false;
+    size_t nAccRAMUsage = 0;
     for (int iBand = 0; iBand < nBands; iBand++)
     {
-        CPLXMLNode *psBandTree = static_cast<VRTRasterBand *>(papoBands[iBand])
-                                     ->SerializeToXML(pszVRTPathIn);
+        CPLXMLNode *psBandTree =
+            static_cast<VRTRasterBand *>(papoBands[iBand])
+                ->SerializeToXML(pszVRTPathIn, bHasWarnedAboutRAMUsage,
+                                 nAccRAMUsage);
 
         if (psBandTree != nullptr)
         {
@@ -345,7 +345,8 @@ CPLXMLNode *VRTDataset::SerializeToXML(const char *pszVRTPathIn)
     /* -------------------------------------------------------------------- */
     if (m_poMaskBand)
     {
-        CPLXMLNode *psBandTree = m_poMaskBand->SerializeToXML(pszVRTPathIn);
+        CPLXMLNode *psBandTree = m_poMaskBand->SerializeToXML(
+            pszVRTPathIn, bHasWarnedAboutRAMUsage, nAccRAMUsage);
 
         if (psBandTree != nullptr)
         {
@@ -429,7 +430,7 @@ VRTRasterBand *VRTDataset::InitBand(const char *pszSubclass, int nBand,
 /*                              XMLInit()                               */
 /************************************************************************/
 
-CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
+CPLErr VRTDataset::XMLInit(const CPLXMLNode *psTree, const char *pszVRTPathIn)
 
 {
     if (pszVRTPathIn != nullptr)
@@ -438,7 +439,7 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
     /* -------------------------------------------------------------------- */
     /*      Check for an SRS node.                                          */
     /* -------------------------------------------------------------------- */
-    CPLXMLNode *psSRSNode = CPLGetXMLNode(psTree, "SRS");
+    const CPLXMLNode *psSRSNode = CPLGetXMLNode(psTree, "SRS");
     if (psSRSNode)
     {
         if (m_poSRS)
@@ -475,11 +476,12 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
     /* -------------------------------------------------------------------- */
     /*      Check for a GeoTransform node.                                  */
     /* -------------------------------------------------------------------- */
-    if (strlen(CPLGetXMLValue(psTree, "GeoTransform", "")) > 0)
+    const char *pszGT = CPLGetXMLValue(psTree, "GeoTransform", "");
+    if (strlen(pszGT) > 0)
     {
-        const char *pszGT = CPLGetXMLValue(psTree, "GeoTransform", "");
-        char **papszTokens = CSLTokenizeStringComplex(pszGT, ",", FALSE, FALSE);
-        if (CSLCount(papszTokens) != 6)
+        const CPLStringList aosTokens(
+            CSLTokenizeStringComplex(pszGT, ",", FALSE, FALSE));
+        if (aosTokens.size() != 6)
         {
             CPLError(CE_Warning, CPLE_AppDefined,
                      "GeoTransform node does not have expected six values.");
@@ -487,22 +489,17 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
         else
         {
             for (int iTA = 0; iTA < 6; iTA++)
-                m_adfGeoTransform[iTA] = CPLAtof(papszTokens[iTA]);
+                m_adfGeoTransform[iTA] = CPLAtof(aosTokens[iTA]);
             m_bGeoTransformSet = TRUE;
         }
-
-        CSLDestroy(papszTokens);
     }
 
     /* -------------------------------------------------------------------- */
     /*      Check for GCPs.                                                 */
     /* -------------------------------------------------------------------- */
-    CPLXMLNode *psGCPList = CPLGetXMLNode(psTree, "GCPList");
-
-    if (psGCPList != nullptr)
+    if (const CPLXMLNode *psGCPList = CPLGetXMLNode(psTree, "GCPList"))
     {
-        GDALDeserializeGCPListFromXML(psGCPList, &m_pasGCPList, &m_nGCPCount,
-                                      &m_poGCP_SRS);
+        GDALDeserializeGCPListFromXML(psGCPList, m_asGCPs, &m_poGCP_SRS);
     }
 
     /* -------------------------------------------------------------------- */
@@ -515,9 +512,9 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
     /* -------------------------------------------------------------------- */
 
     /* Parse dataset mask band first */
-    CPLXMLNode *psMaskBandNode = CPLGetXMLNode(psTree, "MaskBand");
+    const CPLXMLNode *psMaskBandNode = CPLGetXMLNode(psTree, "MaskBand");
 
-    CPLXMLNode *psChild = nullptr;
+    const CPLXMLNode *psChild = nullptr;
     if (psMaskBandNode)
         psChild = psMaskBandNode->psChild;
     else
@@ -576,8 +573,7 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
         }
     }
 
-    CPLXMLNode *psGroup = CPLGetXMLNode(psTree, "Group");
-    if (psGroup)
+    if (const CPLXMLNode *psGroup = CPLGetXMLNode(psTree, "Group"))
     {
         const char *pszName = CPLGetXMLValue(psGroup, "name", nullptr);
         if (pszName == nullptr || !EQUAL(pszName, "/"))
@@ -618,7 +614,7 @@ CPLErr VRTDataset::XMLInit(CPLXMLNode *psTree, const char *pszVRTPathIn)
 int VRTDataset::GetGCPCount()
 
 {
-    return m_nGCPCount;
+    return static_cast<int>(m_asGCPs.size());
 }
 
 /************************************************************************/
@@ -628,7 +624,7 @@ int VRTDataset::GetGCPCount()
 const GDAL_GCP *VRTDataset::GetGCPs()
 
 {
-    return m_pasGCPList;
+    return gdal::GCP::c_ptr(m_asGCPs);
 }
 
 /************************************************************************/
@@ -641,17 +637,9 @@ CPLErr VRTDataset::SetGCPs(int nGCPCountIn, const GDAL_GCP *pasGCPListIn,
 {
     if (m_poGCP_SRS)
         m_poGCP_SRS->Release();
-    if (m_nGCPCount > 0)
-    {
-        GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-        CPLFree(m_pasGCPList);
-    }
 
     m_poGCP_SRS = poGCP_SRS ? poGCP_SRS->Clone() : nullptr;
-
-    m_nGCPCount = nGCPCountIn;
-
-    m_pasGCPList = GDALDuplicateGCPs(nGCPCountIn, pasGCPListIn);
+    m_asGCPs = gdal::GCP::fromC(pasGCPListIn, nGCPCountIn);
 
     SetNeedsFlush();
 
@@ -1553,7 +1541,7 @@ GDALDataset *VRTDataset::OpenVRTProtocol(const char *pszSpec)
 
     poSrcDS->ReleaseRef();
 
-    auto poDS = cpl::down_cast<VRTDataset *>(GDALDataset::FromHandle(hRet));
+    auto poDS = dynamic_cast<VRTDataset *>(GDALDataset::FromHandle(hRet));
     if (poDS)
     {
         if (bPatchSourceFilename)
@@ -2435,6 +2423,7 @@ void VRTDataset::UnsetPreservedRelativeFilenames()
 
 static bool CheckBandForOverview(GDALRasterBand *poBand,
                                  GDALRasterBand *&poFirstBand, int &nOverviews,
+                                 std::set<std::pair<int, int>> &oSetOvrSizes,
                                  std::vector<GDALDataset *> &apoOverviewsBak)
 {
     if (!cpl::down_cast<VRTRasterBand *>(poBand)->IsSourcedRasterBand())
@@ -2461,6 +2450,17 @@ static bool CheckBandForOverview(GDALRasterBand *poBand,
     // To prevent recursion
     apoOverviewsBak.push_back(nullptr);
     const int nOvrCount = poSrcBand->GetOverviewCount();
+    oSetOvrSizes.insert(
+        std::pair<int, int>(poSrcBand->GetXSize(), poSrcBand->GetYSize()));
+    for (int i = 0; i < nOvrCount; ++i)
+    {
+        auto poSrcOvrBand = poSrcBand->GetOverview(i);
+        if (poSrcOvrBand)
+        {
+            oSetOvrSizes.insert(std::pair<int, int>(poSrcOvrBand->GetXSize(),
+                                                    poSrcOvrBand->GetYSize()));
+        }
+    }
     apoOverviewsBak.resize(0);
 
     if (nOvrCount == 0)
@@ -2487,18 +2487,19 @@ void VRTDataset::BuildVirtualOverviews()
 
     int nOverviews = 0;
     GDALRasterBand *poFirstBand = nullptr;
+    std::set<std::pair<int, int>> oSetOvrSizes;
 
     for (int iBand = 0; iBand < nBands; iBand++)
     {
         if (!CheckBandForOverview(papoBands[iBand], poFirstBand, nOverviews,
-                                  m_apoOverviewsBak))
+                                  oSetOvrSizes, m_apoOverviewsBak))
             return;
     }
 
     if (m_poMaskBand)
     {
         if (!CheckBandForOverview(m_poMaskBand, poFirstBand, nOverviews,
-                                  m_apoOverviewsBak))
+                                  oSetOvrSizes, m_apoOverviewsBak))
             return;
     }
     if (poFirstBand == nullptr)
@@ -2530,10 +2531,24 @@ void VRTDataset::BuildVirtualOverviews()
         {
             continue;
         }
-        const int nOvrXSize = static_cast<int>(0.5 + nRasterXSize * dfXRatio);
-        const int nOvrYSize = static_cast<int>(0.5 + nRasterYSize * dfYRatio);
+        int nOvrXSize = static_cast<int>(0.5 + nRasterXSize * dfXRatio);
+        int nOvrYSize = static_cast<int>(0.5 + nRasterYSize * dfYRatio);
         if (nOvrXSize < 128 || nOvrYSize < 128)
             break;
+
+        // Look for a source overview whose size is very close to the
+        // theoretical computed one.
+        for (const auto &ovrSize : oSetOvrSizes)
+        {
+            if (std::abs(ovrSize.first - nOvrXSize) <= 1 &&
+                std::abs(ovrSize.second - nOvrYSize) <= 1)
+            {
+                nOvrXSize = ovrSize.first;
+                nOvrYSize = ovrSize.second;
+                break;
+            }
+        }
+
         VRTDataset *poOvrVDS = new VRTDataset(nOvrXSize, nOvrYSize);
         m_apoOverviews.push_back(poOvrVDS);
 

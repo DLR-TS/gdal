@@ -169,7 +169,8 @@ AIGInfo_t *AIGOpen(const char *pszInputName, const char *pszAccess)
     /*      Setup tile infos, but defer reading of tile data.               */
     /* -------------------------------------------------------------------- */
     psInfo->pasTileInfo = (AIGTileInfo *)VSI_CALLOC_VERBOSE(
-        sizeof(AIGTileInfo), psInfo->nTilesPerRow * psInfo->nTilesPerColumn);
+        sizeof(AIGTileInfo),
+        (size_t)psInfo->nTilesPerRow * psInfo->nTilesPerColumn);
     if (psInfo->pasTileInfo == NULL)
     {
         AIGClose(psInfo);
@@ -496,7 +497,7 @@ VSILFILE *AIGLLOpen(const char *pszFilename, const char *pszAccess)
         for (i = (int)strlen(pszUCFilename) - 1;
              pszUCFilename[i] != '/' && pszUCFilename[i] != '\\'; i--)
         {
-            pszUCFilename[i] = (char)toupper(pszUCFilename[i]);
+            pszUCFilename[i] = (char)toupper((unsigned char)(pszUCFilename[i]));
         }
 
         fp = VSIFOpenL(pszUCFilename, pszAccess);

@@ -2177,9 +2177,11 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
     }
 
     const int nMaxTileDim = std::max(nBlockXSize, nBlockYSize);
+    const int nMinTileDim = std::min(nBlockXSize, nBlockYSize);
     int nNumResolutions = 1;
     /* Pickup a reasonable value compatible with PROFILE_1 requirements */
-    while ((nMaxTileDim >> (nNumResolutions - 1)) > 128)
+    while ((nMaxTileDim >> (nNumResolutions - 1)) > 128 &&
+           (nMinTileDim >> nNumResolutions) > 0)
         nNumResolutions++;
     int nMinProfile1Resolutions = nNumResolutions;
     const char *pszResolutions =
@@ -2188,6 +2190,7 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
     {
         nNumResolutions = atoi(pszResolutions);
         if (nNumResolutions <= 0 || nNumResolutions >= 32 ||
+            (nMinTileDim >> nNumResolutions) == 0 ||
             (nMaxTileDim >> nNumResolutions) == 0)
         {
             CPLError(CE_Warning, CPLE_NotSupported,
@@ -2458,7 +2461,7 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
         else
         {
             const OGRSpatialReference *poSRS = poSrcDS->GetSpatialRef();
-            if (poSRS != nullptr)
+            if (poSRS)
             {
                 bGeoreferencingCompatOfGeoJP2 = TRUE;
                 oJP2MD.SetSpatialRef(poSRS);
@@ -2468,10 +2471,18 @@ GDALDataset *JP2OPJLikeDataset<CODEC, BASE>::CreateCopy(
             {
                 bGeoreferencingCompatOfGeoJP2 = TRUE;
                 oJP2MD.SetGeoTransform(adfGeoTransform);
+                if (poSRS && !poSRS->IsEmpty())
+                {
+                    bGeoreferencingCompatOfGMLJP2 =
+                        GDALJP2Metadata::IsSRSCompatible(poSRS);
+                    if (!bGeoreferencingCompatOfGMLJP2)
+                    {
+                        CPLDebug(
+                            CODEC::debugId(),
+                            "Cannot write GMLJP2 box due to unsupported SRS");
+                    }
+                }
             }
-            bGeoreferencingCompatOfGMLJP2 =
-                poSRS != nullptr && !poSRS->IsEmpty() &&
-                poSrcDS->GetGeoTransform(adfGeoTransform) == CE_None;
         }
         if (poSrcDS->GetMetadata("RPC") != nullptr)
         {

@@ -10,6 +10,7 @@ add_library(
   ogrpolygon.cpp
   ogrtriangle.cpp
   ogrutils.cpp
+  ogrgeomcoordinateprecision.cpp
   ogrgeometry.cpp
   ogrgeometrycollection.cpp
   ogrmultipolygon.cpp
@@ -34,6 +35,7 @@ add_library(
   ogr_srsnode.cpp
   ogr_fromepsg.cpp
   ogrct.cpp
+  ogr_srs_cf1.cpp
   ogr_srs_esri.cpp
   ogr_srs_pci.cpp
   ogr_srs_usgs.cpp
@@ -61,6 +63,23 @@ add_library(
   ogr_proj_p.cpp
   ogr_wkb.cpp)
 add_dependencies(ogr generate_gdal_version_h)
+
+set(GDAL_DATA_FILES
+    LICENSE.TXT
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/cubewerx_extra.wkt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/ecw_cs.wkt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/epsg.wkt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/esri_StatePlane_extra.wkt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/ozi_datum.csv
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/ozi_ellips.csv
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/pci_datum.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/pci_ellips.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/stateplane.csv
+)
+set_property(
+  TARGET ${GDAL_LIB_TARGET_NAME}
+  APPEND
+  PROPERTY RESOURCE "${GDAL_DATA_FILES}")
 
 include(GdalStandardIncludes)
 gdal_standard_includes(ogr)
@@ -138,6 +157,7 @@ target_public_header(
   ogr_featurestyle.h
   ogr_geocoding.h
   ogr_geometry.h
+  ogr_geomcoordinateprecision.h
   ogr_p.h
   ogr_spatialref.h
   ogr_swq.h

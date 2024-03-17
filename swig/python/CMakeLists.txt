@@ -5,6 +5,15 @@ if (CMAKE_CXX_FLAGS)
   string(REPLACE "/WX " " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
 endif ()
 
+set(GDAL_DATA_FILES
+    LICENSE.TXT
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/template_tiles.mapml
+)
+set_property(
+  TARGET ${GDAL_LIB_TARGET_NAME}
+  APPEND
+  PROPERTY RESOURCE "${GDAL_DATA_FILES}")
+
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/osgeo/")
 set(GDAL_PYTHON_CSOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/extensions/")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/extensions/")
@@ -22,7 +31,10 @@ set(GDAL_PYTHON_CSOURCES
        ${PROJECT_SOURCE_DIR}/swig/include/python/python_exceptions.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/python_strings.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/typemaps_python.i
+       ${PROJECT_SOURCE_DIR}/swig/include/python/docs/gdal_docs.i
+       ${PROJECT_SOURCE_DIR}/swig/include/python/docs/gdal_band_docs.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/docs/gdal_dataset_docs.i
+       ${PROJECT_SOURCE_DIR}/swig/include/python/docs/gdal_driver_docs.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/docs/ogr_datasource_docs.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/docs/ogr_driver_docs.i
        ${PROJECT_SOURCE_DIR}/swig/include/python/docs/ogr_featuredef_docs.i
@@ -95,19 +107,6 @@ set(GDAL_PYTHON_CSOURCES
         OUTPUT ${_file}
         APPEND
         COMMAND ${CMAKE_COMMAND} ${WERROR_DEV_FLAG} "-DFILE=${_file}" -P ${CMAKE_CURRENT_SOURCE_DIR}/modify_cpp_files.cmake)
-  endforeach()
-
-  if (NOT Python_EXECUTABLE)
-    message(FATAL_ERROR "Python_EXECUTABLE variable not set")
-  endif()
-  foreach(_file IN ITEMS ${GDAL_PYTHON_PYSOURCES})
-      file(TO_NATIVE_PATH "${_file}" _native_file)
-      add_custom_command(
-        OUTPUT ${_file}
-        APPEND
-        COMMAND
-          ${Python_EXECUTABLE} -m lib2to3 --fix=import --fix=next --fix=renames --fix=unicode --fix=ws_comma --fix=xrange
-          --write --write-unchanged-files --nobackups  ${_native_file})
   endforeach()
 
 add_custom_target(python_generated_files

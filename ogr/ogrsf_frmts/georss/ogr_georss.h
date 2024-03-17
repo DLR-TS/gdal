@@ -38,6 +38,8 @@
 #include "ogr_expat.h"
 #endif
 
+constexpr int PARSER_BUF_SIZE = 8192;
+
 class OGRGeoRSSDataSource;
 
 typedef enum
@@ -208,11 +210,9 @@ class OGRGeoRSSDataSource final : public OGRDataSource
     }
     OGRLayer *GetLayer(int) override;
 
-    OGRLayer *ICreateLayer(const char *pszLayerName,
-                           const OGRSpatialReference *poSRS,
-                           OGRwkbGeometryType eType,
-                           char **papszOptions) override;
-
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
     int TestCapability(const char *) override;
 
     VSILFILE *GetOutputFP()

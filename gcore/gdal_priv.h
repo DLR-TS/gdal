@@ -106,7 +106,7 @@ class CPL_DLL GDALMultiDomainMetadata
     GDALMultiDomainMetadata();
     ~GDALMultiDomainMetadata();
 
-    int XMLInit(CPLXMLNode *psMetadata, int bMerge);
+    int XMLInit(const CPLXMLNode *psMetadata, int bMerge);
     CPLXMLNode *Serialize();
 
     char **GetDomainList()
@@ -320,6 +320,122 @@ class CPL_DLL GDALOpenInfo
   private:
     CPL_DISALLOW_COPY_ASSIGN(GDALOpenInfo)
 };
+
+/* ******************************************************************** */
+/*                             gdal::GCP                                */
+/* ******************************************************************** */
+
+namespace gdal
+{
+/** C++ wrapper over the C GDAL_GCP structure.
+ *
+ * It has the same binary layout, and thus a gdal::GCP pointer can be cast as a
+ * GDAL_GCP pointer.
+ *
+ * @since 3.9
+ */
+class CPL_DLL GCP
+{
+  public:
+    explicit GCP(const char *pszId = "", const char *pszInfo = "",
+                 double dfPixel = 0, double dfLine = 0, double dfX = 0,
+                 double dfY = 0, double dfZ = 0);
+    ~GCP();
+    GCP(const GCP &);
+    explicit GCP(const GDAL_GCP &other);
+    GCP &operator=(const GCP &);
+    GCP(GCP &&);
+    GCP &operator=(GCP &&);
+
+    /** Returns the "id" member. */
+    inline const char *Id() const
+    {
+        return gcp.pszId;
+    }
+    void SetId(const char *pszId);
+
+    /** Returns the "info" member. */
+    inline const char *Info() const
+    {
+        return gcp.pszInfo;
+    }
+    void SetInfo(const char *pszInfo);
+
+    /** Returns the "pixel" member. */
+    inline double Pixel() const
+    {
+        return gcp.dfGCPPixel;
+    }
+
+    /** Returns a reference to the "pixel" member. */
+    inline double &Pixel()
+    {
+        return gcp.dfGCPPixel;
+    }
+
+    /** Returns the "line" member. */
+    inline double Line() const
+    {
+        return gcp.dfGCPLine;
+    }
+
+    /** Returns a reference to the "line" member. */
+    inline double &Line()
+    {
+        return gcp.dfGCPLine;
+    }
+
+    /** Returns the "X" member. */
+    inline double X() const
+    {
+        return gcp.dfGCPX;
+    }
+
+    /** Returns a reference to the "X" member. */
+    inline double &X()
+    {
+        return gcp.dfGCPX;
+    }
+
+    /** Returns the "Y" member. */
+    inline double Y() const
+    {
+        return gcp.dfGCPY;
+    }
+
+    /** Returns a reference to the "Y" member. */
+    inline double &Y()
+    {
+        return gcp.dfGCPY;
+    }
+
+    /** Returns the "Z" member. */
+    inline double Z() const
+    {
+        return gcp.dfGCPZ;
+    }
+
+    /** Returns a reference to the "Z" member. */
+    inline double &Z()
+    {
+        return gcp.dfGCPZ;
+    }
+
+    /** Casts as a C GDAL_GCP pointer */
+    inline const GDAL_GCP *c_ptr() const
+    {
+        return &gcp;
+    }
+
+    static const GDAL_GCP *c_ptr(const std::vector<GCP> &asGCPs);
+
+    static std::vector<GCP> fromC(const GDAL_GCP *pasGCPList, int nGCPCount);
+
+  private:
+    GDAL_GCP gcp;
+};
+
+} /* namespace gdal */
 
 /* ******************************************************************** */
 /*                             GDALDataset                              */
@@ -891,9 +1007,21 @@ class CPL_DLL GDALDataset : public GDALMajorObject
     UpdateRelationship(std::unique_ptr<GDALRelationship> &&relationship,
                        std::string &failureReason);
 
-    virtual OGRLayer *CreateLayer(
-        const char *pszName, const OGRSpatialReference *poSpatialRef = nullptr,
-        OGRwkbGeometryType eGType = wkbUnknown, char **papszOptions = nullptr);
+    //! @cond Doxygen_Suppress
+    OGRLayer *CreateLayer(const char *pszName);
+
+    OGRLayer *CreateLayer(const char *pszName, std::nullptr_t);
+    //! @endcond
+
+    OGRLayer *CreateLayer(const char *pszName,
+                          const OGRSpatialReference *poSpatialRef,
+                          OGRwkbGeometryType eGType = wkbUnknown,
+                          CSLConstList papszOptions = nullptr);
+
+    OGRLayer *CreateLayer(const char *pszName,
+                          const OGRGeomFieldDefn *poGeomFieldDefn,
+                          CSLConstList papszOptions = nullptr);
+
     virtual OGRLayer *CopyLayer(OGRLayer *poSrcLayer, const char *pszNewName,
                                 char **papszOptions = nullptr);
 
@@ -932,9 +1060,9 @@ class CPL_DLL GDALDataset : public GDALMajorObject
     //! @endcond
 
   protected:
-    virtual OGRLayer *ICreateLayer(
-        const char *pszName, const OGRSpatialReference *poSpatialRef = nullptr,
-        OGRwkbGeometryType eGType = wkbUnknown, char **papszOptions = nullptr);
+    virtual OGRLayer *ICreateLayer(const char *pszName,
+                                   const OGRGeomFieldDefn *poGeomFieldDefn,
+                                   CSLConstList papszOptions);
 
     //! @cond Doxygen_Suppress
     OGRErr ProcessSQLCreateIndex(const char *);
@@ -960,6 +1088,17 @@ struct CPL_DLL GDALDatasetUniquePtrDeleter
     void operator()(GDALDataset *poDataset) const
     {
         GDALClose(poDataset);
+    }
+};
+//! @endcond
+
+//! @cond Doxygen_Suppress
+struct CPL_DLL GDALDatasetUniquePtrReleaser
+{
+    void operator()(GDALDataset *poDataset) const
+    {
+        if (poDataset)
+            poDataset->Release();
     }
 };
 //! @endcond
@@ -1316,8 +1455,53 @@ class CPL_DLL GDALRasterBand : public GDALMajorObject
     int nBlockReads = 0;
     int bForceCachedIO = 0;
 
-    GDALRasterBand *poMask = nullptr;
-    bool bOwnMask = false;
+    class GDALRasterBandOwnedOrNot
+    {
+      public:
+        GDALRasterBandOwnedOrNot()
+        {
+        }
+
+        GDALRasterBandOwnedOrNot(GDALRasterBand *poBand, bool bOwned)
+            : m_poBandOwned(bOwned ? poBand : nullptr),
+              m_poBandRef(bOwned ? nullptr : poBand)
+        {
+        }
+
+        void reset()
+        {
+            m_poBandOwned.reset();
+            m_poBandRef = nullptr;
+        }
+
+        void reset(GDALRasterBand *poBand, bool bOwned)
+        {
+            m_poBandOwned.reset(bOwned ? poBand : nullptr);
+            m_poBandRef = bOwned ? nullptr : poBand;
+        }
+
+        GDALRasterBand *get()
+        {
+            return static_cast<GDALRasterBand *>(*this);
+        }
+
+        bool IsOwned() const
+        {
+            return m_poBandOwned != nullptr;
+        }
+
+        operator GDALRasterBand *()
+        {
+            return m_poBandOwned ? m_poBandOwned.get() : m_poBandRef;
+        }
+
+      private:
+        CPL_DISALLOW_COPY_ASSIGN(GDALRasterBandOwnedOrNot)
+        std::unique_ptr<GDALRasterBand> m_poBandOwned{};
+        GDALRasterBand *m_poBandRef = nullptr;
+    };
+
+    GDALRasterBandOwnedOrNot poMask{};
     bool m_bEnablePixelTypeSignedByteWarning =
         true;  // Remove me in GDAL 4.0. See GetMetadataItem() implementation
     int nMaskFlags = 0;
@@ -3024,7 +3208,7 @@ class CPL_DLL GDALMDArray : virtual public GDALAbstractMDArray,
     GetView(const std::vector<GUInt64> &indices) const;
 
     inline std::shared_ptr<GDALMDArray>
-    atInternal(std::vector<GUInt64> &indices) const
+    atInternal(const std::vector<GUInt64> &indices) const
     {
         return GetView(indices);
     }
@@ -3997,16 +4181,16 @@ double GDALAdjustNoDataCloseToFloatMax(double dfVal);
 // (minimum value, maximum value, etc.)
 #define GDALSTAT_APPROX_NUMSAMPLES 2500
 
-void GDALSerializeGCPListToXML(CPLXMLNode *psParentNode, GDAL_GCP *pasGCPList,
-                               int nGCPCount,
+void GDALSerializeGCPListToXML(CPLXMLNode *psParentNode,
+                               const std::vector<gdal::GCP> &asGCPs,
                                const OGRSpatialReference *poGCP_SRS);
-void GDALDeserializeGCPListFromXML(CPLXMLNode *psGCPList,
-                                   GDAL_GCP **ppasGCPList, int *pnGCPCount,
+void GDALDeserializeGCPListFromXML(const CPLXMLNode *psGCPList,
+                                   std::vector<gdal::GCP> &asGCPs,
                                    OGRSpatialReference **ppoGCP_SRS);
 
 void GDALSerializeOpenOptionsToXML(CPLXMLNode *psParentNode,
                                    char **papszOpenOptions);
-char **GDALDeserializeOpenOptionsFromXML(CPLXMLNode *psParentNode);
+char **GDALDeserializeOpenOptionsFromXML(const CPLXMLNode *psParentNode);
 
 int GDALCanFileAcceptSidecarFile(const char *pszFilename);
 

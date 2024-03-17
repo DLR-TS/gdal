@@ -17,8 +17,16 @@ potentially applied as well as various kinds of metadata altered or added.
 VRT descriptions of datasets can be saved in an XML format normally given the
 extension .vrt.
 
+Note .vrt files starting with
+
+- <OGRVRTDataSource> open with :ref:`ogrinfo`, etc.
+- <VRTDataset> open with :ref:`gdalinfo`, etc.
+
 The VRT format can also describe :ref:`gdal_vrttut_warped`
 and :ref:`gdal_vrttut_pansharpen`
+
+For mosaic with a very large number of tiles (tens of thousands or mores),
+the :ref:`GTI <raster.gti>` driver may be used starting with GDAL 3.9.
 
 An example of a simple .vrt file referring to a 512x512 dataset with one band
 loaded from :file:`utm.tif` might look like this:
@@ -78,8 +86,12 @@ The following creations options are supported:
 .vrt Format
 -----------
 
-A `XML schema of the GDAL VRT format <https://raw.githubusercontent.com/OSGeo/gdal/master/data/gdalvrt.xsd>`_
+A `XML schema of the GDAL VRT format <https://raw.githubusercontent.com/OSGeo/gdal/master/frmts/vrt/data/gdalvrt.xsd>`_
 is available.
+
+Note, .vrt files starting with
+- <OGRVRTDataSource> open with ogrinfo, etc.
+- <VRTDataset> open with gdalinfo, etc.
 
 Virtual files stored on disk are kept in an XML format with the following
 elements.
@@ -182,7 +194,7 @@ The attributes for VRTRasterBand are:
 - **blockYSize** (optional, GDAL >= 3.3): block height.
   If not specified, defaults to the minimum of the raster height and 128.
 
-This element may have Metadata, ColorInterp, NoDataValue, HideNoDataValue, ColorTable, GDALRasterAttributeTable, Description and MaskBand subelements as well as the various kinds of source elements such as SimpleSource, ComplexSource, AveragedSource, KernelFilteredSource and ArraySource.  A raster band may have many "sources" indicating where the actual raster data should be fetched from, and how it should be mapped into the raster bands pixel space.
+This element may have Metadata, ColorInterp, NoDataValue, HideNoDataValue, ColorTable, GDALRasterAttributeTable, Description and MaskBand subelements as well as the various kinds of source elements such as SimpleSource, ComplexSource, AveragedSource, NoDataFromMaskSource, KernelFilteredSource and ArraySource.  A raster band may have many "sources" indicating where the actual raster data should be fetched from, and how it should be mapped into the raster bands pixel space.
 
 The allowed subelements for VRTRasterBand are :
 
@@ -300,6 +312,8 @@ The allowed subelements for VRTRasterBand are :
 - **SimpleSource**: The SimpleSource_ indicates that raster data should be read from a separate dataset, indicating the dataset, and band to be read from, and how the data should map into this band's raster space.
 
 - **AveragedSource**: The AveragedSource is derived from the SimpleSource and shares the same properties except that it uses an averaging resampling instead of a nearest neighbour algorithm as in SimpleSource, when the size of the destination rectangle is not the same as the size of the source rectangle. Note: a more general mechanism to specify resampling algorithms can be used. See above paragraph about the 'resampling' attribute.
+
+- **NoDataFromMaskSource**: (GDAL >= 3.9) The NoDataFromMaskSource is derived from the SimpleSource and shares the same properties except that it replaces the value of the source with the value of the NODATA child element when the value of the mask band of the source is less or equal to the MaskValueThreshold child element.
 
 - **ComplexSource**: The ComplexSource_ is derived from the SimpleSource (so it shares the SourceFilename, SourceBand, SrcRect and DstRect elements), but it provides support to rescale and offset the range of the source values. Certain regions of the source can be masked by specifying the NODATA value, or starting with GDAL 3.3, with the <UseMaskBand>true</UseMaskBand> element.
 
@@ -494,6 +508,25 @@ For example, a Gaussian blur:
         <Coefs>0.01111 0.04394 0.13534 0.32465 0.60653 0.8825 1.0 0.8825 0.60653 0.32465 0.13534 0.04394 0.01111</Coefs>
       </Kernel>
     </KernelFilteredSource>
+
+NoDataFromMaskSource
+~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 3.9
+
+The NoDataFromMaskSource is derived from the SimpleSource and shares the same properties except that it replaces the value of the source with the value of the NODATA child element when the value of the mask band of the source is less or equal to the MaskValueThreshold child element.
+An optional RemappedValue element can be set to specify the value onto which valid pixels whose value is the one of NODATA should be remapped to. When RemappedValue is not explicitly specified, for Byte bands, if NODATA=255, it is implicitly set to 254, otherwise it is set to NODATA+1.
+
+.. code-block:: xml
+
+    <NoDataFromMaskSource>
+      <SourceFilename relativeToVRT="1">in.tif</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <MaskValueThreshold>128</MaskValueThreshold> <!-- if the mask value is &lt;= 128, pixels are set to NODATA=0 -->
+      <NODATA>0</NODATA>
+      <RemappedValue>1</RemappedValue> <!-- valid/unmasked pixels at NODATA=0 are remapped to 1 -->
+    </NoDataFromMaskSource>
+
 
 ArraySource
 ~~~~~~~~~~~
@@ -723,13 +756,13 @@ Except if (from top priority to lesser priority) :
 -------------------------------
 
 So far we have described how to derive new virtual datasets from existing
-files supports by GDAL.  However, it is also common to need to utilize
+files supported by GDAL.  However, it is also common to need to utilize
 raw binary raster files for which the regular layout of the data is known
 but for which no format specific driver exists.  This can be accomplished
 by writing a .vrt file describing the raw file.
 
 For example, the following .vrt describes a raw raster file containing
-floating point complex pixels in a file called <i>l2p3hhsso.img</i>.  The
+floating point complex pixels in a file called *l2p3hhsso.img*.  The
 image data starts from the first byte (ImageOffset=0).  The byte offset
 between pixels is 8 (PixelOffset=8), the size of a CFloat32.  The byte offset
 from the start of one line to the start of the next is 9376 bytes
@@ -1724,6 +1757,7 @@ PanchroBand and SpectralBand elements must have at least a **SourceFilename** ch
 element to specify the name of the dataset. They may also have a **SourceBand** child
 element to specify the number of the band in the dataset (starting with 1). If not
 specify, the first band will be assumed.
+**OpenOptions** can also be specified
 
 The SpectralBand element must generally have a **dstBand** attribute to specify the
 number of the output band (starting with 1) to which the input spectral band must be mapped.
@@ -1745,18 +1779,30 @@ with panchromatic.tif.
         <PansharpeningOptions>
             <PanchroBand>
                 <SourceFilename relativeToVRT="1">panchromatic.tif</SourceFilename>
+                <OpenOptions>
+                    <OOI key="NUM_THREADS">ALL_CPUS</OOI>
+                </OpenOptions>
                 <SourceBand>1</SourceBand>
             </PanchroBand>
             <SpectralBand dstBand="1">
                 <SourceFilename relativeToVRT="1">multispectral.tif</SourceFilename>
+                <OpenOptions>
+                    <OOI key="NUM_THREADS">ALL_CPUS</OOI>
+                </OpenOptions>
                 <SourceBand>1</SourceBand>
             </SpectralBand>
             <SpectralBand dstBand="2">
                 <SourceFilename relativeToVRT="1">multispectral.tif</SourceFilename>
+                <OpenOptions>
+                    <OOI key="NUM_THREADS">ALL_CPUS</OOI>
+                </OpenOptions>
                 <SourceBand>2</SourceBand>
             </SpectralBand>
             <SpectralBand dstBand="3">
                 <SourceFilename relativeToVRT="1">multispectral.tif</SourceFilename>
+                <OpenOptions>
+                    <OOI key="NUM_THREADS">ALL_CPUS</OOI>
+                </OpenOptions>
                 <SourceBand>3</SourceBand>
             </SpectralBand>
         </PansharpeningOptions>

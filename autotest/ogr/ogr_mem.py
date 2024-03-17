@@ -710,6 +710,114 @@ def test_ogr_mem_alter_geom_field_defn():
 
 
 ###############################################################################
+# Test ogr.Layer.__arrow_c_stream__() interface.
+# Cf https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html
+
+
+@gdaltest.enable_exceptions()
+def test_ogr_mem_arrow_stream_pycapsule_interface():
+    import ctypes
+
+    ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    lyr = ds.CreateLayer("foo")
+
+    stream = lyr.__arrow_c_stream__()
+    assert stream
+    t = type(stream)
+    assert t.__module__ == "builtins"
+    assert t.__name__ == "PyCapsule"
+    capsule_get_name = ctypes.pythonapi.PyCapsule_GetName
+    capsule_get_name.argtypes = [ctypes.py_object]
+    capsule_get_name.restype = ctypes.c_char_p
+    assert capsule_get_name(ctypes.py_object(stream)) == b"arrow_array_stream"
+
+    with pytest.raises(
+        Exception, match="An arrow Arrow Stream is in progress on that layer"
+    ):
+        lyr.__arrow_c_stream__()
+
+    del stream
+
+    stream = lyr.__arrow_c_stream__()
+    assert stream
+    del stream
+
+    with pytest.raises(Exception, match="requested_schema != None not implemented"):
+        # "something" should rather by a PyCapsule with an ArrowSchema...
+        lyr.__arrow_c_stream__(requested_schema="something")
+
+    # Also test GetArrowArrayStreamInterface() to be able to specify options
+    stream = lyr.GetArrowArrayStreamInterface(
+        {"INCLUDE_FID": "NO"}
+    ).__arrow_c_stream__()
+    assert stream
+    t = type(stream)
+    assert t.__module__ == "builtins"
+    assert t.__name__ == "PyCapsule"
+    del stream
+
+
+###############################################################################
+# Test consuming __arrow_c_stream__() interface.
+# Cf https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html
+
+
+@gdaltest.enable_exceptions()
+def test_ogr_mem_consume_arrow_stream_pycapsule_interface():
+
+    ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    lyr = ds.CreateLayer("foo", geom_type=ogr.wkbNone)
+    lyr.CreateGeomField(ogr.GeomFieldDefn("my_geometry"))
+    lyr.CreateField(ogr.FieldDefn("foo"))
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f["foo"] = "bar"
+    f.SetGeometry(ogr.CreateGeometryFromWkt("POINT (1 2)"))
+    lyr.CreateFeature(f)
+
+    lyr2 = ds.CreateLayer("foo2")
+    lyr2.WriteArrow(lyr)
+
+    f = lyr2.GetNextFeature()
+    assert f["foo"] == "bar"
+    assert f.GetGeometryRef().ExportToIsoWkt() == "POINT (1 2)"
+
+
+###############################################################################
+# Test consuming __arrow_c_array__() interface.
+# Cf https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html
+
+
+@gdaltest.enable_exceptions()
+def test_ogr_mem_consume_arrow_array_pycapsule_interface():
+    pyarrow = pytest.importorskip("pyarrow")
+    if int(pyarrow.__version__.split(".")[0]) < 14:
+        pytest.skip("pyarrow >= 14 needed")
+
+    ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    lyr = ds.CreateLayer("foo")
+    lyr.CreateField(ogr.FieldDefn("foo"))
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f["foo"] = "bar"
+    f.SetGeometry(ogr.CreateGeometryFromWkt("POINT (1 2)"))
+    lyr.CreateFeature(f)
+
+    table = pyarrow.table(lyr)
+
+    lyr2 = ds.CreateLayer("foo2")
+    batches = table.to_batches()
+    for batch in batches:
+        array = batch.to_struct_array()
+        if not hasattr(array, "__arrow_c_array__"):
+            pytest.skip("table does not declare __arrow_c_array__")
+
+        lyr2.WriteArrow(array)
+
+    f = lyr2.GetNextFeature()
+    assert f["foo"] == "bar"
+    assert f.GetGeometryRef().ExportToIsoWkt() == "POINT (1 2)"
+
+
+###############################################################################
 
 
 def test_ogr_mem_arrow_stream_numpy():

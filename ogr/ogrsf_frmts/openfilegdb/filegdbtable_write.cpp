@@ -1666,10 +1666,11 @@ bool FileGDBTable::SeekIntoTableXForNewFeature(int nObjectID)
                 std::vector<GByte> abyTmp(nPageSize);
                 uint64_t nOffset =
                     TABLX_HEADER_SIZE +
-                    static_cast<uint64_t>(m_n1024BlocksPresent - 1) * nPageSize;
+                    static_cast<uint64_t>(m_n1024BlocksPresent) * nPageSize;
                 for (int i = m_n1024BlocksPresent - 1;
                      i >= static_cast<int>(nCountBlocksBefore); --i)
                 {
+                    nOffset -= nPageSize;
                     VSIFSeekL(m_fpTableX, nOffset, SEEK_SET);
                     if (VSIFReadL(abyTmp.data(), nPageSize, 1, m_fpTableX) != 1)
                     {
@@ -1687,7 +1688,6 @@ bool FileGDBTable::SeekIntoTableXForNewFeature(int nObjectID)
                                  static_cast<uint32_t>(nOffset));
                         return false;
                     }
-                    nOffset -= nPageSize;
                 }
                 abyTmp.clear();
                 abyTmp.resize(nPageSize);
@@ -1880,6 +1880,10 @@ bool FileGDBTable::CreateFeature(const std::vector<OGRField> &asRawFields,
         *pnFID = nObjectID;
 
     m_nRowBlobLength = static_cast<uint32_t>(m_abyBuffer.size());
+    if (m_nRowBlobLength > m_nHeaderBufferMaxSize)
+    {
+        m_nHeaderBufferMaxSize = m_nRowBlobLength;
+    }
     m_nRowBufferMaxSize = std::max(m_nRowBufferMaxSize, m_nRowBlobLength);
     if (nFreeOffset == OFFSET_MINUS_ONE)
     {
@@ -2012,6 +2016,11 @@ bool FileGDBTable::UpdateFeature(int nFID,
             return false;
 
         m_nRowBlobLength = static_cast<uint32_t>(m_abyBuffer.size());
+        if (m_nRowBlobLength > m_nHeaderBufferMaxSize)
+        {
+            m_bDirtyHeader = true;
+            m_nHeaderBufferMaxSize = m_nRowBlobLength;
+        }
         m_nRowBufferMaxSize = std::max(m_nRowBufferMaxSize, m_nRowBlobLength);
         if (nFreeOffset == OFFSET_MINUS_ONE)
         {

@@ -27,6 +27,7 @@
 # DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
+import json
 import pathlib
 
 import gdaltest
@@ -637,7 +638,7 @@ def test_ogrinfo_lib_relationships():
     ret = gdal.VectorInfo(ds)
     expected = """Relationship: composite_many_to_many
   Type: Composite
-  Related table type: feature
+  Related table type: features
   Cardinality: ManyToMany
   Left table name: table6
   Right table name: table7
@@ -667,7 +668,7 @@ def test_ogrinfo_lib_json_relationships():
     # print(ret["relationships"]["composite_many_to_many"])
     assert ret["relationships"]["composite_many_to_many"] == {
         "type": "Composite",
-        "related_table_type": "feature",
+        "related_table_type": "features",
         "cardinality": "ManyToMany",
         "left_table_name": "table6",
         "right_table_name": "table7",
@@ -942,3 +943,38 @@ def test_ogrinfo_lib_extent3D():
         1.0,
         1.0,
     ]
+
+
+###############################################################################
+# Test geometry coordinate precision support
+
+
+@pytest.mark.require_driver("GeoJSON")
+def test_ogrinfo_lib_json_features_resolution():
+
+    content = json.dumps(
+        {
+            "type": "FeatureCollection",
+            "xy_coordinate_resolution": 1e-1,
+            "z_coordinate_resolution": 1e-2,
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [1.23456789, 1.23456789, 1.23456789],
+                    },
+                    "properties": None,
+                }
+            ],
+        }
+    )
+
+    j = gdal.VectorInfo(content, format="json", dumpFeatures=True)
+    assert j["layers"][0]["features"][0]["geometry"] == {
+        "type": "Point",
+        "coordinates": [1.2, 1.2, 1.23],
+    }
+
+    s = gdal.VectorInfo(content, dumpFeatures=True)
+    assert "POINT Z (1.2 1.2 1.23)" in s

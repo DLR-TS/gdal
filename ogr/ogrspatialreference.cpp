@@ -3594,6 +3594,7 @@ CSLConstList OGRSpatialReference::SET_FROM_USER_INPUT_LIMITATIONS_get()
 /*                      RemoveIDFromMemberOfEnsembles()                 */
 /************************************************************************/
 
+// cppcheck-suppress constParameterReference
 static void RemoveIDFromMemberOfEnsembles(CPLJSONObject &obj)
 {
     // Remove "id" from members of datum ensembles for compatibility with
@@ -3698,7 +3699,8 @@ OGRErr OGRSpatialReference::SetFromUserInput(const char *pszDefinition)
  * possible applications should call the specific method appropriate if the
  * input is known to be in a particular format.
  *
- * This method does the same thing as the OSRSetFromUserInput() function.
+ * This method does the same thing as the OSRSetFromUserInput() and
+ * OSRSetFromUserInputEx() functions.
  *
  * @param pszDefinition text definition to try to deduce SRS from.
  *
@@ -3708,7 +3710,7 @@ OGRErr OGRSpatialReference::SetFromUserInput(const char *pszDefinition)
  *      Whether http:// or https:// access is allowed. Defaults to YES.
  * <li> ALLOW_FILE_ACCESS=YES/NO.
  *      Whether reading a file using the Virtual File System layer is allowed
- * (can also involve network access). Defaults to YES.
+ *      (can also involve network access). Defaults to YES.
  * </ol>
  *
  * @return OGRERR_NONE on success, or an error code if the name isn't
@@ -3720,7 +3722,7 @@ OGRErr OGRSpatialReference::SetFromUserInput(const char *pszDefinition,
                                              CSLConstList papszOptions)
 {
     // Skip leading white space
-    while (isspace(*pszDefinition))
+    while (isspace(static_cast<unsigned char>(*pszDefinition)))
         pszDefinition++;
 
     if (STARTS_WITH_CI(pszDefinition, "ESRI::"))
@@ -4033,6 +4035,8 @@ OGRErr OGRSpatialReference::SetFromUserInput(const char *pszDefinition,
  * \brief Set spatial reference from various text formats.
  *
  * This function is the same as OGRSpatialReference::SetFromUserInput()
+ *
+ * \see OSRSetFromUserInputEx() for a variant allowing to pass options.
  */
 OGRErr CPL_STDCALL OSRSetFromUserInput(OGRSpatialReferenceH hSRS,
                                        const char *pszDef)
@@ -4041,6 +4045,26 @@ OGRErr CPL_STDCALL OSRSetFromUserInput(OGRSpatialReferenceH hSRS,
     VALIDATE_POINTER1(hSRS, "OSRSetFromUserInput", OGRERR_FAILURE);
 
     return ToPointer(hSRS)->SetFromUserInput(pszDef);
+}
+
+/************************************************************************/
+/*                       OSRSetFromUserInputEx()                        */
+/************************************************************************/
+
+/**
+ * \brief Set spatial reference from various text formats.
+ *
+ * This function is the same as OGRSpatialReference::SetFromUserInput().
+ *
+ * @since GDAL 3.9
+ */
+OGRErr OSRSetFromUserInputEx(OGRSpatialReferenceH hSRS, const char *pszDef,
+                             CSLConstList papszOptions)
+
+{
+    VALIDATE_POINTER1(hSRS, "OSRSetFromUserInputEx", OGRERR_FAILURE);
+
+    return ToPointer(hSRS)->SetFromUserInput(pszDef, papszOptions);
 }
 
 /************************************************************************/
@@ -11999,10 +12023,38 @@ const int *OSRGetDataAxisToSRSAxisMapping(OGRSpatialReferenceH hSRS,
 
 /** \brief Set a custom data axis to CRS axis mapping.
  *
+ * The number of elements of the mapping vector should be the number of axis
+ * of the CRS (as returned by GetAxesCount()) (although this method does not
+ * check that, beyond checking there are at least 2 elements, so that this
+ * method and setting the CRS can be done in any order).
+ * This is taken into account by OGRCoordinateTransformation to transform the
+ * order of coordinates to the order expected by the CRS before
+ * transformation, and back to the data order after transformation.
+ *
+ * The mapping[i] value (one based) represents the data axis number for the i(th)
+ * axis of the CRS. A negative value can also be used to ask for a sign
+ * reversal during coordinate transformation (to deal with northing vs southing,
+ * easting vs westing, heights vs depths).
+ *
+ * When used with OGRCoordinateTransformation,
+ * - the only valid values for mapping[0] (data axis number for the first axis
+ *   of the CRS) are 1, 2, -1, -2.
+ * - the only valid values for mapping[1] (data axis number for the second axis
+ *   of the CRS) are 1, 2, -1, -2.
+ *  - the only valid values mapping[2] are 3 or -3.
+ * Note: this method does not validate the values of mapping[].
+ *
+ * mapping=[2,1] typically expresses the inversion of axis between the data
+ * axis and the CRS axis for a 2D CRS.
+ *
  * Automatically implies SetAxisMappingStrategy(OAMS_CUSTOM)
  *
- * See OGRSpatialReference::GetAxisMappingStrategy()
+ * This is the same as the C function OSRSetDataAxisToSRSAxisMapping().
+ *
+ * @param mapping The new data axis to CRS axis mapping.
+ *
  * @since GDAL 3.0
+ * @see OGRSpatialReference::GetDataAxisToSRSAxisMapping()
  */
 OGRErr OGRSpatialReference::SetDataAxisToSRSAxisMapping(
     const std::vector<int> &mapping)
@@ -12019,10 +12071,11 @@ OGRErr OGRSpatialReference::SetDataAxisToSRSAxisMapping(
 /************************************************************************/
 
 /** \brief Set a custom data axis to CRS axis mapping.
- *s
+ *
  * Automatically implies SetAxisMappingStrategy(OAMS_CUSTOM)
  *
- * See OGRSpatialReference::SetDataAxisToSRSAxisMapping()
+ * This is the same as the C++ method
+ * OGRSpatialReference::SetDataAxisToSRSAxisMapping()
  *
  * @since GDAL 3.1
  */

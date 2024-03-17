@@ -854,8 +854,8 @@ static void CPL_STDCALL ThreadDecompressionFuncErrorHandler(
             (static_cast<size_t>(nYOffsetInBlock) * poDS->m_nBlockXSize +
              nXOffsetInBlock) *
                 nDTSize * nBandsPerStrile;
-        const size_t nSrcLineInc =
-            poDS->m_nBlockXSize * nDTSize * nBandsPerStrile;
+        const size_t nSrcLineInc = static_cast<size_t>(poDS->m_nBlockXSize) *
+                                   nDTSize * nBandsPerStrile;
 
         // Optimization when writing to BIP buffer.
         if (psContext->bUseBIPOptim)
@@ -1212,6 +1212,7 @@ CPLErr GTiffDataset::MultiThreadedRead(int nXOff, int nYOff, int nXSize,
 
         // Make sure that all blocks that we are going to read and that are
         // being written by a worker thread are completed.
+        // cppcheck-suppress constVariableReference
         auto &oQueue =
             m_poBaseDS ? m_poBaseDS->m_asQueueJobIdx : m_asQueueJobIdx;
         if (!oQueue.empty())
@@ -1437,7 +1438,7 @@ class FetchBufferVirtualMemIO final
     const GByte *FetchBytes(vsi_l_offset nOffset, int nPixels, int nDTSize,
                             bool bIsByteSwapped, bool bIsComplex, int nBlockId)
     {
-        if (nOffset + nPixels * nDTSize > nMappingSize)
+        if (nOffset + static_cast<size_t>(nPixels) * nDTSize > nMappingSize)
         {
             CPLError(CE_Failure, CPLE_FileIO, "Missing data for block %d",
                      nBlockId);
@@ -1445,7 +1446,8 @@ class FetchBufferVirtualMemIO final
         }
         if (!bIsByteSwapped)
             return pabySrcData + nOffset;
-        memcpy(pTempBuffer, pabySrcData + nOffset, nPixels * nDTSize);
+        memcpy(pTempBuffer, pabySrcData + nOffset,
+               static_cast<size_t>(nPixels) * nDTSize);
         if (bIsComplex)
             GDALSwapWords(pTempBuffer, nDTSize / 2, 2 * nPixels, nDTSize / 2);
         else
@@ -1457,13 +1459,14 @@ class FetchBufferVirtualMemIO final
                     int nDTSize, bool bIsByteSwapped, bool bIsComplex,
                     int nBlockId)
     {
-        if (nOffset + nPixels * nDTSize > nMappingSize)
+        if (nOffset + static_cast<size_t>(nPixels) * nDTSize > nMappingSize)
         {
             CPLError(CE_Failure, CPLE_FileIO, "Missing data for block %d",
                      nBlockId);
             return false;
         }
-        memcpy(pabyDstBuffer, pabySrcData + nOffset, nPixels * nDTSize);
+        memcpy(pabyDstBuffer, pabySrcData + nOffset,
+               static_cast<size_t>(nPixels) * nDTSize);
         if (bIsByteSwapped)
         {
             if (bIsComplex)
@@ -3009,7 +3012,7 @@ int GTiffDataset::DirectIO(GDALRWFlag eRWFlag, int nXOff, int nYOff, int nXSize,
             (nXOff +
              static_cast<vsi_l_offset>(nYOffsetInBlock) * m_nBlockXSize) *
             nSrcPixelSize;
-        panSizes[iLine] = nReqXSize * nSrcPixelSize;
+        panSizes[iLine] = static_cast<size_t>(nReqXSize) * nSrcPixelSize;
     }
 
     // Extract data from the file.
@@ -4296,23 +4299,14 @@ void GTiffDataset::ApplyPamInfo()
     int nPamGCPCount;
     if (m_nPAMGeorefSrcIndex >= 0 && !oMDMD.GetMetadata("xml:ESRI") &&
         (nPamGCPCount = GDALPamDataset::GetGCPCount()) > 0 &&
-        ((m_nGCPCount > 0 &&
+        ((!m_aoGCPs.empty() &&
           m_nPAMGeorefSrcIndex < m_nGeoTransformGeorefSrcIndex) ||
-         m_nGeoTransformGeorefSrcIndex < 0 || m_nGCPCount == 0))
+         m_nGeoTransformGeorefSrcIndex < 0 || m_aoGCPs.empty()))
     {
-        if (m_nGCPCount > 0)
-        {
-            GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-            CPLFree(m_pasGCPList);
-            m_pasGCPList = nullptr;
-        }
-
-        m_nGCPCount = nPamGCPCount;
-        m_pasGCPList =
-            GDALDuplicateGCPs(m_nGCPCount, GDALPamDataset::GetGCPs());
+        m_aoGCPs = gdal::GCP::fromC(GDALPamDataset::GetGCPs(), nPamGCPCount);
 
         // Invalidate Geotransorm got from less prioritary sources
-        if (m_nGCPCount > 0 && m_bGeoTransformValid && !bGotGTFromPAM &&
+        if (!m_aoGCPs.empty() && m_bGeoTransformValid && !bGotGTFromPAM &&
             m_nPAMGeorefSrcIndex == 0)
         {
             m_bGeoTransformValid = false;
@@ -4391,35 +4385,26 @@ void GTiffDataset::ApplyPamInfo()
                         }
                     }
 
-                    if (m_nGCPCount > 0)
+                    m_aoGCPs.clear();
+                    const size_t nNewGCPCount = adfSourceGCPs.size() / 2;
+                    for (size_t i = 0; i < nNewGCPCount; ++i)
                     {
-                        GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-                        CPLFree(m_pasGCPList);
-                        m_pasGCPList = nullptr;
-                        m_nGCPCount = 0;
-                    }
-
-                    m_nGCPCount = static_cast<int>(adfSourceGCPs.size() / 2);
-                    m_pasGCPList = static_cast<GDAL_GCP *>(
-                        CPLCalloc(sizeof(GDAL_GCP), m_nGCPCount));
-                    for (int i = 0; i < m_nGCPCount; ++i)
-                    {
-                        m_pasGCPList[i].pszId = CPLStrdup("");
-                        m_pasGCPList[i].pszInfo = CPLStrdup("");
-                        // The origin used is the bottom left corner,
-                        // and raw values to be multiplied by the
-                        // TIFFTAG_XRESOLUTION/TIFFTAG_YRESOLUTION
-                        m_pasGCPList[i].dfGCPPixel =
-                            adfSourceGCPs[2 * i] * CPLAtof(pszTIFFTagXRes);
-                        m_pasGCPList[i].dfGCPLine =
-                            nRasterYSize -
-                            adfSourceGCPs[2 * i + 1] * CPLAtof(pszTIFFTagYRes);
-                        m_pasGCPList[i].dfGCPX = adfTargetGCPs[2 * i];
-                        m_pasGCPList[i].dfGCPY = adfTargetGCPs[2 * i + 1];
+                        m_aoGCPs.emplace_back(
+                            "", "",
+                            // The origin used is the bottom left corner,
+                            // and raw values to be multiplied by the
+                            // TIFFTAG_XRESOLUTION/TIFFTAG_YRESOLUTION
+                            /* pixel  = */
+                            adfSourceGCPs[2 * i] * CPLAtof(pszTIFFTagXRes),
+                            /* line = */
+                            nRasterYSize - adfSourceGCPs[2 * i + 1] *
+                                               CPLAtof(pszTIFFTagYRes),
+                            /* X = */ adfTargetGCPs[2 * i],
+                            /* Y = */ adfTargetGCPs[2 * i + 1]);
                     }
 
                     // Invalidate Geotransform got from less prioritary sources
-                    if (m_nGCPCount > 0 && m_bGeoTransformValid &&
+                    if (!m_aoGCPs.empty() && m_bGeoTransformValid &&
                         !bGotGTFromPAM && m_nPAMGeorefSrcIndex == 0)
                     {
                         m_bGeoTransformValid = false;
@@ -5967,9 +5952,11 @@ void GTiffDataset::LoadGeoreferencingAndPamIfNeeded()
                 char **papszSiblingFiles = GetSiblingFiles();
 
                 // Begin with .tab since it can also have projection info.
+                int nGCPCount = 0;
+                GDAL_GCP *pasGCPList = nullptr;
                 const int bTabFileOK = GDALReadTabFile2(
-                    m_pszFilename, m_adfGeoTransform, &pszTabWKT, &m_nGCPCount,
-                    &m_pasGCPList, papszSiblingFiles, &pszGeorefFilename);
+                    m_pszFilename, m_adfGeoTransform, &pszTabWKT, &nGCPCount,
+                    &pasGCPList, papszSiblingFiles, &pszGeorefFilename);
 
                 if (bTabFileOK)
                 {
@@ -5978,10 +5965,17 @@ void GTiffDataset::LoadGeoreferencingAndPamIfNeeded()
                     // {
                     //     m_nProjectionGeorefSrcIndex = nIndex;
                     // }
-                    if (m_nGCPCount == 0)
+                    m_aoGCPs = gdal::GCP::fromC(pasGCPList, nGCPCount);
+                    if (m_aoGCPs.empty())
                     {
                         m_bGeoTransformValid = true;
                     }
+                }
+
+                if (nGCPCount)
+                {
+                    GDALDeinitGCPs(nGCPCount, pasGCPList);
+                    CPLFree(pasGCPList);
                 }
 
                 if (pszGeorefFilename)
@@ -6034,32 +6028,21 @@ void GTiffDataset::LoadGeoreferencingAndPamIfNeeded()
                          &padfTiePoints) &&
             !m_bGeoTransformValid)
         {
-            if (m_nGCPCount > 0)
+            m_aoGCPs.clear();
+            const int nNewGCPCount = nCount / 6;
+            for (int iGCP = 0; iGCP < nNewGCPCount; ++iGCP)
             {
-                GDALDeinitGCPs(m_nGCPCount, m_pasGCPList);
-                CPLFree(m_pasGCPList);
-            }
-            m_nGCPCount = nCount / 6;
-            m_pasGCPList = static_cast<GDAL_GCP *>(
-                CPLCalloc(sizeof(GDAL_GCP), m_nGCPCount));
-
-            for (int iGCP = 0; iGCP < m_nGCPCount; ++iGCP)
-            {
-                char szID[32] = {};
-
-                snprintf(szID, sizeof(szID), "%d", iGCP + 1);
-                m_pasGCPList[iGCP].pszId = CPLStrdup(szID);
-                m_pasGCPList[iGCP].pszInfo = CPLStrdup("");
-                m_pasGCPList[iGCP].dfGCPPixel = padfTiePoints[iGCP * 6 + 0];
-                m_pasGCPList[iGCP].dfGCPLine = padfTiePoints[iGCP * 6 + 1];
-                m_pasGCPList[iGCP].dfGCPX = padfTiePoints[iGCP * 6 + 3];
-                m_pasGCPList[iGCP].dfGCPY = padfTiePoints[iGCP * 6 + 4];
-                m_pasGCPList[iGCP].dfGCPZ = padfTiePoints[iGCP * 6 + 5];
+                m_aoGCPs.emplace_back(CPLSPrintf("%d", iGCP + 1), "",
+                                      /* pixel = */ padfTiePoints[iGCP * 6 + 0],
+                                      /* line = */ padfTiePoints[iGCP * 6 + 1],
+                                      /* X = */ padfTiePoints[iGCP * 6 + 3],
+                                      /* Y = */ padfTiePoints[iGCP * 6 + 4],
+                                      /* Z = */ padfTiePoints[iGCP * 6 + 5]);
 
                 if (bPixelIsPoint && !bPointGeoIgnore)
                 {
-                    m_pasGCPList[iGCP].dfGCPPixel += 0.5;
-                    m_pasGCPList[iGCP].dfGCPLine += 0.5;
+                    m_aoGCPs.back().Pixel() += 0.5;
+                    m_aoGCPs.back().Line() += 0.5;
                 }
             }
             m_nGeoTransformGeorefSrcIndex = m_nINTERNALGeorefSrcIndex;
@@ -6116,12 +6099,12 @@ const OGRSpatialReference *GTiffDataset::GetSpatialRef() const
 
 {
     const_cast<GTiffDataset *>(this)->LoadGeoreferencingAndPamIfNeeded();
-    if (m_nGCPCount == 0)
+    if (m_aoGCPs.empty())
     {
         const_cast<GTiffDataset *>(this)->LookForProjection();
     }
 
-    return m_nGCPCount == 0 && !m_oSRS.IsEmpty() ? &m_oSRS : nullptr;
+    return m_aoGCPs.empty() && !m_oSRS.IsEmpty() ? &m_oSRS : nullptr;
 }
 
 /************************************************************************/
@@ -6161,7 +6144,7 @@ int GTiffDataset::GetGCPCount()
 {
     LoadGeoreferencingAndPamIfNeeded();
 
-    return m_nGCPCount;
+    return static_cast<int>(m_aoGCPs.size());
 }
 
 /************************************************************************/
@@ -6173,11 +6156,11 @@ const OGRSpatialReference *GTiffDataset::GetGCPSpatialRef() const
 {
     const_cast<GTiffDataset *>(this)->LoadGeoreferencingAndPamIfNeeded();
 
-    if (m_nGCPCount > 0)
+    if (!m_aoGCPs.empty())
     {
         const_cast<GTiffDataset *>(this)->LookForProjection();
     }
-    return m_nGCPCount > 0 && !m_oSRS.IsEmpty() ? &m_oSRS : nullptr;
+    return !m_aoGCPs.empty() && !m_oSRS.IsEmpty() ? &m_oSRS : nullptr;
 }
 
 /************************************************************************/
@@ -6189,7 +6172,7 @@ const GDAL_GCP *GTiffDataset::GetGCPs()
 {
     LoadGeoreferencingAndPamIfNeeded();
 
-    return m_pasGCPList;
+    return gdal::GCP::c_ptr(m_aoGCPs);
 }
 
 /************************************************************************/

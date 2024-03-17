@@ -30,6 +30,7 @@
 ###############################################################################
 
 import os
+import shutil
 import sys
 
 import gdaltest
@@ -1364,6 +1365,48 @@ def test_pdf_layers(poppler_or_pdfium):
 
 
 ###############################################################################
+# Check layers support
+
+
+def test_pdf_layers_with_same_name_on_different_pages(poppler_or_pdfium):
+
+    ds = gdal.Open("data/pdf/layer_with_same_name_on_different_pages.pdf")
+    layers = ds.GetMetadata_List("LAYERS")
+    assert layers == [
+        "LAYER_00_NAME=Map_Frame (page 1)",
+        "LAYER_01_NAME=Map_Frame.Map (page 1)",
+        "LAYER_02_NAME=Map_Frame.Map.States (page 1)",
+        "LAYER_03_NAME=Map_Frame (page 2)",
+        "LAYER_04_NAME=Map_Frame.Map (page 2)",
+        "LAYER_05_NAME=Map_Frame.Map.States (page 2)",
+        "LAYER_06_NAME=Map_Frame (page 3)",
+        "LAYER_07_NAME=Map_Frame.Map (page 3)",
+        "LAYER_08_NAME=Map_Frame.Map.States (page 3)",
+        "LAYER_09_NAME=Map_Frame (page 4)",
+        "LAYER_10_NAME=Map_Frame.Map (page 4)",
+        "LAYER_11_NAME=Map_Frame.Map.States (page 4)",
+    ]
+
+    for page in (1, 2, 3, 4):
+        ds = gdal.Open(
+            f"PDF:{page}:data/pdf/layer_with_same_name_on_different_pages.pdf"
+        )
+        layers = ds.GetMetadata_List("LAYERS")
+        assert layers == [
+            "LAYER_00_NAME=Map_Frame",
+            "LAYER_01_NAME=Map_Frame.Map",
+            "LAYER_02_NAME=Map_Frame.Map.States",
+        ]
+        cs_all = ds.GetRasterBand(1).Checksum()
+
+        ds = gdal.OpenEx(
+            f"PDF:{page}:data/pdf/layer_with_same_name_on_different_pages.pdf",
+            open_options=["LAYERS_OFF=Map_Frame.Map.States"],
+        )
+        assert ds.GetRasterBand(1).Checksum() != cs_all
+
+
+###############################################################################
 # Test MARGIN, EXTRA_STREAM, EXTRA_LAYER_NAME and EXTRA_IMAGES options
 
 
@@ -1955,6 +1998,24 @@ def test_pdf_metadata(poppler_or_pdfium):
     ds = None
 
     gdal.GetDriverByName("PDF").Delete("tmp/pdf_metadata.pdf")
+
+
+###############################################################################
+# Test PAM support with subdatasets
+
+
+def test_pdf_pam_subdatasets(poppler_or_pdfium, tmp_path):
+
+    tmpfilename = str(tmp_path / "test_pdf_pam_subdatasets.pdf")
+    shutil.copy("data/pdf/byte_and_rgbsmall_2pages.pdf", tmpfilename)
+
+    ds = gdal.Open("PDF:1:" + tmpfilename)
+    ds.GetRasterBand(1).ComputeStatistics(False)
+    ds = None
+    assert gdal.VSIStatL(tmpfilename + ".aux.xml")
+    ds = gdal.Open("PDF:1:" + tmpfilename)
+    assert ds.GetRasterBand(1).GetMetadataItem("STATISTICS_MINIMUM") is not None
+    ds = None
 
 
 ###############################################################################

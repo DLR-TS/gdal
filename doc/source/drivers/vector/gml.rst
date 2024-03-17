@@ -791,7 +791,7 @@ Syntax of .gfs files
 --------------------
 
 A XML Schema for .gfs files can be found at
-https://raw.githubusercontent.com/OSGeo/gdal/master/data/gfs.xsd .
+https://raw.githubusercontent.com/OSGeo/gdal/master/ogr/ogrsf_frmts/gml/data/gfs.xsd .
 
 Let's consider the following test.gml file :
 
@@ -1300,6 +1300,35 @@ will be read as the following:
      table2.baz (String) = bar
      table1.geometry = POINT (3 50)
      table2.geometry = POINT (2 50)
+
+Geometry coordinate precision
+-----------------------------
+
+.. versionadded:: GDAL 3.9
+
+The GML driver supports reading and writing the geometry coordinate
+precision, using the :cpp:class:`OGRGeomCoordinatePrecision` settings of the
+:cpp:class:`OGRGeomFieldDefn`. Those settings are used to round the coordinates
+of the geometry of the features to an appropriate decimal precision.
+
+Implementation details: the coordinate precision is stored in the XML schema
+as ``xs:annotation/xs:appinfo[source="http://ogr.maptools.org/"]/ogr:xy_coordinate_resolution``
+and ``xs:annotation/xs:appinfo[source="http://ogr.maptools.org/"]/ogr:z_coordinate_resolution``
+optional elements in the declaration of the geometry column.
+Their numeric value is expressed in the units of the SRS.
+
+Example:
+
+.. code-block:: XML
+
+        <xs:element name="my_geom" type="gml:SurfacePropertyType" nillable="true" minOccurs="0" maxOccurs="1">
+          <xs:annotation>
+            <xs:appinfo source="http://ogr.maptools.org/">
+              <ogr:xy_coordinate_resolution>8.9e-8</ogr:xy_coordinate_resolution>
+              <ogr:z_coordinate_resolution>1e-3</ogr:z_coordinate_resolution>
+            </xs:appinfo>
+          </xs:annotation>
+        </xs:element>
 
 Examples
 --------

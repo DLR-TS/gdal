@@ -63,6 +63,7 @@ jobs:
             id: alpine
             container: alpine
             build_script: build.sh
+            os: ubuntu-22.04
 
           - name: Alpine, gcc 32-bit
             id: alpine_32bit
@@ -70,12 +71,14 @@ jobs:
             build_script: build.sh
             test_script: test.sh
             travis_branch: alpine_32bit
+            os: ubuntu-22.04
 
           - name: Fedora Rawhide, clang++
             id: fedora_rawhide
             travis_branch: sanitize
             container: fedora_rawhide
             build_script: build.sh
+            os: ubuntu-22.04
 
           - name: Ubuntu 22.04, gcc
             id: ubuntu_22.04
@@ -84,13 +87,16 @@ jobs:
             before_test_script: services.sh
             build_script: build.sh
             test_script: test.sh
+            os: ubuntu-22.04
 
-          - name: Ubuntu 20.04, clang ASAN
+          - name: Ubuntu 22.04, clang ASAN
             id: asan
             travis_branch: sanitize
-            container: ubuntu_20.04
+            container: ubuntu_22.04
             build_script: build.sh
             test_script: test.sh
+            # We force the host OS to be 20.04 to avoid "AddressSanitizer:DEADLYSIGNAL"
+            os: ubuntu-20.04
 
           - name: Ubuntu 20.04, gcc
             id: ubuntu_20.04
@@ -99,6 +105,7 @@ jobs:
             use_avx2: true
             build_script: build.sh
             test_script: test.sh
+            os: ubuntu-22.04
 
           - name: Ubuntu 20.04, coverage
             id: coverage
@@ -107,6 +114,7 @@ jobs:
             before_test_script: services.sh
             build_script: build.sh
             test_script: test.sh
+            os: ubuntu-22.04
 
           - name: Ubuntu 20.04, benchmarks
             id: benchmarks
@@ -114,15 +122,17 @@ jobs:
             container: ubuntu_20.04
             build_script: build.sh
             test_script: test.sh
+            os: ubuntu-22.04
 
           - name: Ubuntu 20.04, Intel compiler
             id: icc
             container: icc
             build_script: build.sh
+            os: ubuntu-22.04
 
     name: ${{ matrix.name }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     defaults:
       run:
@@ -143,11 +153,11 @@ jobs:
           echo "CONTAINER_NAME_FULL=${CONTAINER_REGISTRY}/${CONTAINER_REGISTRY_USER,,}/${CONTAINER_NAME}:${CONTAINER_TAG_CLEAN}"  >>${GITHUB_ENV}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Login to Docker Hub
         if: env.CONTAINER_REGISTRY == 'docker.io'
-        uses: docker/login-action@v3
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -210,7 +220,7 @@ jobs:
       # different architecture.
       - name: Restore build cache
         id: restore-cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
         with:
           path: ${{ github.workspace }}/.ccache
           key: ${{ matrix.id }}-${{ steps.get-arch.outputs.arch }}-${{ github.ref_name }}-${{ github.run_id }}
@@ -258,7 +268,7 @@ jobs:
             ccache -s
 
       - name: Save build cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
         with:
           path: ${{ github.workspace }}/.ccache
           key: ${{ steps.restore-cache.outputs.cache-primary-key }}
@@ -307,7 +317,7 @@ jobs:
             ${TEST_CMD}
 
       - name: Coveralls
-        uses: coverallsapp/github-action@v2
+        uses: coverallsapp/github-action@3dfc5567390f6fa9267c0ee9c251e4c8c3f18949 # v2.2.3
         if: ${{ matrix.id == 'coverage' }}
         with:
           format: lcov
@@ -322,14 +332,14 @@ jobs:
           docker push ${CONTAINER_NAME_FULL}
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         if: ${{ matrix.id == 'coverage' }}
         with:
           name: coverage_index.html
           path: build-${{ matrix.id }}/coverage_html/index.html
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         if: ${{ matrix.id == 'coverage' }}
         with:
           name: HTML

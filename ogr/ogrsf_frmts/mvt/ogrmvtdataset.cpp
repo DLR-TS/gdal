@@ -2535,8 +2535,8 @@ GDALDataset *OGRMVTDataset::OpenDirectory(GDALOpenInfo *poOpenInfo)
         osMetadataFile = pszMetadataFile;
     }
 
-    CPLString osTileExtension(CSLFetchNameValueDef(poOpenInfo->papszOpenOptions,
-                                                   "TILE_EXTENSION", "pbf"));
+    const CPLString osTileExtension(CSLFetchNameValueDef(
+        poOpenInfo->papszOpenOptions, "TILE_EXTENSION", "pbf"));
     bool bJsonField =
         CPLFetchBool(poOpenInfo->papszOpenOptions, "JSON_FIELD", false);
     VSIStatBufL sStat;
@@ -2773,7 +2773,7 @@ GDALDataset *OGRMVTDataset::OpenDirectory(GDALOpenInfo *poOpenInfo)
 
     OGRMVTDataset *poDS = new OGRMVTDataset(nullptr);
 
-    CPLString osMetadataMemFilename =
+    const CPLString osMetadataMemFilename =
         CPLSPrintf("/vsimem/%p_metadata.json", poDS);
     if (!LoadMetadata(osMetadataFile, osMetadataContent, oVectorLayers,
                       oTileStatLayers, oBounds, poDS->m_poSRS,
@@ -3339,7 +3339,7 @@ class OGRMVTWriterDataset final : public GDALDataset
                                       const MVTTileLayerValue &oValue);
 
     void EncodeFeature(const void *pabyBlob, int nBlobSize,
-                       std::shared_ptr<MVTTileLayer> poTargetLayer,
+                       std::shared_ptr<MVTTileLayer> &poTargetLayer,
                        std::map<CPLString, GUInt32> &oMapKeyToIdx,
                        std::map<MVTTileLayerValue, GUInt32> &oMapValueToIdx,
                        MVTLayerProperties *poLayerProperties, GUInt32 nExtent,
@@ -3366,9 +3366,9 @@ class OGRMVTWriterDataset final : public GDALDataset
 
     CPLErr Close() override;
 
-    OGRLayer *ICreateLayer(const char *, const OGRSpatialReference * = nullptr,
-                           OGRwkbGeometryType = wkbUnknown,
-                           char ** = nullptr) override;
+    OGRLayer *ICreateLayer(const char *pszName,
+                           const OGRGeomFieldDefn *poGeomFieldDefn,
+                           CSLConstList papszOptions) override;
 
     int TestCapability(const char *) override;
 
@@ -4719,7 +4719,7 @@ GetReducedPrecisionGeometry(MVTTileLayerFeature::GeomType eGeomType,
 
 void OGRMVTWriterDataset::EncodeFeature(
     const void *pabyBlob, int nBlobSize,
-    std::shared_ptr<MVTTileLayer> poTargetLayer,
+    std::shared_ptr<MVTTileLayer> &poTargetLayer,
     std::map<CPLString, GUInt32> &oMapKeyToIdx,
     std::map<MVTTileLayerValue, GUInt32> &oMapValueToIdx,
     MVTLayerProperties *poLayerProperties, GUInt32 nExtent,
@@ -4818,8 +4818,8 @@ void OGRMVTWriterDataset::EncodeFeature(
                     if (nSrcIdxKey < srcKeys.size() &&
                         nSrcIdxValue < srcValues.size())
                     {
-                        auto &osKey = srcKeys[nSrcIdxKey];
-                        auto &oValue = srcValues[nSrcIdxValue];
+                        const auto &osKey = srcKeys[nSrcIdxKey];
+                        const auto &oValue = srcValues[nSrcIdxValue];
 
                         if (poLayerProperties)
                         {
@@ -4833,7 +4833,7 @@ void OGRMVTWriterDataset::EncodeFeature(
                 }
 
                 nFeaturesInTile++;
-                poTargetLayer->addFeature(poFeature);
+                poTargetLayer->addFeature(std::move(poFeature));
             }
         }
     }
@@ -4887,7 +4887,7 @@ std::string OGRMVTWriterDataset::EncodeTile(
                     MVTLayerProperties props;
                     props.m_nMinZoom = nZ;
                     props.m_nMaxZoom = nZ;
-                    oMapLayerProps[pszLayerName] = props;
+                    oMapLayerProps[pszLayerName] = std::move(props);
                     poLayerProperties = &(oMapLayerProps[pszLayerName]);
                 }
             }
@@ -5030,7 +5030,7 @@ std::string OGRMVTWriterDataset::EncodeTile(
                 poTargetLayer->setName(pszLayerName);
                 poTargetLayer->setVersion(m_nMVTVersion);
                 poTargetLayer->setExtent(nExtent);
-                oMapLayerNameToTargetLayer[pszLayerName] = props;
+                oMapLayerNameToTargetLayer[pszLayerName] = std::move(props);
                 poMapKeyToIdx =
                     &oMapLayerNameToTargetLayer[pszLayerName].m_oMapKeyToIdx;
                 poMapValueToIdx =
@@ -5824,12 +5824,14 @@ static bool ValidateMinMaxZoom(int nMinZoom, int nMaxZoom)
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRMVTWriterDataset::ICreateLayer(const char *pszLayerName,
-                                            const OGRSpatialReference *poSRS,
-                                            OGRwkbGeometryType,
-                                            char **papszOptions)
+OGRLayer *
+OGRMVTWriterDataset::ICreateLayer(const char *pszLayerName,
+                                  const OGRGeomFieldDefn *poGeomFieldDefn,
+                                  CSLConstList papszOptions)
 {
     OGRSpatialReference *poSRSClone = nullptr;
+    const auto poSRS =
+        poGeomFieldDefn ? poGeomFieldDefn->GetSpatialRef() : nullptr;
     if (poSRS)
     {
         poSRSClone = poSRS->Clone();
@@ -5859,9 +5861,9 @@ OGRLayer *OGRMVTWriterDataset::ICreateLayer(const char *pszLayerName,
     CPLString osDescription;
     if (oObj.IsValid())
     {
-        CPLString osTargetName = oObj.GetString("target_name");
+        std::string osTargetName = oObj.GetString("target_name");
         if (!osTargetName.empty())
-            poLayer->m_osTargetName = osTargetName;
+            poLayer->m_osTargetName = std::move(osTargetName);
         int nMinZoom = oObj.GetInteger("minzoom", -1);
         if (nMinZoom >= 0)
             poLayer->m_nMinZoom = nMinZoom;
@@ -5885,7 +5887,8 @@ OGRLayer *OGRMVTWriterDataset::ICreateLayer(const char *pszLayerName,
     osDescription =
         CSLFetchNameValueDef(papszOptions, "DESCRIPTION", osDescription);
     if (!osDescription.empty())
-        m_oMapLayerNameToDesc[poLayer->m_osTargetName] = osDescription;
+        m_oMapLayerNameToDesc[poLayer->m_osTargetName] =
+            std::move(osDescription);
 
     m_apoLayers.push_back(std::unique_ptr<OGRMVTWriterLayer>(poLayer));
     return m_apoLayers.back().get();

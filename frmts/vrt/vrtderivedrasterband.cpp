@@ -50,10 +50,6 @@ using namespace GDALPy;
 #define GDAL_VRT_ENABLE_PYTHON_DEFAULT "TRUSTED_MODULES"
 #endif
 
-static std::map<CPLString,
-                std::pair<VRTDerivedRasterBand::PixelFunc, CPLString>>
-    osMapPixelFunction;
-
 /* Flags for getting buffers */
 #define PyBUF_WRITABLE 0x0001
 #define PyBUF_FORMAT 0x0004
@@ -88,6 +84,9 @@ static PyObject *GDALCreateNumpyArray(PyObject *pCreateArray, void *pBuffer,
         case GDT_Byte:
             pszDataType = "uint8";
             break;
+        case GDT_Int8:
+            pszDataType = "int8";
+            break;
         case GDT_UInt16:
             pszDataType = "uint16";
             break;
@@ -99,6 +98,12 @@ static PyObject *GDALCreateNumpyArray(PyObject *pCreateArray, void *pBuffer,
             break;
         case GDT_Int32:
             pszDataType = "int32";
+            break;
+        case GDT_Int64:
+            pszDataType = "int64";
+            break;
+        case GDT_UInt64:
+            pszDataType = "uint64";
             break;
         case GDT_Float32:
             pszDataType = "float32";
@@ -116,7 +121,8 @@ static PyObject *GDALCreateNumpyArray(PyObject *pCreateArray, void *pBuffer,
         case GDT_CFloat64:
             pszDataType = "complex128";
             break;
-        default:
+        case GDT_Unknown:
+        case GDT_TypeCount:
             CPLAssert(FALSE);
             break;
     }
@@ -222,6 +228,20 @@ void VRTDerivedRasterBand::Cleanup()
 }
 
 /************************************************************************/
+/*                      GetGlobalMapPixelFunction()                     */
+/************************************************************************/
+
+static std::map<std::string,
+                std::pair<VRTDerivedRasterBand::PixelFunc, std::string>> &
+GetGlobalMapPixelFunction()
+{
+    static std::map<std::string,
+                    std::pair<VRTDerivedRasterBand::PixelFunc, std::string>>
+        gosMapPixelFunction;
+    return gosMapPixelFunction;
+}
+
+/************************************************************************/
 /*                           AddPixelFunction()                         */
 /************************************************************************/
 
@@ -251,7 +271,7 @@ CPLErr CPL_STDCALL GDALAddDerivedBandPixelFunc(
         return CE_None;
     }
 
-    osMapPixelFunction[pszName] = {
+    GetGlobalMapPixelFunction()[pszName] = {
         [pfnNewFunction](void **papoSources, int nSources, void *pData,
                          int nBufXSize, int nBufYSize, GDALDataType eSrcType,
                          GDALDataType eBufType, int nPixelSpace, int nLineSpace,
@@ -289,13 +309,13 @@ CPLErr CPL_STDCALL GDALAddDerivedBandPixelFuncWithArgs(
     const char *pszName, GDALDerivedPixelFuncWithArgs pfnNewFunction,
     const char *pszMetadata)
 {
-    if (pszName == nullptr || pszName[0] == '\0' || pfnNewFunction == nullptr)
+    if (!pszName || pszName[0] == '\0' || !pfnNewFunction)
     {
         return CE_None;
     }
 
-    osMapPixelFunction[pszName] = {pfnNewFunction,
-                                   pszMetadata != nullptr ? pszMetadata : ""};
+    GetGlobalMapPixelFunction()[pszName] = {pfnNewFunction,
+                                            pszMetadata ? pszMetadata : ""};
 
     return CE_None;
 }
@@ -343,7 +363,7 @@ CPLErr VRTDerivedRasterBand::AddPixelFunction(
  * @return A derived band pixel function, or NULL if none have been
  * registered for pszFuncName.
  */
-std::pair<VRTDerivedRasterBand::PixelFunc, CPLString> *
+const std::pair<VRTDerivedRasterBand::PixelFunc, std::string> *
 VRTDerivedRasterBand::GetPixelFunction(const char *pszFuncNameIn)
 {
     if (pszFuncNameIn == nullptr || pszFuncNameIn[0] == '\0')
@@ -351,9 +371,10 @@ VRTDerivedRasterBand::GetPixelFunction(const char *pszFuncNameIn)
         return nullptr;
     }
 
-    auto oIter = osMapPixelFunction.find(pszFuncNameIn);
+    const auto &oMapPixelFunction = GetGlobalMapPixelFunction();
+    const auto oIter = oMapPixelFunction.find(pszFuncNameIn);
 
-    if (oIter == osMapPixelFunction.end())
+    if (oIter == oMapPixelFunction.end())
         return nullptr;
 
     return &(oIter->second);
@@ -908,7 +929,7 @@ CPLErr VRTDerivedRasterBand::IRasterIO(
              (!m_bNoDataValueSet || m_dfNoDataValue == 0))
     {
         memset(pData, 0,
-               static_cast<size_t>(nBufXSize * nBufYSize * nPixelSpace));
+               static_cast<size_t>(nBufXSize) * nBufYSize * nBufTypeSize);
     }
     else if (m_bNoDataValueSet)
     {
@@ -935,7 +956,7 @@ CPLErr VRTDerivedRasterBand::IRasterIO(
     }
 
     /* ---- Get pixel function for band ---- */
-    std::pair<PixelFunc, CPLString> *poPixelFunc = nullptr;
+    const std::pair<PixelFunc, std::string> *poPixelFunc = nullptr;
     std::vector<std::pair<CPLString, CPLString>> oAdditionalArgs;
 
     if (EQUAL(m_poPrivate->m_osLanguage, "C"))
@@ -1137,23 +1158,28 @@ CPLErr VRTDerivedRasterBand::IRasterIO(
                            (nYShiftInBuffer * nExtBufXSize + nXShiftInBuffer) *
                                nSrcTypeSize,
                        nExtBufXSizeReq, nExtBufYSizeReq, eSrcType, nSrcTypeSize,
-                       nSrcTypeSize * nExtBufXSize, &sExtraArg, oWorkingState);
+                       static_cast<GSpacing>(nSrcTypeSize) * nExtBufXSize,
+                       &sExtraArg, oWorkingState);
 
         // Extend first lines
         for (int iY = 0; iY < nYShiftInBuffer; iY++)
         {
-            memcpy(pabyBuffer + iY * nExtBufXSize * nSrcTypeSize,
-                   pabyBuffer + nYShiftInBuffer * nExtBufXSize * nSrcTypeSize,
-                   nExtBufXSize * nSrcTypeSize);
+            memcpy(pabyBuffer +
+                       static_cast<size_t>(iY) * nExtBufXSize * nSrcTypeSize,
+                   pabyBuffer + static_cast<size_t>(nYShiftInBuffer) *
+                                    nExtBufXSize * nSrcTypeSize,
+                   static_cast<size_t>(nExtBufXSize) * nSrcTypeSize);
         }
         // Extend last lines
         for (int iY = nYShiftInBuffer + nExtBufYSizeReq; iY < nExtBufYSize;
              iY++)
         {
-            memcpy(pabyBuffer + iY * nExtBufXSize * nSrcTypeSize,
-                   pabyBuffer + (nYShiftInBuffer + nExtBufYSizeReq - 1) *
+            memcpy(pabyBuffer +
+                       static_cast<size_t>(iY) * nExtBufXSize * nSrcTypeSize,
+                   pabyBuffer + static_cast<size_t>(nYShiftInBuffer +
+                                                    nExtBufYSizeReq - 1) *
                                     nExtBufXSize * nSrcTypeSize,
-                   nExtBufXSize * nSrcTypeSize);
+                   static_cast<size_t>(nExtBufXSize) * nSrcTypeSize);
         }
         // Extend first cols
         if (nXShiftInBuffer)
@@ -1162,9 +1188,13 @@ CPLErr VRTDerivedRasterBand::IRasterIO(
             {
                 for (int iX = 0; iX < nXShiftInBuffer; iX++)
                 {
-                    memcpy(pabyBuffer + (iY * nExtBufXSize + iX) * nSrcTypeSize,
-                           pabyBuffer + (iY * nExtBufXSize + nXShiftInBuffer) *
-                                            nSrcTypeSize,
+                    memcpy(pabyBuffer +
+                               static_cast<size_t>(iY * nExtBufXSize + iX) *
+                                   nSrcTypeSize,
+                           pabyBuffer +
+                               (static_cast<size_t>(iY) * nExtBufXSize +
+                                nXShiftInBuffer) *
+                                   nSrcTypeSize,
                            nSrcTypeSize);
                 }
             }
@@ -1177,10 +1207,13 @@ CPLErr VRTDerivedRasterBand::IRasterIO(
                 for (int iX = nXShiftInBuffer + nExtBufXSizeReq;
                      iX < nExtBufXSize; iX++)
                 {
-                    memcpy(pabyBuffer + (iY * nExtBufXSize + iX) * nSrcTypeSize,
-                           pabyBuffer + (iY * nExtBufXSize + nXShiftInBuffer +
-                                         nExtBufXSizeReq - 1) *
-                                            nSrcTypeSize,
+                    memcpy(pabyBuffer +
+                               (static_cast<size_t>(iY) * nExtBufXSize + iX) *
+                                   nSrcTypeSize,
+                           pabyBuffer +
+                               (static_cast<size_t>(iY) * nExtBufXSize +
+                                nXShiftInBuffer + nExtBufXSizeReq - 1) *
+                                   nSrcTypeSize,
                            nSrcTypeSize);
                 }
             }
@@ -1384,7 +1417,7 @@ int VRTDerivedRasterBand::IGetDataCoverageStatus(
 /************************************************************************/
 
 CPLErr VRTDerivedRasterBand::XMLInit(
-    CPLXMLNode *psTree, const char *pszVRTPath,
+    const CPLXMLNode *psTree, const char *pszVRTPath,
     std::map<CPLString, GDALDataset *> &oMapSharedSources)
 
 {
@@ -1435,10 +1468,11 @@ CPLErr VRTDerivedRasterBand::XMLInit(
         return CE_Failure;
     }
 
-    CPLXMLNode *psArgs = CPLGetXMLNode(psTree, "PixelFunctionArguments");
+    const CPLXMLNode *const psArgs =
+        CPLGetXMLNode(psTree, "PixelFunctionArguments");
     if (psArgs != nullptr)
     {
-        for (CPLXMLNode *psIter = psArgs->psChild; psIter != nullptr;
+        for (const CPLXMLNode *psIter = psArgs->psChild; psIter;
              psIter = psIter->psNext)
         {
             if (psIter->eType == CXT_Attribute)
@@ -1475,9 +1509,12 @@ CPLErr VRTDerivedRasterBand::XMLInit(
 /*                           SerializeToXML()                           */
 /************************************************************************/
 
-CPLXMLNode *VRTDerivedRasterBand::SerializeToXML(const char *pszVRTPath)
+CPLXMLNode *VRTDerivedRasterBand::SerializeToXML(const char *pszVRTPath,
+                                                 bool &bHasWarnedAboutRAMUsage,
+                                                 size_t &nAccRAMUsage)
 {
-    CPLXMLNode *psTree = VRTSourcedRasterBand::SerializeToXML(pszVRTPath);
+    CPLXMLNode *psTree = VRTSourcedRasterBand::SerializeToXML(
+        pszVRTPath, bHasWarnedAboutRAMUsage, nAccRAMUsage);
 
     /* -------------------------------------------------------------------- */
     /*      Set subclass.                                                   */

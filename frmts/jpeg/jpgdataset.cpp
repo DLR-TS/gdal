@@ -1422,7 +1422,7 @@ CPLErr JPGRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff, void *pImage)
     const int nWordSize = GDALGetDataTypeSizeBytes(eDataType);
     if (poGDS->m_fpImage == nullptr)
     {
-        memset(pImage, 0, nXSize * nWordSize);
+        memset(pImage, 0, cpl::fits_on<int>(nXSize * nWordSize));
         return CE_None;
     }
 
@@ -1438,7 +1438,8 @@ CPLErr JPGRasterBand::IReadBlock(int nBlockXOff, int nBlockYOff, void *pImage)
         GDALCopyWords(poGDS->m_pabyScanline, GDT_UInt16, 2, pImage, eDataType,
                       nWordSize, nXSize);
 #else
-        memcpy(pImage, poGDS->m_pabyScanline, nXSize * nWordSize);
+        memcpy(pImage, poGDS->m_pabyScanline,
+               cpl::fits_on<int>(nXSize * nWordSize));
 #endif
     }
     else
@@ -1642,9 +1643,9 @@ int JPGRasterBand::GetOverviewCount()
 JPGDatasetCommon::JPGDatasetCommon()
     : nScaleFactor(1), bHasInitInternalOverviews(false),
       nInternalOverviewsCurrent(0), nInternalOverviewsToFree(0),
-      papoInternalOverviews(nullptr), bGeoTransformValid(false), nGCPCount(0),
-      pasGCPList(nullptr), m_fpImage(nullptr), nSubfileOffset(0),
-      nLoadedScanline(-1), m_pabyScanline(nullptr), bHasReadEXIFMetadata(false),
+      papoInternalOverviews(nullptr), bGeoTransformValid(false),
+      m_fpImage(nullptr), nSubfileOffset(0), nLoadedScanline(-1),
+      m_pabyScanline(nullptr), bHasReadEXIFMetadata(false),
       bHasReadXMPMetadata(false), bHasReadICCMetadata(false),
       papszMetadata(nullptr), nExifOffset(-1), nInterOffset(-1), nGPSOffset(-1),
       bSwabflag(false), nTiffDirStart(-1), nTIFFHEADER(-1),
@@ -1676,12 +1677,6 @@ JPGDatasetCommon::~JPGDatasetCommon()
         CPLFree(m_pabyScanline);
     if (papszMetadata != nullptr)
         CSLDestroy(papszMetadata);
-
-    if (nGCPCount > 0)
-    {
-        GDALDeinitGCPs(nGCPCount, pasGCPList);
-        CPLFree(pasGCPList);
-    }
 
     CPLFree(pabyBitMask);
     CPLFree(pabyCMask);
@@ -2180,8 +2175,8 @@ CPLErr JPGDataset::LoadScanline(int iLine, GByte *outBuffer)
                 CPLAssert(false);
         }
 
-        m_pabyScanline =
-            static_cast<GByte *>(CPLMalloc(nJPEGBands * GetRasterXSize() * 2));
+        m_pabyScanline = static_cast<GByte *>(
+            CPLMalloc(cpl::fits_on<int>(nJPEGBands * GetRasterXSize() * 2)));
     }
 
     if (iLine < nLoadedScanline)
@@ -2498,7 +2493,7 @@ int JPGDatasetCommon::GetGCPCount()
 
     LoadWorldFileOrTab();
 
-    return nGCPCount;
+    return static_cast<int>(m_aoGCPs.size());
 }
 
 /************************************************************************/
@@ -2515,7 +2510,7 @@ const OGRSpatialReference *JPGDatasetCommon::GetGCPSpatialRef() const
 
     const_cast<JPGDatasetCommon *>(this)->LoadWorldFileOrTab();
 
-    if (!m_oSRS.IsEmpty() && nGCPCount > 0)
+    if (!m_oSRS.IsEmpty() && !m_aoGCPs.empty())
         return &m_oSRS;
 
     return nullptr;
@@ -2534,7 +2529,7 @@ const GDAL_GCP *JPGDatasetCommon::GetGCPs()
 
     LoadWorldFileOrTab();
 
-    return pasGCPList;
+    return gdal::GCP::c_ptr(m_aoGCPs);
 }
 
 /************************************************************************/
@@ -3150,12 +3145,17 @@ void JPGDatasetCommon::LoadWorldFileOrTab()
     if (!bGeoTransformValid)
     {
         char *pszProjection = nullptr;
+        int nGCPCount = 0;
+        GDAL_GCP *pasGCPList = nullptr;
         const bool bTabFileOK = CPL_TO_BOOL(GDALReadTabFile2(
             GetDescription(), adfGeoTransform, &pszProjection, &nGCPCount,
             &pasGCPList, oOvManager.GetSiblingFiles(), &pszWldFilename));
         if (pszProjection)
             m_oSRS.importFromWkt(pszProjection);
         CPLFree(pszProjection);
+        m_aoGCPs = gdal::GCP::fromC(pasGCPList, nGCPCount);
+        GDALDeinitGCPs(nGCPCount, pasGCPList);
+        CPLFree(pasGCPList);
 
         if (bTabFileOK && nGCPCount == 0)
             bGeoTransformValid = true;
@@ -4579,8 +4579,8 @@ GDALDataset *JPGDataset::CreateCopyStage2(
 
     // Loop over image, copying image data.
     const int nWorkDTSize = GDALGetDataTypeSizeBytes(eWorkDT);
-    pabyScanline =
-        static_cast<GByte *>(CPLMalloc(nBands * nXSize * nWorkDTSize));
+    pabyScanline = static_cast<GByte *>(
+        CPLMalloc(cpl::fits_on<int>(nBands * nXSize * nWorkDTSize)));
 
     if (setjmp(sUserData.setjmp_buffer))
     {
@@ -4596,8 +4596,9 @@ GDALDataset *JPGDataset::CreateCopyStage2(
     {
         eErr = poSrcDS->RasterIO(
             GF_Read, 0, iLine, nXSize, 1, pabyScanline, nXSize, 1, eWorkDT,
-            nBands, nullptr, nBands * nWorkDTSize,
-            nBands * nXSize * nWorkDTSize, nWorkDTSize, nullptr);
+            nBands, nullptr, cpl::fits_on<int>(nBands * nWorkDTSize),
+            cpl::fits_on<int>(nBands * nXSize * nWorkDTSize), nWorkDTSize,
+            nullptr);
 
         // Clamp 16bit values to 12bit.
         if (nWorkDTSize == 2)

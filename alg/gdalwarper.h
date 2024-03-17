@@ -501,12 +501,11 @@ class CPL_DLL GDALWarpOperation
     void WipeOptions();
     int ValidateOptions();
 
-    CPLErr ComputeSourceWindow(int nDstXOff, int nDstYOff, int nDstXSize,
-                               int nDstYSize, int *pnSrcXOff, int *pnSrcYOff,
-                               int *pnSrcXSize, int *pnSrcYSize,
-                               double *pdfSrcXExtraSize,
-                               double *pdfSrcYExtraSize,
-                               double *pdfSrcFillRatio);
+    bool ComputeSourceWindowTransformPoints(
+        int nDstXOff, int nDstYOff, int nDstXSize, int nDstYSize, bool bUseGrid,
+        bool bAll, int nStepCount, bool bTryWithCheckWithInvertProj,
+        double &dfMinXOut, double &dfMinYOut, double &dfMaxXOut,
+        double &dfMaxYOut, int &nSamplePoints, int &nFailedCount);
 
     void ComputeSourceWindowStartingFromSource(int nDstXOff, int nDstYOff,
                                                int nDstXSize, int nDstYSize,
@@ -578,6 +577,18 @@ class CPL_DLL GDALWarpOperation
                               int nSrcYOff, int nSrcXSize, int nSrcYSize,
                               double dfSrcXExtraSize, double dfSrcYExtraSize,
                               double dfProgressBase, double dfProgressScale);
+
+  protected:
+    friend class VRTWarpedDataset;
+    CPLErr ComputeSourceWindow(int nDstXOff, int nDstYOff, int nDstXSize,
+                               int nDstYSize, int *pnSrcXOff, int *pnSrcYOff,
+                               int *pnSrcXSize, int *pnSrcYSize,
+                               double *pdfSrcXExtraSize,
+                               double *pdfSrcYExtraSize,
+                               double *pdfSrcFillRatio);
+
+    double GetWorkingMemoryForWindow(int nSrcXSize, int nSrcYSize,
+                                     int nDstXSize, int nDstYSize) const;
 };
 
 #endif /* def __cplusplus */

@@ -168,14 +168,19 @@ Relationships
 
 .. versionadded:: 3.6
 
-Relationship retrieval is supported, respecting the OGC GeoPackage Related Tables Extension.
-If the Related Tables Extension is not in use then relationships will be reported for tables
-which utilize FOREIGN KEY constraints.
+Many-to-many relationship retrieval is supported, respecting the OGC GeoPackage Related Tables Extension.
+One-to-many relationships will also be reported for tables which utilize FOREIGN KEY constraints.
 
 Relationship creation, deletion and updating is supported since GDAL 3.7. Relationships can
 only be updated to change their base or related table fields, or the relationship related
 table type. It is not permissible to change the base or related table itself, or the mapping
 table details. If this is desired then a new relationship should be created instead.
+
+Note that when a many-to-many relationship is created in a GeoPackage, GDAL will always
+insert the mapping table into the gpkg_contents table. Formally this is not required
+by the Related Tables Extension (instead, the table should only be listed in gpkgext_relations),
+however failing to list the mapping table in gpkg_contents prevents it from being usable
+in some other applications (e.g. ESRI software).
 
 Dataset open options
 --------------------
@@ -345,6 +350,20 @@ The following layer creation options are available:
       Whether the values of the
       geometry column can be NULL. Can be set to NO so that geometry is
       required.
+
+-  .. lco:: DISCARD_COORD_LSB
+      :choices: YES, NO
+      :default: NO
+      :since: 3.9
+
+      Whether the geometry coordinate precision should be used to set to zero non-significant least-significant bits of geometries. Helps when further compression is used. See :ref:`ogr_gpkg_geometry_coordinate_precision` for more details.
+
+-  .. lco:: UNDO_DISCARD_COORD_LSB_ON_READING
+      :choices: YES, NO
+      :default: NO
+      :since: 3.9
+
+      Whether to ask GDAL to take into coordinate precision to undo the effects of DISCARD_COORD_LSB. See :ref:`ogr_gpkg_geometry_coordinate_precision` for more details.
 
 -  .. lco:: FID
       :default: fid
@@ -626,6 +645,62 @@ Update of an existing file is not supported.
 
 Creation involves the creation of a temporary file. Sufficiently large files
 will be automatically compressed using the SOZip optimization.
+
+.. _ogr_gpkg_geometry_coordinate_precision:
+
+Geometry coordinate precision
+-----------------------------
+
+.. versionadded:: GDAL 3.9
+
+The GeoPackage driver supports reading and writing the geometry coordinate
+precision, using the :cpp:class:`OGRGeomCoordinatePrecision` settings of the
+:cpp:class:`OGRGeomFieldDefn`. By default, the geometry coordinate precision
+is only noted in metadata, and does not cause geometries that are written to
+be modified to comply with this precision.
+
+Several settings may be combined to apply further processing:
+
+* if the :config:`OGR_APPLY_GEOM_SET_PRECISION` configuration option is set to
+  ``YES``, the :cpp:func:`OGRGeometry::SetPrecision` method will be applied
+  when calling the CreateFeature() and SetFeature() method of the driver, to
+  round X and Y coordinates to the specified precision, and fix potential
+  geometry invalidities resulting from the rounding.
+
+* if the ``DISCARD_COORD_LSB`` layer creation option is set to YES, the
+  less-significant bits of the WKB geometry encoding which are not relevant for
+  the requested precision are set to zero. This can improve further lossless
+  compression stages, for example when putting a GeoPackage in an archive.
+  Note however that when reading back such geometries and displaying them
+  to the maximum precision, they will not "exactly" match the original
+  :cpp:class:`OGRGeomCoordinatePrecision` settings. However, they will round
+  back to it.
+  The value of the ``DISCARD_COORD_LSB`` layer creation option is written in
+  the dataset metadata, and will be re-used for later edition sessions.
+
+* if the ``UNDO_DISCARD_COORD_LSB_ON_READING`` layer creation option is set to
+  YES (only makes sense if the ``DISCARD_COORD_LSB`` layer creation option is
+  also set to YES), when *reading* back geometries from a dataset, the
+  :cpp:func:`OGRGeometry::roundCoordinates` method will be applied so that
+  the geometry coordinates exactly match the original specified coordinate
+  precision. That option will only be honored by GDAL 3.9 or later.
+
+
+Implementation details: the coordinate precision is stored in a record in each
+of the ``gpkg_metadata`` and ``gpkg_metadata_reference`` table, with the
+following additional constraints on top of the ones imposed by the GeoPackage
+specification:
+
+- gpkg_metadata.md_standard_uri = 'http://gdal.org'
+- gpkg_metadata.mime_type = 'text/xml'
+- gpkg_metadata.metadata = '<CoordinatePrecision xy_resolution="{xy_resolution}" z_resolution="{z_resolution}" m_resolution="{m_resolution}" discard_coord_lsb={true or false} undo_discard_coord_lsb_on_reading={true or false} />'
+- gpkg_metadata_reference.reference_scope = 'column'
+- gpkg_metadata_reference.table_name = '{table_name}'
+- gpkg_metadata_reference.column_name = '{geometry_column_name}'
+
+Note that the xy_resolution, z_resolution or m_resolution attributes of the
+XML CoordinatePrecision element are optional. Their numeric value is expressed
+in the units of the SRS for xy_resolution and z_resolution.
 
 .. _target_drivers_vector_gpkg_performance_hints:
 

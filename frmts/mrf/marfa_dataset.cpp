@@ -256,20 +256,23 @@ CPLErr MRFDataset::IBuildOverviews(const char *pszResampling, int nOverviews,
             pfnProgress, pProgressData, papszOptions);
     }
 
-    /* -------------------------------------------------------------------- */
-    /*      If zero overviews were requested, we need to clear all          */
-    /*      existing overviews.                                             */
-    /*      This should just clear the index file                           */
-    /*      Right now it just fails or does nothing                         */
-    /* -------------------------------------------------------------------- */
-
     if (nOverviews == 0)
     {
-        if (current.size.l == 0)
+        // If there are none, nothing to do
+        if (GetRasterBand(1)->GetOverviewCount() == 0)
+            return CE_None;
+
+        auto *b = static_cast<MRFRasterBand *>(GetRasterBand(1));
+        // If the first band internal overviews don't exist, they are external
+        if (b->overviews.empty())
             return GDALDataset::IBuildOverviews(
                 pszResampling, nOverviews, panOverviewList, nBands, panBandList,
                 pfnProgress, pProgressData, papszOptions);
-        // We should clean overviews, but this is not possible in an MRF
+
+        // We should clean overviews, but this is not allowed in an MRF
+        CPLError(CE_Warning, CPLE_NotSupported,
+                 "MRF: Internal overviews cannot be removed, "
+                 "but they can be rebuilt");
         return CE_None;
     }
 
@@ -1594,8 +1597,9 @@ static inline bool is_absolute(const CPLString &name)
 {
     return (name.find_first_of("/\\") == 0)  // Starts with root
            || (name.size() > 1 && name[1] == ':' &&
-               isalpha(name[0]))  // Starts with drive letter
-           || (name[0] == '<');   // Maybe it is XML
+               isalpha(static_cast<unsigned char>(
+                   name[0])))    // Starts with drive letter
+           || (name[0] == '<');  // Maybe it is XML
 }
 
 // Add the dirname of path to the beginning of name, if it is relative
@@ -2019,10 +2023,10 @@ CPLErr MRFDataset::ZenCopy(GDALDataset *poSrc, GDALProgressFunc pfnProgress,
                 continue;
 
             // get the data in the buffer, interleaved
-            eErr =
-                poSrc->RasterIO(GF_Read, col, row, nCols, nRows, buffer, nCols,
-                                nRows, eDT, nBandCount, nullptr, nBands * dts,
-                                nBands * dts * nCols, dts, nullptr);
+            eErr = poSrc->RasterIO(
+                GF_Read, col, row, nCols, nRows, buffer, nCols, nRows, eDT,
+                nBandCount, nullptr, static_cast<GSpacing>(nBands) * dts,
+                static_cast<GSpacing>(nBands) * dts * nCols, dts, nullptr);
 
             if (eErr != CE_None)
                 break;
@@ -2048,9 +2052,10 @@ CPLErr MRFDataset::ZenCopy(GDALDataset *poSrc, GDALProgressFunc pfnProgress,
 
             // Write
             if (eErr == CE_None)
-                eErr = RasterIO(GF_Write, col, row, nCols, nRows, buffer, nCols,
-                                nRows, eDT, nBandCount, nullptr, nBands * dts,
-                                nBands * dts * nCols, dts, nullptr);
+                eErr = RasterIO(
+                    GF_Write, col, row, nCols, nRows, buffer, nCols, nRows, eDT,
+                    nBandCount, nullptr, static_cast<GSpacing>(nBands) * dts,
+                    static_cast<GSpacing>(nBands) * dts * nCols, dts, nullptr);
 
         }  // Columns
         if (eErr != CE_None)

@@ -20,8 +20,6 @@ The virtual files are currently normally prepared by hand.
 Driver capabilities
 -------------------
 
-.. supports_create::
-
 .. supports_georeferencing::
 
 .. supports_virtualio::
@@ -47,7 +45,7 @@ an **OGRVRTLayer** (or **OGRVRTWarpedLayer** or **OGRVRTUnionLayer**) child for
 each layer in the virtual
 datasource, and a **Metadata** element.
 
-An XML schema of the OGR VRT format is provided in :source_file:`data/ogrvrt.xsd`.
+An XML schema of the OGR VRT format is provided in :source_file:`ogr/ogrsf_frmts/vrt/data/ogrvrt.xsd`.
 When GDAL is configured with libXML2
 support, that schema will be used to validate the VRT documents.
 Non-conformities will be reported only as warnings. That validation can
@@ -210,6 +208,14 @@ layer name, and may have the following subelements:
      **SrcRegion**
   *  **ExtentXMin**, **ExtentYMin**, **ExtentXMax** and **ExtentXMax**
      (optional) : same syntax as OGRVRTLayer-level elements of same name
+  *  **XYResolution** (optional, GDAL >= 3.9):
+     Resolution for the coordinate precision of the X and Y coordinates.
+     Expressed in the units of the X and Y axis of the SRS
+  *  **ZResolution** (optional, GDAL >= 3.9):
+     Resolution for the coordinate precision of the Z coordinates.
+     Expressed in the units of the Z axis of the SRS
+  *  **MResolution** (optional, GDAL >= 3.9):
+     Resolution for the coordinate precision of the M coordinates.
 
   If no **GeometryField** element is specified, all the geometry fields of
   the source layer will be exposed by the VRT layer. In order not to
@@ -544,3 +550,7 @@ Other Notes
    that is possible. For instance if the source is an RDBMS. You can
    turn off that feature by setting the *useSpatialSubquery* attribute
    of the GeometryField element to FALSE.
+-  .vrt files starting with
+   - <OGRVRTDataSource> open with ogrinfo, etc.
+   - <VRTDataset> open with gdalinfo, etc.
+

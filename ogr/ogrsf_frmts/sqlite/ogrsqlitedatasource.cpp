@@ -276,45 +276,6 @@ int OGRSQLiteBaseDataSource::GetSpatialiteVersionNumber()
 }
 
 /************************************************************************/
-/*                        GetRelationshipNames()                        */
-/************************************************************************/
-
-std::vector<std::string> OGRSQLiteDataSource::GetRelationshipNames(
-    CPL_UNUSED CSLConstList papszOptions) const
-
-{
-    if (!m_bHasPopulatedRelationships)
-        LoadRelationshipsFromForeignKeys();
-
-    std::vector<std::string> oasNames;
-    oasNames.reserve(m_osMapRelationships.size());
-    for (auto it = m_osMapRelationships.begin();
-         it != m_osMapRelationships.end(); ++it)
-    {
-        oasNames.emplace_back(it->first);
-    }
-    return oasNames;
-}
-
-/************************************************************************/
-/*                        GetRelationship()                             */
-/************************************************************************/
-
-const GDALRelationship *
-OGRSQLiteDataSource::GetRelationship(const std::string &name) const
-
-{
-    if (!m_bHasPopulatedRelationships)
-        LoadRelationshipsFromForeignKeys();
-
-    auto it = m_osMapRelationships.find(name);
-    if (it == m_osMapRelationships.end())
-        return nullptr;
-
-    return it->second.get();
-}
-
-/************************************************************************/
 /*                          AddRelationship()                           */
 /************************************************************************/
 
@@ -704,18 +665,28 @@ OGRErr OGRSQLiteBaseDataSource::PragmaCheck(const char *pszPragma,
 }
 
 /************************************************************************/
-/*                LoadRelationshipsFromForeignKeys()                    */
+/*                     LoadRelationships()                              */
 /************************************************************************/
 
-void OGRSQLiteBaseDataSource::LoadRelationshipsFromForeignKeys() const
+void OGRSQLiteBaseDataSource::LoadRelationships() const
 
 {
     m_osMapRelationships.clear();
+    LoadRelationshipsFromForeignKeys({});
+    m_bHasPopulatedRelationships = true;
+}
 
+/************************************************************************/
+/*                LoadRelationshipsFromForeignKeys()                    */
+/************************************************************************/
+
+void OGRSQLiteBaseDataSource::LoadRelationshipsFromForeignKeys(
+    const std::vector<std::string> &excludedTables) const
+
+{
     if (hDB)
     {
-        auto oResult = SQLQuery(
-            hDB,
+        std::string osSQL =
             "SELECT m.name, p.id, p.seq, p.\"table\" AS base_table_name, "
             "p.\"from\", p.\"to\", "
             "p.on_delete FROM sqlite_master m "
@@ -728,8 +699,27 @@ void OGRSQLiteBaseDataSource::LoadRelationshipsFromForeignKeys() const
             // Same with Spatialite system tables
             "AND base_table_name NOT IN ('geometry_columns', "
             "'spatial_ref_sys', 'views_geometry_columns', "
-            "'virts_geometry_columns') "
-            "ORDER BY m.name");
+            "'virts_geometry_columns') ";
+        if (!excludedTables.empty())
+        {
+            std::string oExcludedTablesList;
+            for (const auto &osExcludedTable : excludedTables)
+            {
+                oExcludedTablesList += !oExcludedTablesList.empty() ? "," : "";
+                char *pszEscapedName =
+                    sqlite3_mprintf("'%q'", osExcludedTable.c_str());
+                oExcludedTablesList += pszEscapedName;
+                sqlite3_free(pszEscapedName);
+            }
+
+            osSQL += "AND base_table_name NOT IN (" + oExcludedTablesList +
+                     ")"
+                     " AND m.name NOT IN (" +
+                     oExcludedTablesList + ") ";
+        }
+        osSQL += "ORDER BY m.name";
+
+        auto oResult = SQLQuery(hDB, osSQL.c_str());
 
         if (!oResult)
         {
@@ -806,9 +796,50 @@ void OGRSQLiteBaseDataSource::LoadRelationshipsFromForeignKeys() const
                     std::move(poRelationship);
             }
         }
-
-        m_bHasPopulatedRelationships = true;
     }
+}
+
+/************************************************************************/
+/*                        GetRelationshipNames()                        */
+/************************************************************************/
+
+std::vector<std::string> OGRSQLiteBaseDataSource::GetRelationshipNames(
+    CPL_UNUSED CSLConstList papszOptions) const
+
+{
+    if (!m_bHasPopulatedRelationships)
+    {
+        LoadRelationships();
+    }
+
+    std::vector<std::string> oasNames;
+    oasNames.reserve(m_osMapRelationships.size());
+    for (auto it = m_osMapRelationships.begin();
+         it != m_osMapRelationships.end(); ++it)
+    {
+        oasNames.emplace_back(it->first);
+    }
+    return oasNames;
+}
+
+/************************************************************************/
+/*                        GetRelationship()                             */
+/************************************************************************/
+
+const GDALRelationship *
+OGRSQLiteBaseDataSource::GetRelationship(const std::string &name) const
+
+{
+    if (!m_bHasPopulatedRelationships)
+    {
+        LoadRelationships();
+    }
+
+    auto it = m_osMapRelationships.find(name);
+    if (it == m_osMapRelationships.end())
+        return nullptr;
+
+    return it->second.get();
 }
 
 /***********************************************************************/
@@ -910,13 +941,7 @@ CPLErr OGRSQLiteDataSource::Close()
 
         CPLFree(m_papoLayers);
 
-        for (int i = 0; i < m_nKnownSRID; i++)
-        {
-            if (m_papoSRS[i] != nullptr)
-                m_papoSRS[i]->Release();
-        }
-        CPLFree(m_panSRID);
-        CPLFree(m_papoSRS);
+        m_oSRSCache.clear();
 
         if (!CloseDB())
             eErr = CE_Failure;
@@ -3446,10 +3471,10 @@ void OGRSQLiteDataSource::ReleaseResultSet(OGRLayer *poLayer)
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRSQLiteDataSource::ICreateLayer(const char *pszLayerNameIn,
-                                            const OGRSpatialReference *poSRS,
-                                            OGRwkbGeometryType eType,
-                                            char **papszOptions)
+OGRLayer *
+OGRSQLiteDataSource::ICreateLayer(const char *pszLayerNameIn,
+                                  const OGRGeomFieldDefn *poGeomFieldDefn,
+                                  CSLConstList papszOptions)
 
 {
     /* -------------------------------------------------------------------- */
@@ -3465,6 +3490,10 @@ OGRLayer *OGRSQLiteDataSource::ICreateLayer(const char *pszLayerNameIn,
 
         return nullptr;
     }
+
+    const auto eType = poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
+    const auto poSRS =
+        poGeomFieldDefn ? poGeomFieldDefn->GetSpatialRef() : nullptr;
 
     if (m_bIsSpatiaLiteDB && eType != wkbNone)
     {
@@ -3712,7 +3741,8 @@ char *OGRSQLiteDataSource::LaunderName(const char *pszSrcName)
     char *pszSafeName = CPLStrdup(pszSrcName);
     for (int i = 0; pszSafeName[i] != '\0'; i++)
     {
-        pszSafeName[i] = (char)tolower(pszSafeName[i]);
+        pszSafeName[i] =
+            (char)tolower(static_cast<unsigned char>(pszSafeName[i]));
         if (pszSafeName[i] == '\'' || pszSafeName[i] == '-' ||
             pszSafeName[i] == '#')
             pszSafeName[i] = '_';
@@ -4101,17 +4131,15 @@ const char *OGRSQLiteDataSource::GetSRTEXTColName()
 /*      sure it is freshly created, or add a reference yourself if not. */
 /************************************************************************/
 
-void OGRSQLiteDataSource::AddSRIDToCache(int nId, OGRSpatialReference *poSRS)
+OGRSpatialReference *OGRSQLiteDataSource::AddSRIDToCache(
+    int nId,
+    std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser> &&poSRS)
 {
     /* -------------------------------------------------------------------- */
     /*      Add to the cache.                                               */
     /* -------------------------------------------------------------------- */
-    m_panSRID = (int *)CPLRealloc(m_panSRID, sizeof(int) * (m_nKnownSRID + 1));
-    m_papoSRS = (OGRSpatialReference **)CPLRealloc(
-        m_papoSRS, sizeof(void *) * (m_nKnownSRID + 1));
-    m_panSRID[m_nKnownSRID] = nId;
-    m_papoSRS[m_nKnownSRID] = poSRS;
-    m_nKnownSRID++;
+    auto oIter = m_oSRSCache.emplace(nId, std::move(poSRS)).first;
+    return oIter->second.get();
 }
 
 /************************************************************************/
@@ -4131,15 +4159,15 @@ int OGRSQLiteDataSource::FetchSRSId(const OGRSpatialReference *poSRS)
     /* -------------------------------------------------------------------- */
     /*      First, we look through our SRID cache, is it there?             */
     /* -------------------------------------------------------------------- */
-    for (int i = 0; i < m_nKnownSRID; i++)
+    for (const auto &pair : m_oSRSCache)
     {
-        if (m_papoSRS[i] == poSRS)
-            return m_panSRID[i];
+        if (pair.second.get() == poSRS)
+            return pair.first;
     }
-    for (int i = 0; i < m_nKnownSRID; i++)
+    for (const auto &pair : m_oSRSCache)
     {
-        if (m_papoSRS[i] != nullptr && m_papoSRS[i]->IsSame(poSRS))
-            return m_panSRID[i];
+        if (pair.second != nullptr && pair.second->IsSame(poSRS))
+            return pair.first;
     }
 
     /* -------------------------------------------------------------------- */
@@ -4250,10 +4278,12 @@ int OGRSQLiteDataSource::FetchSRSId(const OGRSpatialReference *poSRS)
 
                 if (nSRSId != m_nUndefinedSRID)
                 {
-                    auto poCachedSRS = new OGRSpatialReference(oSRS);
+                    std::unique_ptr<OGRSpatialReference,
+                                    OGRSpatialReferenceReleaser>
+                        poCachedSRS(new OGRSpatialReference(oSRS));
                     poCachedSRS->SetAxisMappingStrategy(
                         OAMS_TRADITIONAL_GIS_ORDER);
-                    AddSRIDToCache(nSRSId, poCachedSRS);
+                    AddSRIDToCache(nSRSId, std::move(poCachedSRS));
                 }
 
                 return nSRSId;
@@ -4351,7 +4381,12 @@ int OGRSQLiteDataSource::FetchSRSId(const OGRSpatialReference *poSRS)
         sqlite3_finalize(hSelectStmt);
 
         if (nSRSId != m_nUndefinedSRID)
-            AddSRIDToCache(nSRSId, new OGRSpatialReference(oSRS));
+        {
+            auto poSRSClone = std::unique_ptr<OGRSpatialReference,
+                                              OGRSpatialReferenceReleaser>(
+                new OGRSpatialReference(oSRS));
+            AddSRIDToCache(nSRSId, std::move(poSRSClone));
+        }
 
         return nSRSId;
     }
@@ -4583,9 +4618,10 @@ int OGRSQLiteDataSource::FetchSRSId(const OGRSpatialReference *poSRS)
 
     if (nSRSId != m_nUndefinedSRID)
     {
-        auto poCachedSRS = new OGRSpatialReference(oSRS);
+        std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser>
+            poCachedSRS(new OGRSpatialReference(std::move(oSRS)));
         poCachedSRS->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-        AddSRIDToCache(nSRSId, poCachedSRS);
+        AddSRIDToCache(nSRSId, std::move(poCachedSRS));
     }
 
     return nSRSId;
@@ -4608,10 +4644,10 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
     /* -------------------------------------------------------------------- */
     /*      First, we look through our SRID cache, is it there?             */
     /* -------------------------------------------------------------------- */
-    for (int i = 0; i < m_nKnownSRID; i++)
+    auto oIter = m_oSRSCache.find(nId);
+    if (oIter != m_oSRSCache.end())
     {
-        if (m_panSRID[i] == nId)
-            return m_papoSRS[i];
+        return oIter->second.get();
     }
 
     /* -------------------------------------------------------------------- */
@@ -4621,7 +4657,7 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
     char **papszResult = nullptr;
     int nRowCount = 0;
     int nColCount = 0;
-    OGRSpatialReference *poSRS = nullptr;
+    std::unique_ptr<OGRSpatialReference, OGRSpatialReferenceReleaser> poSRS;
 
     CPLString osCommand;
     osCommand.Printf("SELECT srtext FROM spatial_ref_sys WHERE srid = %d "
@@ -4648,12 +4684,11 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
             /*      Translate into a spatial reference. */
             /* --------------------------------------------------------------------
              */
-            poSRS = new OGRSpatialReference();
+            poSRS.reset(new OGRSpatialReference());
             poSRS->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
             if (poSRS->importFromWkt(osWKT.c_str()) != OGRERR_NONE)
             {
-                delete poSRS;
-                poSRS = nullptr;
+                poSRS.reset();
             }
         }
 
@@ -4705,7 +4740,7 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
             const char *pszWKT =
                 (pszSRTEXTColName != nullptr) ? papszRow[3] : nullptr;
 
-            poSRS = new OGRSpatialReference();
+            poSRS.reset(new OGRSpatialReference());
             poSRS->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
             /* Try first from EPSG code */
@@ -4728,8 +4763,7 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
             }
             else
             {
-                delete poSRS;
-                poSRS = nullptr;
+                poSRS.reset();
             }
 
             sqlite3_free_table(papszResult);
@@ -4755,9 +4789,7 @@ OGRSpatialReference *OGRSQLiteDataSource::FetchSRS(int nId)
     /* -------------------------------------------------------------------- */
     /*      Add to the cache.                                               */
     /* -------------------------------------------------------------------- */
-    AddSRIDToCache(nId, poSRS);
-
-    return poSRS;
+    return AddSRIDToCache(nId, std::move(poSRS));
 }
 
 /************************************************************************/

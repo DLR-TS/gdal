@@ -881,16 +881,17 @@ int ERSProxyRasterBand::GetOverviewCount()
 GDALDataset *ERSDataset::Open(GDALOpenInfo *poOpenInfo)
 
 {
+    if (!Identify(poOpenInfo) || poOpenInfo->fpL == nullptr)
+        return nullptr;
+
+    int &nRecLevel = GetRecLevel();
     // cppcheck-suppress knownConditionTrueFalse
-    if (GetRecLevel())
+    if (nRecLevel)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "Attempt at recursively opening ERS dataset");
         return nullptr;
     }
-
-    if (!Identify(poOpenInfo) || poOpenInfo->fpL == nullptr)
-        return nullptr;
 
     /* -------------------------------------------------------------------- */
     /*      Ingest the file as a tree of header nodes.                      */
@@ -1020,7 +1021,6 @@ GDALDataset *ERSDataset::Open(GDALOpenInfo *poOpenInfo)
     /* -------------------------------------------------------------------- */
     if (EQUAL(poHeader->Find("DataSetType", ""), "Translated"))
     {
-        int &nRecLevel = GetRecLevel();
         nRecLevel++;
         poDS->poDepFile = GDALDataset::FromHandle(
             GDALOpen(osDataFilePath, poOpenInfo->eAccess));
@@ -1057,7 +1057,7 @@ GDALDataset *ERSDataset::Open(GDALOpenInfo *poOpenInfo)
         else
             poDS->fpImage = VSIFOpenL(osDataFilePath, "r");
 
-        poDS->osRawFilename = osDataFilePath;
+        poDS->osRawFilename = std::move(osDataFilePath);
 
         if (poDS->fpImage != nullptr && nBands > 0)
         {
@@ -1075,14 +1075,15 @@ GDALDataset *ERSDataset::Open(GDALOpenInfo *poOpenInfo)
             if (!RAWDatasetCheckMemoryUsage(
                     poDS->nRasterXSize, poDS->nRasterYSize, nBands, iWordSize,
                     iWordSize, iWordSize * nBands * poDS->nRasterXSize,
-                    nHeaderOffset, iWordSize * poDS->nRasterXSize,
+                    nHeaderOffset,
+                    static_cast<vsi_l_offset>(iWordSize) * poDS->nRasterXSize,
                     poDS->fpImage))
             {
                 return nullptr;
             }
-            if (nHeaderOffset >
-                std::numeric_limits<GIntBig>::max() -
-                    (nBands - 1) * iWordSize * poDS->nRasterXSize)
+            if (nHeaderOffset > std::numeric_limits<GIntBig>::max() -
+                                    static_cast<GIntBig>(nBands - 1) *
+                                        iWordSize * poDS->nRasterXSize)
             {
                 CPLError(CE_Failure, CPLE_AppDefined,
                          "int overflow: too large nHeaderOffset");
@@ -1094,7 +1095,8 @@ GDALDataset *ERSDataset::Open(GDALOpenInfo *poOpenInfo)
                 // Assume pixel interleaved.
                 auto poBand = std::make_unique<ERSRasterBand>(
                     poDS.get(), iBand + 1, poDS->fpImage,
-                    nHeaderOffset + iWordSize * iBand * poDS->nRasterXSize,
+                    nHeaderOffset + static_cast<vsi_l_offset>(iWordSize) *
+                                        iBand * poDS->nRasterXSize,
                     iWordSize, iWordSize * nBands * poDS->nRasterXSize, eType,
                     bNative);
                 if (!poBand->IsValid())

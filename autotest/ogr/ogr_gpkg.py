@@ -1884,11 +1884,11 @@ def test_ogr_gpkg_20a(tmp_vsimem):
     ds = None
 
     # Unable to parse srs_id '4326' well-known text 'invalid'
-    with gdal.quiet_errors():
+    with gdal.config_option("OGR_SQLITE_PRAGMA", "FOREIGN_KEYS=0"), gdal.quiet_errors():
         ds = ogr.Open(fname, update=1)
+        ds.ExecuteSQL("DELETE FROM gpkg_spatial_ref_sys WHERE srs_id = 4326")
+        ds = None
 
-    ds.ExecuteSQL("DELETE FROM gpkg_spatial_ref_sys WHERE srs_id = 4326")
-    ds = None
     with gdal.config_option(
         "OGR_GPKG_FOREIGN_KEY_CHECK", "NO"
     ), gdaltest.error_handler():
@@ -1901,24 +1901,25 @@ def test_ogr_gpkg_20b(tmp_vsimem):
 
     fname = tmp_vsimem / "ogr_gpkg_20.gpkg"
 
-    ds = gdaltest.gpkg_dr.CreateDataSource(fname)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    lyr = ds.CreateLayer("foo4326", srs=srs)
-    assert lyr is not None
+    with gdal.config_option("OGR_SQLITE_PRAGMA", "FOREIGN_KEYS=0"):
+        ds = gdaltest.gpkg_dr.CreateDataSource(fname)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        lyr = ds.CreateLayer("foo4326", srs=srs)
+        assert lyr is not None
 
-    ds.ExecuteSQL("DROP TABLE gpkg_spatial_ref_sys")
-    ds.ExecuteSQL(
-        "CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT, "
-        "srs_id INTEGER, organization TEXT, "
-        "organization_coordsys_id INTEGER, definition TEXT)"
-    )
-    ds.ExecuteSQL(
-        "INSERT INTO gpkg_spatial_ref_sys "
-        "(srs_name,srs_id,organization,organization_coordsys_id,"
-        "definition) VALUES (NULL,4326,NULL,NULL,NULL)"
-    )
-    ds = None
+        ds.ExecuteSQL("DROP TABLE gpkg_spatial_ref_sys")
+        ds.ExecuteSQL(
+            "CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT, "
+            "srs_id INTEGER, organization TEXT, "
+            "organization_coordsys_id INTEGER, definition TEXT)"
+        )
+        ds.ExecuteSQL(
+            "INSERT INTO gpkg_spatial_ref_sys "
+            "(srs_name,srs_id,organization,organization_coordsys_id,"
+            "definition) VALUES (NULL,4326,NULL,NULL,NULL)"
+        )
+        ds = None
 
     # Warning 1: null definition for srs_id '4326' in gpkg_spatial_ref_sys
     with gdal.config_option(
@@ -2292,6 +2293,30 @@ def test_ogr_gpkg_22(tmp_vsimem):
     assert lyr.GetMetadataItem(ogr.OLMD_FID64) is not None
     f = lyr.GetNextFeature()
     assert f.GetFID() == 1234567890123
+
+
+###############################################################################
+# Test creating a feature with FID 0
+
+
+def test_ogr_gpkg_create_with_fid_0(tmp_vsimem):
+
+    fname = tmp_vsimem / "test_ogr_gpkg_create_with_fid_0.gpkg"
+
+    ds = gdaltest.gpkg_dr.CreateDataSource(fname)
+    lyr = ds.CreateLayer("test")
+
+    feat = ogr.Feature(lyr.GetLayerDefn())
+    feat.SetFID(0)
+    lyr.CreateFeature(feat)
+    feat = None
+
+    ds = None
+
+    ds = ogr.Open(fname)
+    lyr = ds.GetLayerByName("test")
+    f = lyr.GetNextFeature()
+    assert f.GetFID() == 0
 
 
 ###############################################################################
@@ -3430,7 +3455,14 @@ def test_ogr_gpkg_35(tmp_vsimem, tmp_path):
     ):
         f.DumpReadable()
         pytest.fail()
+    lyr = None
+    lyr_nonspatial = None
+    ds = None
 
+    with gdaltest.config_option("OGR_SQLITE_PRAGMA", "FOREIGN_KEYS=0"):
+        ds = ogr.Open(dbname, update=1)
+    lyr = ds.GetLayerByName("test")
+    lyr_nonspatial = ds.GetLayerByName("test_nonspatial")
     lyr.StartTransaction()
     ret = lyr_nonspatial.DeleteField(1)
     lyr.CommitTransaction()
@@ -5069,7 +5101,8 @@ def test_ogr_gpkg_57(tmp_vsimem):
     out_filename = tmp_vsimem / "test_ogr_gpkg_57.gpkg"
     ogr.GetDriverByName("GPKG").CreateDataSource(out_filename)
 
-    ds = ogr.Open(out_filename, update=1)
+    with gdal.config_option("OGR_SQLITE_PRAGMA", "FOREIGN_KEYS=0"):
+        ds = ogr.Open(out_filename, update=1)
     ds.ExecuteSQL("DROP TABLE gpkg_contents")
     ds.ExecuteSQL(
         "CREATE TABLE gpkg_contents (table_name,data_type,identifier,description,last_change,min_x, min_y,max_x, max_y,srs_id)"
@@ -5582,6 +5615,42 @@ def test_ogr_gpkg_mixed_dimensionality_unknown_layer_geometry_type(
     assert f.GetField(0) == 2
     ds.ReleaseResultSet(sql_lyr)
     ds = None
+
+
+###############################################################################
+# Test creating a table with layer geometry type POINT and non-2D geometries
+
+
+def test_ogr_gpkg_z_or_m_geometry_in_non_zm_layer(tmp_vsimem):
+
+    ds = gdal.GetDriverByName("GPKG").Create(
+        tmp_vsimem / "tmp.gpkg", 0, 0, 0, gdal.GDT_Unknown
+    )
+    lyr = ds.CreateLayer("foo", geom_type=ogr.wkbPoint)
+
+    feat = ogr.Feature(lyr.GetLayerDefn())
+    feat.SetGeometryDirectly(ogr.CreateGeometryFromWkt("POINT Z (1 2 3)"))
+    with gdal.quiet_errors():
+        lyr.CreateFeature(feat)
+        assert (
+            gdal.GetLastErrorMsg()
+            == "Layer 'foo' has been declared with non-Z geometry type Point, but it does contain geometries with Z. Setting the Z=2 hint into gpkg_geometry_columns"
+        )
+
+    feat = ogr.Feature(lyr.GetLayerDefn())
+    feat.SetGeometryDirectly(ogr.CreateGeometryFromWkt("POINT M (1 2 3)"))
+    with gdal.quiet_errors():
+        lyr.CreateFeature(feat)
+        assert (
+            gdal.GetLastErrorMsg()
+            == "Layer 'foo' has been declared with non-M geometry type Point, but it does contain geometries with M. Setting the M=2 hint into gpkg_geometry_columns"
+        )
+
+    ds = None
+
+    ds = ogr.Open(tmp_vsimem / "tmp.gpkg")
+    lyr = ds.GetLayer(0)
+    assert lyr.GetGeomType() == ogr.wkbPointZM
 
 
 ###############################################################################
@@ -6963,6 +7032,13 @@ def test_ogr_gpkg_relations(tmp_vsimem, tmp_path):
     assert rel.GetRightMappingTableFields() == ["related_id"]
     assert rel.GetRelatedTableType() == "attributes"
 
+    # ensure that the mapping table, which is present in gpkgext_relations but
+    # NOT gpkg_contents can be opened as a layer
+    lyr = ds.GetLayer("my_mapping_table")
+    assert lyr is not None
+    assert lyr.GetLayerDefn().GetFieldDefn(0).GetName() == "base_id"
+    assert lyr.GetLayerDefn().GetFieldDefn(1).GetName() == "related_id"
+
     lyr = ds.GetLayer("a")
     lyr.Rename("a_renamed")
     lyr.AlterFieldDefn(
@@ -7039,6 +7115,33 @@ def test_ogr_gpkg_relations(tmp_vsimem, tmp_path):
     assert rel.GetRightTableFields() == ["other_id"]
     assert rel.GetLeftMappingTableFields() == ["base_id"]
     assert rel.GetRightMappingTableFields() == ["related_id"]
+    assert rel.GetRelatedTableType() == "features"
+
+    # a one-to-many relationship defined using foreign key constraints
+    ds = gdal.OpenEx(filename, gdal.OF_VECTOR | gdal.OF_UPDATE)
+    ds.ExecuteSQL(
+        "CREATE TABLE test_relation_a(artistid INTEGER PRIMARY KEY, artistname  TEXT)"
+    )
+    ds.ExecuteSQL(
+        "CREATE TABLE test_relation_b(trackid INTEGER, trackname TEXT, trackartist INTEGER, FOREIGN KEY(trackartist) REFERENCES test_relation_a(artistid))"
+    )
+    ds = None
+
+    ds = gdal.OpenEx(filename, gdal.OF_VECTOR | gdal.OF_UPDATE)
+    assert ds.GetRelationshipNames() == [
+        "custom_type",
+        "test_relation_a_test_relation_b",
+    ]
+    assert ds.GetRelationship("custom_type") is not None
+    rel = ds.GetRelationship("test_relation_a_test_relation_b")
+    assert rel is not None
+    assert rel.GetName() == "test_relation_a_test_relation_b"
+    assert rel.GetLeftTableName() == "test_relation_a"
+    assert rel.GetRightTableName() == "test_relation_b"
+    assert rel.GetCardinality() == gdal.GRC_ONE_TO_MANY
+    assert rel.GetType() == gdal.GRT_ASSOCIATION
+    assert rel.GetLeftTableFields() == ["artistid"]
+    assert rel.GetRightTableFields() == ["trackartist"]
     assert rel.GetRelatedTableType() == "features"
 
     ds = None
@@ -7214,6 +7317,31 @@ def test_ogr_gpkg_alter_relations(tmp_vsimem, tmp_path):
         )
         == 1
     )
+
+    # validate mapping table was created
+    assert get_query_row_count("SELECT * FROM 'origin_table_dest_table'") == 0
+    # validate mapping table is present in gpkg_contents
+    assert (
+        get_query_row_count(
+            "SELECT * FROM gpkg_contents WHERE table_name='origin_table_dest_table' AND data_type='attributes'"
+        )
+        == 1
+    )
+    # force delete from gpkg_contents, and then ensure that we CAN successfully
+    # load layers which are present ONLY in gpkgext_relations but NOT
+    # gpkg_contents (i.e. datasources which follow the Related Tables specification
+    # exactly)
+    ds.ExecuteSQL(
+        "DELETE FROM gpkg_contents WHERE table_name='origin_table_dest_table'"
+    )
+
+    ds = gdal.OpenEx(filename, gdal.OF_VECTOR | gdal.OF_UPDATE)
+    # ensure that the mapping table, which is present in gpkgext_relations but
+    # NOT gpkg_contents can be opened as a layer
+    lyr = ds.GetLayer("origin_table_dest_table")
+    assert lyr is not None
+    assert lyr.GetLayerDefn().GetFieldDefn(0).GetName() == "base_id"
+    assert lyr.GetLayerDefn().GetFieldDefn(1).GetName() == "related_id"
 
     lyr = ds.CreateLayer("origin_table2", geom_type=ogr.wkbNone)
     fld_defn = ogr.FieldDefn("o_pkey", ogr.OFTInteger)
@@ -10004,3 +10132,180 @@ def test_ogr_gpkg_extent3d_on_2d_dataset_with_filters(tmp_vsimem):
     assert ext3d == (3, 3, 4, 4, float("inf"), float("-inf"))
 
     ds = None
+
+
+@gdaltest.enable_exceptions()
+def test_ogr_gpkg_creation_with_foreign_key_constraint_enabled(tmp_vsimem):
+
+    with gdaltest.config_option("OGR_SQLITE_PRAGMA", "FOREIGN_KEYS=1"):
+        out_filename = str(tmp_vsimem / "out.gpkg")
+        gdal.VectorTranslate(out_filename, "data/poly.shp")
+
+
+###############################################################################
+# Test geometry coordinate precision support
+
+
+@gdaltest.enable_exceptions()
+@pytest.mark.parametrize(
+    "with_metadata,DISCARD_COORD_LSB,UNDO_DISCARD_COORD_LSB_ON_READING",
+    [(True, "YES", "YES"), (False, "YES", "NO"), (False, "NO", "NO")],
+)
+def test_ogr_gpkg_geom_coord_precision(
+    tmp_vsimem, with_metadata, DISCARD_COORD_LSB, UNDO_DISCARD_COORD_LSB_ON_READING
+):
+
+    filename = str(tmp_vsimem / "test.gpkg")
+    ds = gdal.GetDriverByName("GPKG").Create(filename, 0, 0, 0, gdal.GDT_Unknown)
+    geom_fld = ogr.GeomFieldDefn("my_geom", ogr.wkbUnknown)
+    prec = ogr.CreateGeomCoordinatePrecision()
+    prec.Set(1e-5, 1e-3, 1e-2)
+    geom_fld.SetCoordinatePrecision(prec)
+    lyr = ds.CreateLayerFromGeomFieldDefn(
+        "test",
+        geom_fld,
+        [
+            "DISCARD_COORD_LSB=" + DISCARD_COORD_LSB,
+            "UNDO_DISCARD_COORD_LSB_ON_READING=" + UNDO_DISCARD_COORD_LSB_ON_READING,
+        ],
+    )
+    geom_fld = lyr.GetLayerDefn().GetGeomFieldDefn(0)
+    prec = geom_fld.GetCoordinatePrecision()
+    assert prec.GetXYResolution() == 1e-5
+    assert prec.GetZResolution() == 1e-3
+    assert prec.GetMResolution() == 1e-2
+    f = ogr.Feature(lyr.GetLayerDefn())
+    f.SetGeometry(
+        ogr.CreateGeometryFromWkt(
+            "POINT ZM (1.23456789 2.34567891 9.87654321 -1.23456789)"
+        )
+    )
+    lyr.CreateFeature(f)
+    if with_metadata:
+        lyr.SetMetadataItem("FOO", "BAR")
+    ds.Close()
+
+    ds = ogr.Open(filename, update=1)
+    lyr = ds.GetLayer(0)
+    geom_fld = lyr.GetLayerDefn().GetGeomFieldDefn(0)
+    prec = geom_fld.GetCoordinatePrecision()
+    assert prec.GetXYResolution() == 1e-5
+    assert prec.GetZResolution() == 1e-3
+    assert prec.GetMResolution() == 1e-2
+    assert ds.GetMetadata() == {}
+    assert lyr.GetMetadata() == ({"FOO": "BAR"} if with_metadata else {})
+    f = lyr.GetNextFeature()
+
+    g = f.GetGeometryRef()
+    assert g.GetX(0) == pytest.approx(1.23456789, abs=1e-5)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetX(0) != pytest.approx(1.23456789, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetX(0) == pytest.approx(1.23457, abs=1e-8)
+    else:
+        assert g.GetX(0) != pytest.approx(1.23457, abs=1e-8)
+
+    assert g.GetY(0) == pytest.approx(2.34567891, abs=1e-5)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetY(0) != pytest.approx(2.34567891, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetY(0) == pytest.approx(2.34568, abs=1e-8)
+
+    assert g.GetZ(0) == pytest.approx(9.87654321, abs=1e-3)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetZ(0) != pytest.approx(9.87654321, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetZ(0) == pytest.approx(9.876, abs=1e-8)
+
+    assert g.GetM(0) == pytest.approx(-1.23456789, abs=1e-2)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetM(0) != pytest.approx(-1.23456789, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetM(0) == pytest.approx(-1.23, abs=1e-8)
+
+    # Test Arrow interface
+    lyr.ResetReading()
+    mem_ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    mem_lyr = mem_ds.CreateLayer("test", geom_type=ogr.wkbNone)
+    mem_lyr.CreateGeomField(ogr.GeomFieldDefn("my_geom"))
+    mem_lyr.WriteArrow(lyr)
+    f = mem_lyr.GetNextFeature()
+
+    g = f.GetGeometryRef()
+    assert g.GetX(0) == pytest.approx(1.23456789, abs=1e-5)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetX(0) != pytest.approx(1.23456789, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetX(0) == pytest.approx(1.23457, abs=1e-8)
+    else:
+        assert g.GetX(0) != pytest.approx(1.23457, abs=1e-8)
+
+    assert g.GetY(0) == pytest.approx(2.34567891, abs=1e-5)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetY(0) != pytest.approx(2.34567891, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetY(0) == pytest.approx(2.34568, abs=1e-8)
+
+    assert g.GetZ(0) == pytest.approx(9.87654321, abs=1e-3)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetZ(0) != pytest.approx(9.87654321, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetZ(0) == pytest.approx(9.876, abs=1e-8)
+
+    assert g.GetM(0) == pytest.approx(-1.23456789, abs=1e-2)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetM(0) != pytest.approx(-1.23456789, abs=1e-8)
+    if UNDO_DISCARD_COORD_LSB_ON_READING == "YES":
+        assert g.GetM(0) == pytest.approx(-1.23, abs=1e-8)
+
+    lyr.ResetReading()
+    f = lyr.GetNextFeature()
+    # Update geometry to check existing precision settings are used
+    f.SetGeometry(
+        ogr.CreateGeometryFromWkt(
+            "POINT ZM (-1.23456789 -2.34567891 -9.87654321 1.23456789)"
+        )
+    )
+    lyr.SetFeature(f)
+
+    lyr.SetMetadataItem("FOO", "BAZ")
+
+    new_geom_field_defn = ogr.GeomFieldDefn("new_geom_name", ogr.wkbNone)
+    assert (
+        lyr.AlterGeomFieldDefn(
+            0, new_geom_field_defn, ogr.ALTER_GEOM_FIELD_DEFN_NAME_FLAG
+        )
+        == ogr.OGRERR_NONE
+    )
+
+    assert lyr.Rename("test_renamed") == ogr.OGRERR_NONE
+
+    ds.Close()
+
+    ds = ogr.Open(filename, update=1)
+    lyr = ds.GetLayer(0)
+    geom_fld = lyr.GetLayerDefn().GetGeomFieldDefn(0)
+    prec = geom_fld.GetCoordinatePrecision()
+    assert prec.GetXYResolution() == 1e-5
+    assert prec.GetZResolution() == 1e-3
+    assert prec.GetMResolution() == 1e-2
+    assert lyr.GetMetadata() == {"FOO": "BAZ"}
+    f = lyr.GetNextFeature()
+    g = f.GetGeometryRef()
+    assert g.GetX(0) == pytest.approx(-1.23456789, abs=1e-5)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetX(0) != pytest.approx(-1.23456789, abs=1e-8)
+    assert g.GetY(0) == pytest.approx(-2.34567891, abs=1e-5)
+    assert g.GetZ(0) == pytest.approx(-9.87654321, abs=1e-3)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetZ(0) != pytest.approx(-9.87654321, abs=1e-8)
+    assert g.GetM(0) == pytest.approx(1.23456789, abs=1e-2)
+    if DISCARD_COORD_LSB == "YES":
+        assert g.GetM(0) != pytest.approx(1.23456789, abs=1e-8)
+
+    ds.DeleteLayer(0)
+
+    with ds.ExecuteSQL("SELECT * FROM gpkg_metadata") as sql_lyr:
+        assert sql_lyr.GetFeatureCount() == 0
+
+    ds.Close()

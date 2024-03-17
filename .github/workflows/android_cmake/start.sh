@@ -38,7 +38,7 @@ tar xzf sqlite-autoconf-3370200.tar.gz
 cd sqlite-autoconf-3370200
 CC="ccache $NDK_TOOLCHAIN/bin/aarch64-linux-android24-clang" ./configure \
   --prefix=/tmp/install --host=aarch64-linux-android24
-make -j3
+make -j$(nproc)
 make install
 cd ..
 
@@ -61,7 +61,7 @@ cmake .. \
   -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER \
   -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER \
   -DEXE_SQLITE3=/usr/bin/sqlite3
-make -j3
+make -j$(nproc)
 make install
 cd ../..
 
@@ -79,6 +79,8 @@ PKG_CONFIG_LIBDIR=/tmp/install/lib/pkgconfig cmake .. \
  -DCMAKE_ANDROID_NDK=$ANDROID_NDK \
  -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a \
  -DCMAKE_SYSTEM_VERSION=24 \
+ -DCMAKE_C_FLAGS=-Werror \
+ -DCMAKE_CXX_FLAGS=-Werror \
  "-DCMAKE_PREFIX_PATH=/tmp/install;$NDK_TOOLCHAIN/sysroot/usr/" \
  -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER \
  -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER \
@@ -86,7 +88,7 @@ PKG_CONFIG_LIBDIR=/tmp/install/lib/pkgconfig cmake .. \
  -DSFCGAL_CONFIG=disabled \
  -DHDF5_C_COMPILER_EXECUTABLE=disabled \
  -DHDF5_CXX_COMPILER_EXECUTABLE=disabled
-make -j3
+make -j$(nproc)
 make install
 cd ..
 

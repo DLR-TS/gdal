@@ -677,7 +677,12 @@ static double AdjustNoDataValue(double dfInputNoDataValue,
  * @param pbUsageError pointer to a integer output variable to store if any
  * usage error has occurred or NULL.
  * @return the output dataset (new dataset that must be closed using
- * GDALClose()) or NULL in case of error.
+ * GDALClose()) or NULL in case of error. If the output
+ * format is a VRT dataset, then the returned VRT dataset has a reference to
+ * hSrcDataset. Hence hSrcDataset should be closed after the returned dataset
+ * if using GDALClose().
+ * A safer alternative is to use GDALReleaseDataset() instead of using
+ * GDALClose(), in which case you can close datasets in any order.
  *
  * @since GDAL 2.1
  */
@@ -1078,7 +1083,7 @@ GDALDatasetH GDALTranslate(const char *pszDest, GDALDatasetH hSrcDataset,
     /* -------------------------------------------------------------------- */
     if (psOptions->osFormat.empty())
     {
-        CPLString osFormat = GetOutputDriverForRaster(pszDest);
+        const std::string osFormat = GetOutputDriverForRaster(pszDest);
         if (osFormat.empty())
         {
             GDALTranslateOptionsFree(psOptions);
@@ -1636,7 +1641,7 @@ GDALDatasetH GDALTranslate(const char *pszDest, GDALDatasetH hSrcDataset,
                        fabs(adfSrcGeoTransform[5] / adfDstGeoTransform[5]);
     }
 
-    const auto adfSrcWinOri = psOptions->adfSrcWin;
+    const std::array<double, 4> adfSrcWinOri(psOptions->adfSrcWin);
     const double dfRatioX =
         poSrcDS->GetRasterXSize() == 0
             ? 1.0
@@ -1912,6 +1917,8 @@ GDALDatasetH GDALTranslate(const char *pszDest, GDALDatasetH hSrcDataset,
     /* ==================================================================== */
     /*      Process all bands.                                              */
     /* ==================================================================== */
+    GDALDataType eOutputType = psOptions->eOutputType;
+
     for (int i = 0; i < psOptions->nBandCount; i++)
     {
         int nComponent = 0;
@@ -1942,13 +1949,44 @@ GDALDatasetH GDALTranslate(const char *pszDest, GDALDatasetH hSrcDataset,
         GDALRasterBand *poRealSrcBand =
             (nSrcBand < 0) ? poSrcBand->GetMaskBand() : poSrcBand;
         GDALDataType eBandType;
-        if (psOptions->eOutputType == GDT_Unknown)
+        if (eOutputType == GDT_Unknown)
         {
             eBandType = poRealSrcBand->GetRasterDataType();
+            if (eBandType != GDT_Byte && psOptions->nRGBExpand != 0)
+            {
+                // Use case of https://github.com/OSGeo/gdal/issues/9402
+                if (const auto poColorTable = poRealSrcBand->GetColorTable())
+                {
+                    bool bIn0To255Range = true;
+                    const int nColorCount = poColorTable->GetColorEntryCount();
+                    for (int nColor = 0; nColor < nColorCount; nColor++)
+                    {
+                        const GDALColorEntry *poEntry =
+                            poColorTable->GetColorEntry(nColor);
+                        if (poEntry->c1 > 255 || poEntry->c2 > 255 ||
+                            poEntry->c3 > 255 || poEntry->c4 > 255)
+                        {
+                            bIn0To255Range = false;
+                            break;
+                        }
+                    }
+                    if (bIn0To255Range)
+                    {
+                        if (!psOptions->bQuiet)
+                        {
+                            CPLError(CE_Warning, CPLE_AppDefined,
+                                     "Using Byte output data type due to range "
+                                     "of values in color table");
+                        }
+                        eBandType = GDT_Byte;
+                    }
+                }
+                eOutputType = eBandType;
+            }
         }
         else
         {
-            eBandType = psOptions->eOutputType;
+            eBandType = eOutputType;
 
             // Check that we can copy existing statistics
             GDALDataType eSrcBandType = poRealSrcBand->GetRasterDataType();

@@ -937,8 +937,9 @@ def test_vsifile_opendir(basepath):
     for i in range(4):
         entry = gdal.GetNextDirEntry(d)
         assert entry
-        if entry.name == "test":
-            entries_found.append(entry.name)
+        name = entry.name.replace("\\", "/")
+        if name == "test":
+            entries_found.append(name)
             assert (entry.mode & 32768) != 0
             assert entry.modeKnown
             assert entry.size == 3
@@ -946,14 +947,14 @@ def test_vsifile_opendir(basepath):
             assert entry.mtime != 0
             assert entry.mtimeKnown
             assert not entry.extra
-        elif entry.name == "subdir":
-            entries_found.append(entry.name)
+        elif name == "subdir":
+            entries_found.append(name)
             assert (entry.mode & 16384) != 0
-        elif entry.name == "subdir/subdir2":
-            entries_found.append(entry.name)
+        elif name == "subdir/subdir2":
+            entries_found.append(name)
             assert (entry.mode & 16384) != 0
-        elif entry.name == "subdir/subdir2/test2":
-            entries_found.append(entry.name)
+        elif name == "subdir/subdir2/test2":
+            entries_found.append(name)
             assert (entry.mode & 32768) != 0
         else:
             assert False, entry.name
@@ -970,19 +971,20 @@ def test_vsifile_opendir(basepath):
     for i in range(4):
         entry = gdal.GetNextDirEntry(d)
         assert entry
-        if entry.name == "test":
-            entries_found.append(entry.name)
+        name = entry.name.replace("\\", "/")
+        if name == "test":
+            entries_found.append(name)
             assert (entry.mode & 32768) != 0
             if os.name == "posix" and basepath == "tmp/":
                 assert entry.size == 0
-        elif entry.name == "subdir":
-            entries_found.append(entry.name)
+        elif name == "subdir":
+            entries_found.append(name)
             assert (entry.mode & 16384) != 0
-        elif entry.name == "subdir/subdir2":
-            entries_found.append(entry.name)
+        elif name == "subdir/subdir2":
+            entries_found.append(name)
             assert (entry.mode & 16384) != 0
-        elif entry.name == "subdir/subdir2/test2":
-            entries_found.append(entry.name)
+        elif name == "subdir/subdir2/test2":
+            entries_found.append(name)
             assert (entry.mode & 32768) != 0
             if os.name == "posix" and basepath == "tmp/":
                 assert entry.size == 0
@@ -1009,7 +1011,10 @@ def test_vsifile_opendir(basepath):
 
     # Depth 1
     files = set(
-        [l_entry.name for l_entry in gdal.listdir(basepath + "/vsifile_opendir", 1)]
+        [
+            l_entry.name.replace("\\", "/")
+            for l_entry in gdal.listdir(basepath + "/vsifile_opendir", 1)
+        ]
     )
     assert files == set(["test", "subdir", "subdir/subdir2"])
 
@@ -1030,18 +1035,19 @@ def test_vsifile_opendir(basepath):
     entry = gdal.GetNextDirEntry(d)
     assert entry.name == "subdir"
     entry = gdal.GetNextDirEntry(d)
-    assert entry.name == "subdir/subdir2"
+    sep = "\\" if "\\" in entry.name else "/"
+    assert entry.name.replace("\\", "/") == "subdir/subdir2"
     entry = gdal.GetNextDirEntry(d)
-    assert entry.name == "subdir/subdir2/test2"
+    assert entry.name.replace("\\", "/") == "subdir/subdir2/test2"
     entry = gdal.GetNextDirEntry(d)
     assert not entry
     gdal.CloseDir(d)
 
-    d = gdal.OpenDir(basepath + "/vsifile_opendir", -1, ["PREFIX=subdir/sub"])
+    d = gdal.OpenDir(basepath + "/vsifile_opendir", -1, ["PREFIX=subdir" + sep + "sub"])
     entry = gdal.GetNextDirEntry(d)
-    assert entry.name == "subdir/subdir2"
+    assert entry.name.replace("\\", "/") == "subdir/subdir2"
     entry = gdal.GetNextDirEntry(d)
-    assert entry.name == "subdir/subdir2/test2"
+    assert entry.name.replace("\\", "/") == "subdir/subdir2/test2"
     entry = gdal.GetNextDirEntry(d)
     assert not entry
     gdal.CloseDir(d)
@@ -1236,3 +1242,57 @@ def test_vsifile_copyfile():
 
 def test_vsimem_illegal_filename():
     assert gdal.FileFromMemBuffer("/vsimem/\\\\", "foo") == -1
+
+
+###############################################################################
+# Test operations with Windows special filenames (prefix with "\\?\")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows specific test")
+def test_vsifile_win32_special_filenames(tmp_path):
+
+    # Try prefix filenames
+    tmp_path_str = str(tmp_path)
+    if "/" not in tmp_path_str:
+        prefix_path = "\\\\?\\" + tmp_path_str
+        assert gdal.VSIStatL(prefix_path) is not None
+
+        assert gdal.MkdirRecursive(prefix_path + "\\foo\\bar", 0o755) == 0
+        assert gdal.VSIStatL(prefix_path + "\\foo\\bar") is not None
+
+        assert gdal.Mkdir(prefix_path + "\\foo\\baz", 0o755) == 0
+
+        f = gdal.VSIFOpenL(prefix_path + "\\foo\\file.bin", "wb")
+        assert f
+        gdal.VSIFCloseL(f)
+
+        assert set(gdal.ReadDir(prefix_path)) == set([".", "..", "foo"])
+        assert set(gdal.ReadDirRecursive(prefix_path)) == set(
+            ["foo\\", "foo\\file.bin", "foo\\bar\\", "foo\\baz\\"]
+        )
+
+        assert gdal.Sync(prefix_path + "\\foo\\", prefix_path + "\\foo2")
+        assert set(gdal.ReadDirRecursive(prefix_path + "\\foo2")) == set(
+            ["file.bin", "bar\\", "baz\\"]
+        )
+
+        assert gdal.Rmdir(prefix_path + "\\foo\\bar") == 0
+        assert gdal.RmdirRecursive(prefix_path + "\\foo") == 0
+        assert gdal.VSIStatL(prefix_path + "\\foo") is None
+
+
+###############################################################################
+# Test operations with Windows network path
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows specific test")
+@pytest.mark.skipif(
+    gdaltest.is_travis_branch("mingw64"), reason="does not work with mingw64"
+)
+def test_vsifile_win32_network_path():
+
+    # Try the code path that converts network paths "\\foo\bar" to prefixed ones
+    # "\\?\foo\bar"
+    drive_letter = os.getcwd()[0]
+    dirname = f"\\\\localhost\\{drive_letter}$"
+    assert gdal.VSIStatL(dirname) is not None

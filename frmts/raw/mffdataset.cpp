@@ -648,7 +648,7 @@ void MFFDataset::ScanForProjectionInfo()
     }
 
     m_oSRS = oProj;
-    m_oGCPSRS = oProj;
+    m_oGCPSRS = std::move(oProj);
 
     if (!transform_ok)
     {
@@ -821,7 +821,8 @@ GDALDataset *MFFDataset::Open(GDALOpenInfo *poOpenInfo)
                 continue;
 
             pszExtension = CPLGetExtension(papszDirFiles[i]);
-            if (strlen(pszExtension) >= 2 && isdigit(pszExtension[1]) &&
+            if (strlen(pszExtension) >= 2 &&
+                isdigit(static_cast<unsigned char>(pszExtension[1])) &&
                 atoi(pszExtension + 1) == nRawBand &&
                 strchr("bBcCiIjJrRxXzZ", pszExtension[0]) != nullptr)
                 break;
@@ -1248,7 +1249,7 @@ GDALDataset *MFFDataset::CreateCopy(const char *pszFilename,
         GDALRasterBand *poSrcBand = poSrcDS->GetRasterBand(iBand + 1);
         GDALRasterBand *poDstBand = poDS->GetRasterBand(iBand + 1);
 
-        void *pData = CPLMalloc(nBlockXSize * nBlockYSize *
+        void *pData = CPLMalloc(static_cast<size_t>(nBlockXSize) * nBlockYSize *
                                 GDALGetDataTypeSizeBytes(eType));
 
         for (int iYOffset = 0; iYOffset < nYSize; iYOffset += nBlockYSize)

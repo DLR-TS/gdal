@@ -919,8 +919,8 @@ bool OGRCSVDataSource::OpenTable(const char *pszFilename,
 
 OGRLayer *
 OGRCSVDataSource::ICreateLayer(const char *pszLayerName,
-                               const OGRSpatialReference *poSpatialRef,
-                               OGRwkbGeometryType eGType, char **papszOptions)
+                               const OGRGeomFieldDefn *poSrcGeomFieldDefn,
+                               CSLConstList papszOptions)
 {
     // Verify we are in update mode.
     if (!bUpdate)
@@ -932,6 +932,11 @@ OGRCSVDataSource::ICreateLayer(const char *pszLayerName,
 
         return nullptr;
     }
+
+    const auto eGType =
+        poSrcGeomFieldDefn ? poSrcGeomFieldDefn->GetType() : wkbNone;
+    const auto poSpatialRef =
+        poSrcGeomFieldDefn ? poSrcGeomFieldDefn->GetSpatialRef() : nullptr;
 
     // Verify that the datasource is a directory.
     VSIStatBufL sStatBuf;
@@ -1021,7 +1026,7 @@ OGRCSVDataSource::ICreateLayer(const char *pszLayerName,
 
     if (pszCRLFFormat == nullptr)
     {
-#ifdef WIN32
+#ifdef _WIN32
         bUseCRLF = true;
 #endif
     }
@@ -1034,7 +1039,7 @@ OGRCSVDataSource::ICreateLayer(const char *pszLayerName,
         CPLError(CE_Warning, CPLE_AppDefined,
                  "LINEFORMAT=%s not understood, use one of CRLF or LF.",
                  pszCRLFFormat);
-#ifdef WIN32
+#ifdef _WIN32
         bUseCRLF = true;
 #endif
     }
@@ -1120,6 +1125,14 @@ OGRCSVDataSource::ICreateLayer(const char *pszLayerName,
     const char *pszWriteBOM = CSLFetchNameValue(papszOptions, "WRITE_BOM");
     if (pszWriteBOM)
         poCSVLayer->SetWriteBOM(CPLTestBool(pszWriteBOM));
+
+    if (poCSVLayer->GetLayerDefn()->GetGeomFieldCount() > 0 &&
+        poSrcGeomFieldDefn)
+    {
+        auto poGeomFieldDefn = poCSVLayer->GetLayerDefn()->GetGeomFieldDefn(0);
+        poGeomFieldDefn->SetCoordinatePrecision(
+            poSrcGeomFieldDefn->GetCoordinatePrecision());
+    }
 
     if (osFilename != "/vsistdout/")
         m_apoLayers.emplace_back(std::make_unique<OGRCSVEditableLayer>(

@@ -28,26 +28,26 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform: ['ubuntu-latest','windows-latest','macos-latest']
+        platform: ['ubuntu-latest','windows-latest','macos-latest','macos-14']
 
     env:
       GHA_CI_PLATFORM: ${{ matrix.platform }}
       CACHE_NUMBER: 0
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
     - name: Support longpaths
       run: git config --system core.longpaths true
       if: matrix.platform == 'windows-latest'
 
     - name: Cache Conda Environment
-      uses: actions/cache@v3
+      uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
       with:
         path: ~/conda_pkgs_dir
         key: ${{ runner.os }}-${{ steps.get-date.outputs.today }}-conda-${{ env.CACHE_NUMBER }}
 
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: conda-incubator/setup-miniconda@030178870c779d9e5e1b4e563269f3aa69b04081 # v3.0.3
       with:
         #miniforge-variant: Mambaforge
         miniforge-version: latest
@@ -72,7 +72,7 @@ jobs:
           source ../ci/travis/conda/compile.sh
       working-directory: ./gdal-feedstock
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: ${{ matrix.platform }}-conda-package
         path: ./gdal-feedstock/packages/

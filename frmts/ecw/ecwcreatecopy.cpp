@@ -53,7 +53,7 @@ static CPLString GetCompressionSoftwareName()
     if (CPLGetExecPath(szProcessName, sizeof(szProcessName) - 1))
     {
         szProcessName[sizeof(szProcessName) - 1] = 0;
-#ifdef WIN32
+#ifdef _WIN32
         char *szLastSlash = strrchr(szProcessName, '\\');
 #else
         char *szLastSlash = strrchr(szProcessName, '/');
@@ -1032,10 +1032,33 @@ CPLErr GDALECWCompressor::Initialize(
                 const char *pszGMLJP2V2Def =
                     CSLFetchNameValue(papszOptions, "GMLJP2V2_DEF");
                 if (pszGMLJP2V2Def != nullptr)
+                {
                     WriteJP2Box(oJP2MD.CreateGMLJP2V2(nXSize, nYSize,
                                                       pszGMLJP2V2Def, poSrcDS));
+                }
                 else
-                    WriteJP2Box(oJP2MD.CreateGMLJP2(nXSize, nYSize));
+                {
+                    if (!poSRS || poSRS->IsEmpty() ||
+                        GDALJP2Metadata::IsSRSCompatible(poSRS))
+                    {
+                        WriteJP2Box(oJP2MD.CreateGMLJP2(nXSize, nYSize));
+                    }
+                    else if (CSLFetchNameValue(papszOptions, "GMLJP2"))
+                    {
+                        CPLError(CE_Warning, CPLE_AppDefined,
+                                 "GMLJP2 box was explicitly required but "
+                                 "cannot be written due "
+                                 "to lack of georeferencing and/or unsupported "
+                                 "georeferencing "
+                                 "for GMLJP2");
+                    }
+                    else
+                    {
+                        CPLDebug(
+                            "JP2ECW",
+                            "Cannot write GMLJP2 box due to unsupported SRS");
+                    }
+                }
             }
             if (CPLFetchBool(papszOptions, "GeoJP2", true))
                 WriteJP2Box(oJP2MD.CreateJP2GeoTIFF());
@@ -1203,7 +1226,7 @@ CPLErr GDALECWCompressor::Initialize(
     {
         if (fpVSIL == nullptr)
         {
-#if ECWSDK_VERSION >= 40 && defined(WIN32)
+#if ECWSDK_VERSION >= 40 && defined(_WIN32)
             if (CPLTestBool(CPLGetConfigOption("GDAL_FILENAME_IS_UTF8", "YES")))
             {
                 wchar_t *pwszFilename =

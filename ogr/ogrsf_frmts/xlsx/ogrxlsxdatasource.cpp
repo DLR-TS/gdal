@@ -37,6 +37,8 @@
 namespace OGRXLSX
 {
 
+constexpr int PARSER_BUF_SIZE = 8192;
+
 constexpr int NUMBER_OF_DAYS_BETWEEN_1900_AND_1970 = 25569;
 constexpr int NUMBER_OF_SECONDS_PER_DAY = 86400;
 
@@ -50,6 +52,7 @@ OGRXLSXLayer::OGRXLSXLayer(OGRXLSXDataSource *poDSIn, const char *pszFilename,
       poDS(poDSIn), osFilename(pszFilename), bUpdated(CPL_TO_BOOL(bUpdatedIn)),
       bHasHeaderLine(false)
 {
+    SetAdvertizeUTF8(true);
 }
 
 /************************************************************************/
@@ -441,7 +444,7 @@ void OGRXLSXDataSource::dataHandlerCbk(const char *data, int nLen)
         return;
 
     nDataHandlerCounter++;
-    if (nDataHandlerCounter >= BUFSIZ)
+    if (nDataHandlerCounter >= PARSER_BUF_SIZE)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "File probably corrupted (million laugh pattern)");
@@ -820,7 +823,6 @@ void OGRXLSXDataSource::endElementTable(CPL_UNUSED const char *pszNameIn)
         if (poCurLayer)
         {
             ((OGRMemLayer *)poCurLayer)->SetUpdatable(CPL_TO_BOOL(bUpdatable));
-            ((OGRMemLayer *)poCurLayer)->SetAdvertizeUTF8(true);
             ((OGRXLSXLayer *)poCurLayer)->SetUpdated(false);
         }
 
@@ -1217,14 +1219,15 @@ void OGRXLSXDataSource::BuildLayer(OGRXLSXLayer *poLayer)
     stateStack[0].eVal = STATE_DEFAULT;
     stateStack[0].nBeginDepth = 0;
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
-        unsigned int nLen = (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fp);
+        unsigned int nLen =
+            (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(), fp);
         nDone = VSIFEofL(fp);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of %s file failed : %s at line %d, column %d",
@@ -1350,7 +1353,7 @@ void OGRXLSXDataSource::dataHandlerSSCbk(const char *data, int nLen)
         return;
 
     nDataHandlerCounter++;
-    if (nDataHandlerCounter >= BUFSIZ)
+    if (nDataHandlerCounter >= PARSER_BUF_SIZE)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "File probably corrupted (million laugh pattern)");
@@ -1400,15 +1403,15 @@ void OGRXLSXDataSource::AnalyseSharedStrings(VSILFILE *fpSharedStrings)
     stateStack[0].eVal = STATE_DEFAULT;
     stateStack[0].nBeginDepth = 0;
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
-        unsigned int nLen =
-            (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fpSharedStrings);
+        unsigned int nLen = (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(),
+                                                    fpSharedStrings);
         nDone = VSIFEofL(fpSharedStrings);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of %s file failed : %s at line %d, column %d",
@@ -1482,15 +1485,15 @@ void OGRXLSXDataSource::AnalyseWorkbookRels(VSILFILE *fpWorkbookRels)
     nWithoutEventCounter = 0;
     nDataHandlerCounter = 0;
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
-        unsigned int nLen =
-            (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fpWorkbookRels);
+        unsigned int nLen = (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(),
+                                                    fpWorkbookRels);
         nDone = VSIFEofL(fpWorkbookRels);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of %s file failed : %s at line %d, column %d",
@@ -1597,15 +1600,15 @@ void OGRXLSXDataSource::AnalyseWorkbook(VSILFILE *fpWorkbook)
     nWithoutEventCounter = 0;
     nDataHandlerCounter = 0;
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
         unsigned int nLen =
-            (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fpWorkbook);
+            (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(), fpWorkbook);
         nDone = VSIFEofL(fpWorkbook);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of %s file failed : %s at line %d, column %d",
@@ -1761,15 +1764,15 @@ void OGRXLSXDataSource::AnalyseStyles(VSILFILE *fpStyles)
     nDataHandlerCounter = 0;
     bInCellXFS = false;
 
-    char aBuf[BUFSIZ];
+    std::vector<char> aBuf(PARSER_BUF_SIZE);
     int nDone = 0;
     do
     {
         nDataHandlerCounter = 0;
         unsigned int nLen =
-            (unsigned int)VSIFReadL(aBuf, 1, sizeof(aBuf), fpStyles);
+            (unsigned int)VSIFReadL(aBuf.data(), 1, aBuf.size(), fpStyles);
         nDone = VSIFEofL(fpStyles);
-        if (XML_Parse(oParser, aBuf, nLen, nDone) == XML_STATUS_ERROR)
+        if (XML_Parse(oParser, aBuf.data(), nLen, nDone) == XML_STATUS_ERROR)
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "XML parsing of %s file failed : %s at line %d, column %d",
@@ -1798,10 +1801,10 @@ void OGRXLSXDataSource::AnalyseStyles(VSILFILE *fpStyles)
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRXLSXDataSource::ICreateLayer(const char *pszLayerName,
-                                          const OGRSpatialReference * /*poSRS*/,
-                                          OGRwkbGeometryType /*eType*/,
-                                          char **papszOptions)
+OGRLayer *
+OGRXLSXDataSource::ICreateLayer(const char *pszLayerName,
+                                const OGRGeomFieldDefn * /*poGeomFieldDefn*/,
+                                CSLConstList papszOptions)
 
 {
     /* -------------------------------------------------------------------- */
@@ -2329,10 +2332,8 @@ static bool WriteLayer(const char *pszName, OGRXLSXLayer *poLayer, int iLayer,
 /*                        WriteSharedStrings()                          */
 /************************************************************************/
 
-static bool
-WriteSharedStrings(const char *pszName,
-                   CPL_UNUSED std::map<std::string, int> &oStringMap,
-                   std::vector<std::string> &oStringList)
+static bool WriteSharedStrings(const char *pszName,
+                               std::vector<std::string> &oStringList)
 {
     CPLString osTmpFilename(
         CPLSPrintf("/vsizip/%s/xl/sharedStrings.xml", pszName));
@@ -2540,7 +2541,7 @@ CPLErr OGRXLSXDataSource::FlushCache(bool /* bAtClosing */)
         bOK &= WriteLayer(pszName, papoLayers[i], i, oStringMap, oStringList);
     }
 
-    bOK &= WriteSharedStrings(pszName, oStringMap, oStringList);
+    bOK &= WriteSharedStrings(pszName, oStringList);
     bOK &= WriteStyles(pszName);
 
     // VSIMkdir(CPLSPrintf("/vsizip/%s/xl/_rels", pszName),0755);

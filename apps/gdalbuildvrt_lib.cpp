@@ -42,8 +42,9 @@
 
 #include <algorithm>
 #include <memory>
-#include <vector>
 #include <set>
+#include <string>
+#include <vector>
 
 #include "commonutils.h"
 #include "cpl_conv.h"
@@ -249,6 +250,8 @@ class VRTBuilder
     char *pszResampling = nullptr;
     char **papszOpenOptions = nullptr;
     bool bUseSrcMaskBand = true;
+    bool bNoDataFromMask = false;
+    double dfMaskValueThreshold = 0;
 
     /* Internal variables */
     char *pszProjectionRef = nullptr;
@@ -284,6 +287,7 @@ class VRTBuilder
                int bAllowProjectionDifference, int bAddAlpha, int bHideNoData,
                int nSubdataset, const char *pszSrcNoData,
                const char *pszVRTNoData, bool bUseSrcMaskBand,
+               bool bNoDataFromMask, double dfMaskValueThreshold,
                const char *pszOutputSRS, const char *pszResampling,
                const char *const *papszOpenOptionsIn);
 
@@ -305,7 +309,8 @@ VRTBuilder::VRTBuilder(
     double maxYIn, int bSeparateIn, int bAllowProjectionDifferenceIn,
     int bAddAlphaIn, int bHideNoDataIn, int nSubdatasetIn,
     const char *pszSrcNoDataIn, const char *pszVRTNoDataIn,
-    bool bUseSrcMaskBandIn, const char *pszOutputSRSIn,
+    bool bUseSrcMaskBandIn, bool bNoDataFromMaskIn,
+    double dfMaskValueThresholdIn, const char *pszOutputSRSIn,
     const char *pszResamplingIn, const char *const *papszOpenOptionsIn)
     : bStrict(bStrictIn)
 {
@@ -365,6 +370,8 @@ VRTBuilder::VRTBuilder(
     pszOutputSRS = (pszOutputSRSIn) ? CPLStrdup(pszOutputSRSIn) : nullptr;
     pszResampling = (pszResamplingIn) ? CPLStrdup(pszResamplingIn) : nullptr;
     bUseSrcMaskBand = bUseSrcMaskBandIn;
+    bNoDataFromMask = bNoDataFromMaskIn;
+    dfMaskValueThreshold = dfMaskValueThresholdIn;
 }
 
 /************************************************************************/
@@ -563,11 +570,14 @@ std::string VRTBuilder::AnalyseRaster(GDALDatasetH hDS,
     double ds_minY =
         ds_maxY + GDALGetRasterYSize(hDS) * padfGeoTransform[GEOTRSFRM_NS_RES];
 
-    const int _nBands = GDALGetRasterCount(hDS);
+    int _nBands = GDALGetRasterCount(hDS);
     if (_nBands == 0)
     {
         return "Dataset has no bands";
     }
+    if (bNoDataFromMask &&
+        poDS->GetRasterBand(_nBands)->GetColorInterpretation() == GCI_AlphaBand)
+        _nBands--;
 
     GDALRasterBand *poFirstBand = poDS->GetRasterBand(1);
     poFirstBand->GetBlockSize(&psDatasetProperties->nBlockXSize,
@@ -1298,8 +1308,20 @@ void VRTBuilder::CreateVRTNonSeparate(VRTDatasetH hVRTDS)
                 static_cast<VRTSourcedRasterBand *>(hVRTBand);
 
             VRTSimpleSource *poSimpleSource;
-            if (bAllowSrcNoData &&
-                psDatasetProperties->abHasNoData[nSelBand - 1])
+            if (bNoDataFromMask)
+            {
+                auto poNoDataFromMaskSource = new VRTNoDataFromMaskSource();
+                poSimpleSource = poNoDataFromMaskSource;
+                poNoDataFromMaskSource->SetParameters(
+                    (nVRTNoDataCount > 0)
+                        ? ((j < nVRTNoDataCount)
+                               ? padfVRTNoData[j]
+                               : padfVRTNoData[nVRTNoDataCount - 1])
+                        : 0,
+                    dfMaskValueThreshold);
+            }
+            else if (bAllowSrcNoData &&
+                     psDatasetProperties->abHasNoData[nSelBand - 1])
             {
                 auto poComplexSource = new VRTComplexSource();
                 poSimpleSource = poComplexSource;
@@ -1747,6 +1769,8 @@ struct GDALBuildVRTOptions
     char *pszResampling;
     char **papszOpenOptions;
     bool bUseSrcMaskBand;
+    bool bNoDataFromMask;
+    double dfMaskValueThreshold;
 
     /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
@@ -1809,7 +1833,9 @@ GDALBuildVRTOptionsClone(const GDALBuildVRTOptions *psOptionsIn)
  * @param pszDest the destination dataset path.
  * @param nSrcCount the number of input datasets.
  * @param pahSrcDS the list of input datasets (or NULL, exclusive with
- * papszSrcDSNames)
+ * papszSrcDSNames). For practical purposes, the type
+ * of this argument should be considered as "const GDALDatasetH* const*", that
+ * is neither the array nor its values are mutated by this function.
  * @param papszSrcDSNames the list of input dataset names (or NULL, exclusive
  * with pahSrcDS)
  * @param psOptionsIn the options struct returned by GDALBuildVRTOptionsNew() or
@@ -1817,7 +1843,12 @@ GDALBuildVRTOptionsClone(const GDALBuildVRTOptions *psOptionsIn)
  * @param pbUsageError pointer to a integer output variable to store if any
  * usage error has occurred.
  * @return the output dataset (new dataset that must be closed using
- * GDALClose()) or NULL in case of error.
+ * GDALClose()) or NULL in case of error. If using pahSrcDS, the returned VRT
+ * dataset has a reference to each pahSrcDS[] element. Hence pahSrcDS[] elements
+ * should be closed after the returned dataset if using GDALClose().
+ * A safer alternative is to use GDALReleaseDataset() instead of using
+ * GDALClose(), in which case you can close datasets in any order.
+
  *
  * @since GDAL 2.1
  */
@@ -1918,7 +1949,8 @@ GDALDatasetH GDALBuildVRT(const char *pszDest, int nSrcCount,
         psOptions->bSeparate, psOptions->bAllowProjectionDifference,
         psOptions->bAddAlpha, psOptions->bHideNoData, psOptions->nSubdataset,
         psOptions->pszSrcNoData, psOptions->pszVRTNoData,
-        psOptions->bUseSrcMaskBand, psOptions->pszOutputSRS,
+        psOptions->bUseSrcMaskBand, psOptions->bNoDataFromMask,
+        psOptions->dfMaskValueThreshold, psOptions->pszOutputSRS,
         psOptions->pszResampling, psOptions->papszOpenOptions);
 
     GDALDatasetH hDstDS = static_cast<GDALDatasetH>(
@@ -1989,6 +2021,8 @@ GDALBuildVRTOptionsNew(char **papszArgv,
     psOptions->pfnProgress = GDALDummyProgress;
     psOptions->pProgressData = nullptr;
     psOptions->bUseSrcMaskBand = true;
+    psOptions->bNoDataFromMask = false;
+    psOptions->dfMaskValueThreshold = 0;
     psOptions->bStrict = false;
 
     /* -------------------------------------------------------------------- */
@@ -2174,6 +2208,12 @@ GDALBuildVRTOptionsNew(char **papszArgv,
         else if (EQUAL(papszArgv[iArg], "-ignore_srcmaskband"))
         {
             psOptions->bUseSrcMaskBand = false;
+        }
+        else if (EQUAL(papszArgv[iArg], "-nodata_max_mask_threshold") &&
+                 iArg + 1 < argc)
+        {
+            psOptions->bNoDataFromMask = true;
+            psOptions->dfMaskValueThreshold = CPLAtofM(papszArgv[++iArg]);
         }
         else if (papszArgv[iArg][0] == '-')
         {

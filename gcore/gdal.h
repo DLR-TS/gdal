@@ -744,6 +744,17 @@ typedef struct GDALDimensionHS *GDALDimensionH;
  */
 #define GDAL_DCAP_FLUSHCACHE_CONSISTENT_STATE "DCAP_FLUSHCACHE_CONSISTENT_STATE"
 
+/** Capability set by drivers which honor the OGRCoordinatePrecision settings
+ * of geometry fields at layer creation and/or for OGRLayer::CreateGeomField().
+ * Note that while those drivers honor the settings at feature writing time,
+ * they might not be able to store the precision settings in layer metadata,
+ * hence on reading it might not be possible to recover the precision with
+ * which coordinates have been written.
+ * @since GDAL 3.9
+ */
+#define GDAL_DCAP_HONOR_GEOM_COORDINATE_PRECISION                              \
+    "DCAP_HONOR_GEOM_COORDINATE_PRECISION"
+
 /** List of (space separated) flags indicating the features of relationships are
  * supported by the driver.
  *
@@ -1013,6 +1024,12 @@ GDALDatasetH CPL_DLL CPL_STDCALL GDALOpenShared(const char *, GDALAccess)
 #define GDAL_OF_BLOCK_ACCESS_MASK 0x300
 #endif
 
+#ifndef DOXYGEN_SKIP
+/** Set by GDALOpenEx() to indicate to Identify() method that they are called
+ * from it */
+#define GDAL_OF_FROM_GDALOPEN 0x400
+#endif
+
 GDALDatasetH CPL_DLL CPL_STDCALL GDALOpenEx(
     const char *pszFilename, unsigned int nOpenFlags,
     const char *const *papszAllowedDrivers, const char *const *papszOpenOptions,
@@ -1040,6 +1057,10 @@ CPLErr CPL_DLL CPL_STDCALL GDALCopyDatasetFiles(GDALDriverH,
                                                 const char *pszOldName);
 int CPL_DLL CPL_STDCALL
 GDALValidateCreationOptions(GDALDriverH, CSLConstList papszCreationOptions);
+char CPL_DLL **GDALGetOutputDriversForDatasetName(const char *pszDestFilename,
+                                                  int nFlagRasterVector,
+                                                  bool bSingleMatch,
+                                                  bool bEmitWarning);
 
 /* The following are deprecated */
 const char CPL_DLL *CPL_STDCALL GDALGetDriverShortName(GDALDriverH);
@@ -1082,10 +1103,10 @@ GDAL_GCP CPL_DLL *CPL_STDCALL GDALDuplicateGCPs(int, const GDAL_GCP *);
 int CPL_DLL CPL_STDCALL GDALGCPsToGeoTransform(
     int nGCPCount, const GDAL_GCP *pasGCPs, double *padfGeoTransform,
     int bApproxOK) CPL_WARN_UNUSED_RESULT;
-int CPL_DLL CPL_STDCALL GDALInvGeoTransform(double *padfGeoTransformIn,
+int CPL_DLL CPL_STDCALL GDALInvGeoTransform(const double *padfGeoTransformIn,
                                             double *padfInvGeoTransformOut)
     CPL_WARN_UNUSED_RESULT;
-void CPL_DLL CPL_STDCALL GDALApplyGeoTransform(double *, double, double,
+void CPL_DLL CPL_STDCALL GDALApplyGeoTransform(const double *, double, double,
                                                double *, double *);
 void CPL_DLL GDALComposeGeoTransforms(const double *padfGeoTransform1,
                                       const double *padfGeoTransform2,
@@ -1228,6 +1249,10 @@ OGRErr CPL_DLL GDALDatasetDeleteLayer(GDALDatasetH, int);
 OGRLayerH CPL_DLL GDALDatasetCreateLayer(GDALDatasetH, const char *,
                                          OGRSpatialReferenceH,
                                          OGRwkbGeometryType, CSLConstList);
+OGRLayerH CPL_DLL GDALDatasetCreateLayerFromGeomFieldDefn(GDALDatasetH,
+                                                          const char *,
+                                                          OGRGeomFieldDefnH,
+                                                          CSLConstList);
 OGRLayerH CPL_DLL GDALDatasetCopyLayer(GDALDatasetH, OGRLayerH, const char *,
                                        CSLConstList);
 void CPL_DLL GDALDatasetResetReading(GDALDatasetH);
@@ -1694,6 +1719,8 @@ void CPL_DLL GDALCopyBits(const GByte *pabySrcData, int nSrcOffset,
 void CPL_DLL GDALDeinterleave(const void *pSourceBuffer, GDALDataType eSourceDT,
                               int nComponents, void **ppDestBuffer,
                               GDALDataType eDestDT, size_t nIters);
+
+double CPL_DLL GDALGetNoDataReplacementValue(GDALDataType, double);
 
 int CPL_DLL CPL_STDCALL GDALLoadWorldFile(const char *, double *);
 int CPL_DLL CPL_STDCALL GDALReadWorldFile(const char *, const char *, double *);

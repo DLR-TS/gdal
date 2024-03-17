@@ -310,6 +310,19 @@ static std::string VSICurlGetURLFromFilename(
     if (!STARTS_WITH(pszFilename, "/vsicurl/") &&
         !STARTS_WITH(pszFilename, "/vsicurl?"))
         return pszFilename;
+
+    if (pbPlanetaryComputerURLSigning)
+    {
+        // It may be more convenient sometimes to store Planetary Computer URL
+        // signing as a per-path specific option rather than capturing it in
+        // the filename with the &pc_url_signing=yes option.
+        if (CPLTestBool(VSIGetPathSpecificOption(
+                pszFilename, "VSICURL_PC_URL_SIGNING", "FALSE")))
+        {
+            *pbPlanetaryComputerURLSigning = true;
+        }
+    }
+
     pszFilename += strlen("/vsicurl/");
     if (!STARTS_WITH(pszFilename, "http://") &&
         !STARTS_WITH(pszFilename, "https://") &&
@@ -1622,35 +1635,41 @@ struct CurrentDownload
     std::string m_osURL{};
     vsi_l_offset m_nStartOffset = 0;
     int m_nBlocks = 0;
-    std::string m_osData{};
-    bool m_bDone = false;
+    std::string m_osAlreadyDownloadedData{};
+    bool m_bHasAlreadyDownloadedData = false;
 
     CurrentDownload(VSICurlFilesystemHandlerBase *poFS, const char *pszURL,
                     vsi_l_offset startOffset, int nBlocks)
         : m_poFS(poFS), m_osURL(pszURL), m_nStartOffset(startOffset),
           m_nBlocks(nBlocks)
     {
-        m_osData = m_poFS->NotifyStartDownloadRegion(m_osURL, m_nStartOffset,
+        auto res = m_poFS->NotifyStartDownloadRegion(m_osURL, m_nStartOffset,
                                                      m_nBlocks);
-        m_bDone = !m_osData.empty();
+        m_bHasAlreadyDownloadedData = res.first;
+        m_osAlreadyDownloadedData = std::move(res.second);
+    }
+
+    bool HasAlreadyDownloadedData() const
+    {
+        return m_bHasAlreadyDownloadedData;
     }
 
     const std::string &GetAlreadyDownloadedData() const
     {
-        return m_osData;
+        return m_osAlreadyDownloadedData;
     }
 
     void SetData(const std::string &osData)
     {
-        CPLAssert(!m_bDone);
-        m_bDone = true;
+        CPLAssert(!m_bHasAlreadyDownloadedData);
+        m_bHasAlreadyDownloadedData = true;
         m_poFS->NotifyStopDownloadRegion(m_osURL, m_nStartOffset, m_nBlocks,
                                          osData);
     }
 
     ~CurrentDownload()
     {
-        if (!m_bDone)
+        if (!m_bHasAlreadyDownloadedData)
             m_poFS->NotifyStopDownloadRegion(m_osURL, m_nStartOffset, m_nBlocks,
                                              std::string());
     }
@@ -1664,7 +1683,19 @@ struct CurrentDownload
 /*                      NotifyStartDownloadRegion()                     */
 /************************************************************************/
 
-std::string VSICurlFilesystemHandlerBase::NotifyStartDownloadRegion(
+/** Indicate intent at downloading a new region.
+ *
+ * If the region is already in download in another thread, then wait for its
+ * completion.
+ *
+ * Returns:
+ * - (false, empty string) if a new download is needed
+ * - (true, region_content) if we have been waiting for a download of the same
+ *   region to be completed and got its result. Note that region_content will be
+ *   empty if the download of that region failed.
+ */
+std::pair<bool, std::string>
+VSICurlFilesystemHandlerBase::NotifyStartDownloadRegion(
     const std::string &osURL, vsi_l_offset startOffset, int nBlocks)
 {
     std::string osId(osURL);
@@ -1688,7 +1719,7 @@ std::string VSICurlFilesystemHandlerBase::NotifyStartDownloadRegion(
         std::string osRet = region.osData;
         region.nWaiters--;
         region.oCond.notify_one();
-        return osRet;
+        return std::pair<bool, std::string>(true, osRet);
     }
     else
     {
@@ -1696,7 +1727,7 @@ std::string VSICurlFilesystemHandlerBase::NotifyStartDownloadRegion(
         poRegionInDownload->bDownloadInProgress = true;
         m_oMapRegionInDownload[osId] = std::move(poRegionInDownload);
         m_oMutex.unlock();
-        return std::string();
+        return std::pair<bool, std::string>(false, std::string());
     }
 }
 
@@ -1752,10 +1783,10 @@ std::string VSICurlHandle::DownloadRegion(const vsi_l_offset startOffset,
     // Check if there is not a download of the same region in progress in
     // another thread, and if so wait for it to be completed
     CurrentDownload currentDownload(poFS, m_pszURL, startOffset, nBlocks);
-    const std::string &osAlreadyDownloadedData =
-        currentDownload.GetAlreadyDownloadedData();
-    if (!osAlreadyDownloadedData.empty())
-        return osAlreadyDownloadedData;
+    if (currentDownload.HasAlreadyDownloadedData())
+    {
+        return currentDownload.GetAlreadyDownloadedData();
+    }
 
 begin:
     CURLM *hCurlMultiHandle = poFS->GetCurlMultiHandleFor(m_pszURL);
@@ -1794,7 +1825,8 @@ retry:
     sWriteFuncHeaderData.bIsHTTP = STARTS_WITH(m_pszURL, "http");
     sWriteFuncHeaderData.nStartOffset = startOffset;
     sWriteFuncHeaderData.nEndOffset =
-        startOffset + nBlocks * VSICURLGetDownloadChunkSize() - 1;
+        startOffset +
+        static_cast<vsi_l_offset>(nBlocks) * VSICURLGetDownloadChunkSize() - 1;
     // Some servers don't like we try to read after end-of-file (#5786).
     if (oFileProp.bHasComputedFileSize &&
         sWriteFuncHeaderData.nEndOffset >= oFileProp.fileSize)
@@ -1955,6 +1987,22 @@ retry:
                 CPLError(CE_Failure, CPLE_AppDefined, "%d: %s",
                          static_cast<int>(response_code), szCurlErrBuf);
         }
+        else if (response_code == 416) /* Range Not Satisfiable */
+        {
+            if (sWriteFuncData.pBuffer)
+            {
+                CPLError(
+                    CE_Failure, CPLE_AppDefined,
+                    "%d: Range downloading not supported by this server: %s",
+                    static_cast<int>(response_code), sWriteFuncData.pBuffer);
+            }
+            else
+            {
+                CPLError(CE_Failure, CPLE_AppDefined,
+                         "%d: Range downloading not supported by this server",
+                         static_cast<int>(response_code));
+            }
+        }
         if (!oFileProp.bHasComputedFileSize && startOffset == 0)
         {
             oFileProp.bHasComputedFileSize = true;
@@ -2091,7 +2139,7 @@ void VSICurlHandle::UpdateRedirectInfo(
                 // figure out the expiration timestamp in local time.
                 oFileProp.bS3LikeRedirect = true;
                 oFileProp.nExpireTimestampLocal = time(nullptr) + nValidity;
-                oFileProp.osRedirectURL = osEffectiveURL;
+                oFileProp.osRedirectURL = std::move(osEffectiveURL);
                 poFS->SetCachedFileProp(m_pszURL, oFileProp);
             }
         }
@@ -2107,7 +2155,8 @@ void VSICurlHandle::DownloadRegionPostProcess(const vsi_l_offset startOffset,
                                               const char *pBuffer, size_t nSize)
 {
     const int knDOWNLOAD_CHUNK_SIZE = VSICURLGetDownloadChunkSize();
-    lastDownloadedOffset = startOffset + nBlocks * knDOWNLOAD_CHUNK_SIZE;
+    lastDownloadedOffset = startOffset + static_cast<vsi_l_offset>(nBlocks) *
+                                             knDOWNLOAD_CHUNK_SIZE;
 
     if (nSize > static_cast<size_t>(nBlocks) * knDOWNLOAD_CHUNK_SIZE)
     {
@@ -2224,7 +2273,8 @@ size_t VSICurlHandle::Read(void *const pBufferIn, size_t const nSize,
             for (int i = 1; i < nBlocksToDownload; i++)
             {
                 if (poFS->GetRegion(m_pszURL, nOffsetToDownload +
-                                                  i * knDOWNLOAD_CHUNK_SIZE) !=
+                                                  static_cast<vsi_l_offset>(i) *
+                                                      knDOWNLOAD_CHUNK_SIZE) !=
                     nullptr)
                 {
                     nBlocksToDownload = i;
@@ -2581,7 +2631,7 @@ int VSICurlHandle::ReadMultiRangeSingleGet(int const nRanges,
 
         if (nMergedRanges == 1)
             osFirstRange = osCurRange;
-        osLastRange = osCurRange;
+        osLastRange = std::move(osCurRange);
     }
 
     const char *pszMaxRanges =
@@ -3482,7 +3532,7 @@ struct CachedConnection
 };
 }  // namespace
 
-#ifdef WIN32
+#ifdef _WIN32
 // Currently thread_local and C++ objects don't work well with DLL on Windows
 static void FreeCachedConnection(void *pData)
 {
@@ -3773,7 +3823,7 @@ void VSICurlFilesystemHandlerBase::InvalidateCachedData(const char *pszURL)
     };
     auto *poRegionCache = GetRegionCache();
     poRegionCache->cwalk(lambda);
-    for (auto &key : keysToRemove)
+    for (const auto &key : keysToRemove)
         poRegionCache->remove(key);
 }
 
@@ -3823,7 +3873,7 @@ void VSICurlFilesystemHandlerBase::PartialClearCache(
         };
         auto *poRegionCache = GetRegionCache();
         poRegionCache->cwalk(lambda);
-        for (auto &key : keysToRemove)
+        for (const auto &key : keysToRemove)
             poRegionCache->remove(key);
     }
 
@@ -3836,7 +3886,7 @@ void VSICurlFilesystemHandlerBase::PartialClearCache(
                 keysToRemove.push_back(kv.key);
         };
         oCacheFileProp.cwalk(lambda);
-        for (auto &key : keysToRemove)
+        for (const auto &key : keysToRemove)
             oCacheFileProp.remove(key);
     }
     VSICURLInvalidateCachedFilePropPrefix(osURL.c_str());
@@ -3855,7 +3905,7 @@ void VSICurlFilesystemHandlerBase::PartialClearCache(
             }
         };
         oCacheDirList.cwalk(lambda);
-        for (auto &key : keysToRemove)
+        for (const auto &key : keysToRemove)
             oCacheDirList.remove(key);
     }
 }
@@ -4706,7 +4756,7 @@ char **VSICurlFilesystemHandlerBase::GetFileList(const char *pszDirname,
 
     bool bListDir = true;
     bool bEmptyDir = false;
-    std::string osURL(VSICurlGetURLFromFilename(
+    const std::string osURL(VSICurlGetURLFromFilename(
         pszDirname, nullptr, nullptr, nullptr, nullptr, &bListDir, &bEmptyDir,
         nullptr, nullptr, nullptr));
     if (bEmptyDir)
@@ -5146,15 +5196,16 @@ char **VSICurlFilesystemHandlerBase::ReadDirInternal(const char *pszDirname,
 {
     std::string osDirname(pszDirname);
 
-    const char *pszUpDir = strstr(osDirname.c_str(), "/..");
-    if (pszUpDir != nullptr)
+    // Replace a/b/../c by a/c
+    const auto posSlashDotDot = osDirname.find("/..");
+    if (posSlashDotDot != std::string::npos && posSlashDotDot >= 1)
     {
-        int pos = static_cast<int>(pszUpDir - osDirname.c_str() - 1);
-        while (pos >= 0 && osDirname[pos] != '/')
-            pos--;
-        if (pos >= 1)
+        const auto posPrecedingSlash =
+            osDirname.find_last_of('/', posSlashDotDot - 1);
+        if (posPrecedingSlash != std::string::npos && posPrecedingSlash >= 1)
         {
-            osDirname = osDirname.substr(0, pos) + std::string(pszUpDir + 3);
+            osDirname.erase(osDirname.begin() + posPrecedingSlash,
+                            osDirname.begin() + posSlashDotDot + strlen("/.."));
         }
     }
 
@@ -5593,7 +5644,7 @@ std::vector<NetworkStatisticsLogger::Counters *>
 NetworkStatisticsLogger::GetCountersForContext()
 {
     std::vector<Counters *> v;
-    auto &contextPath = gInstance.m_mapThreadIdToContextPath[CPLGetPID()];
+    const auto &contextPath = gInstance.m_mapThreadIdToContextPath[CPLGetPID()];
 
     Stats *curStats = &m_stats;
     v.push_back(&(curStats->counters));
@@ -5851,7 +5902,7 @@ void VSICURLInvalidateCachedFilePropPrefix(const char *pszURL)
                 keysToRemove.push_back(kv.key);
         };
         poCacheFileProp->cwalk(lambda);
-        for (auto &key : keysToRemove)
+        for (const auto &key : keysToRemove)
             poCacheFileProp->remove(key);
     }
 }

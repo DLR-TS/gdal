@@ -70,8 +70,7 @@ PDS4WrapperRasterBand::PDS4WrapperRasterBand(GDALRasterBand *poBaseBandIn)
 
 void PDS4WrapperRasterBand::SetMaskBand(GDALRasterBand *poMaskBand)
 {
-    bOwnMask = true;
-    poMask = poMaskBand;
+    poMask.reset(poMaskBand, true);
     nMaskFlags = 0;
 }
 
@@ -234,8 +233,7 @@ PDS4RawRasterBand::PDS4RawRasterBand(GDALDataset *l_poDS, int l_nBand,
 
 void PDS4RawRasterBand::SetMaskBand(GDALRasterBand *poMaskBand)
 {
-    bOwnMask = true;
-    poMask = poMaskBand;
+    poMask.reset(poMaskBand, true);
     nMaskFlags = 0;
 }
 
@@ -432,7 +430,8 @@ CPLErr PDS4MaskBand::IReadBlock(int nXBlock, int nYBlock, void *pImage)
 
     if (m_poBaseBand->RasterIO(GF_Read, nXOff, nYOff, nReqXSize, nReqYSize,
                                m_pBuffer, nReqXSize, nReqYSize, eSrcDT,
-                               nSrcDTSize, nSrcDTSize * nBlockXSize,
+                               nSrcDTSize,
+                               static_cast<GSpacing>(nSrcDTSize) * nBlockXSize,
                                nullptr) != CE_None)
     {
         return CE_Failure;
@@ -1379,7 +1378,7 @@ void PDS4Dataset::ReadGeoreferencing(CPLXMLNode *psProduct)
     {
         if (GetRasterCount())
         {
-            m_oSRS = oSRS;
+            m_oSRS = std::move(oSRS);
         }
         else if (GetLayerCount())
         {
@@ -1422,7 +1421,7 @@ static CPLString FixupTableFilename(const CPLString &osFilename)
     if (!osExt.empty())
     {
         CPLString osTry(osFilename);
-        if (islower(osExt[0]))
+        if (islower(static_cast<unsigned char>(osExt[0])))
         {
             osTry = CPLResetExtension(osFilename, osExt.toupper());
         }
@@ -3125,7 +3124,9 @@ bool PDS4Dataset::InitImageFile()
                     GIntBig nOffset = CPLAtoGIntBig(pszBlockOffset);
                     if (y != 0)
                     {
-                        if (nOffset != nLastOffset + nBlockSizeBytes * nBands)
+                        if (nOffset !=
+                            nLastOffset +
+                                static_cast<GIntBig>(nBlockSizeBytes) * nBands)
                         {
                             CPLError(CE_Warning, CPLE_AppDefined,
                                      "Block %d,%d not at expected "
@@ -4115,9 +4116,8 @@ void PDS4Dataset::WriteHeader()
 /************************************************************************/
 
 OGRLayer *PDS4Dataset::ICreateLayer(const char *pszName,
-                                    const OGRSpatialReference *poSpatialRef,
-                                    OGRwkbGeometryType eGType,
-                                    char **papszOptions)
+                                    const OGRGeomFieldDefn *poGeomFieldDefn,
+                                    CSLConstList papszOptions)
 {
     const char *pszTableType =
         CSLFetchNameValueDef(papszOptions, "TABLE_TYPE", "DELIMITED");
@@ -4126,6 +4126,10 @@ OGRLayer *PDS4Dataset::ICreateLayer(const char *pszName,
     {
         return nullptr;
     }
+
+    const auto eGType = poGeomFieldDefn ? poGeomFieldDefn->GetType() : wkbNone;
+    const auto poSpatialRef =
+        poGeomFieldDefn ? poGeomFieldDefn->GetSpatialRef() : nullptr;
 
     const char *pszExt = EQUAL(pszTableType, "CHARACTER") ? "dat"
                          : EQUAL(pszTableType, "BINARY")  ? "bin"
@@ -4137,7 +4141,8 @@ OGRLayer *PDS4Dataset::ICreateLayer(const char *pszName,
     std::string osBasename(pszName);
     for (char &ch : osBasename)
     {
-        if (!isalnum(ch) && static_cast<unsigned>(ch) <= 127)
+        if (!isalnum(static_cast<unsigned char>(ch)) &&
+            static_cast<unsigned>(ch) <= 127)
             ch = '_';
     }
 
@@ -4562,14 +4567,14 @@ PDS4Dataset *PDS4Dataset::CreateInternal(const char *pszFilename,
     poDS->nRasterXSize = nXSize;
     poDS->nRasterYSize = nYSize;
     poDS->eAccess = GA_Update;
-    poDS->m_osImageFilename = osImageFilename;
+    poDS->m_osImageFilename = std::move(osImageFilename);
     poDS->m_bCreateHeader = true;
     poDS->m_bStripFileAreaObservationalFromTemplate = true;
     poDS->m_osInterleave = pszInterleave;
     poDS->m_papszCreationOptions = CSLDuplicate(aosOptions.List());
     poDS->m_bUseSrcLabel = aosOptions.FetchBool("USE_SRC_LABEL", true);
     poDS->m_bIsLSB = bIsLSB;
-    poDS->m_osHeaderParsingStandard = osHeaderParsingStandard;
+    poDS->m_osHeaderParsingStandard = std::move(osHeaderParsingStandard);
     poDS->m_bCreatedFromExistingBinaryFile = bCreateLabelOnly;
 
     if (EQUAL(pszInterleave, "BIP"))

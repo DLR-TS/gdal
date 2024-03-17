@@ -1068,7 +1068,7 @@ NITFDataset *NITFDataset::OpenInternal(GDALOpenInfo *poOpenInfo,
                     fabs(dfULY_AEQD - dfURY_AEQD) < 1e-6 * fabs(dfURY_AEQD) &&
                     fabs(dfLLY_AEQD - dfLRY_AEQD) < 1e-6 * fabs(dfLRY_AEQD))
                 {
-                    poDS->m_oSRS = oSRS_AEQD;
+                    poDS->m_oSRS = std::move(oSRS_AEQD);
 
                     poDS->bGotGeoTransform = TRUE;
                     poDS->adfGeoTransform[0] = dfULX_AEQD;
@@ -2055,7 +2055,7 @@ void NITFDataset::CheckGeoSDEInfo()
     /* -------------------------------------------------------------------- */
     /*      Apply back to dataset.                                          */
     /* -------------------------------------------------------------------- */
-    m_oSRS = oSRS;
+    m_oSRS = std::move(oSRS);
 
     memcpy(adfGeoTransform, adfGT, sizeof(double) * 6);
     bGotGeoTransform = TRUE;
@@ -3575,7 +3575,8 @@ CPLErr NITFDataset::ScanJPEGBlocks()
     /*      Allocate offset array                                           */
     /* -------------------------------------------------------------------- */
     panJPEGBlockOffset = reinterpret_cast<GIntBig *>(VSI_CALLOC_VERBOSE(
-        sizeof(GIntBig), psImage->nBlocksPerRow * psImage->nBlocksPerColumn));
+        sizeof(GIntBig), static_cast<size_t>(psImage->nBlocksPerRow) *
+                             psImage->nBlocksPerColumn));
     if (panJPEGBlockOffset == nullptr)
     {
         return CE_Failure;
@@ -3705,8 +3706,8 @@ CPLErr NITFDataset::ReadJPEGBlock(int iBlockX, int iBlockY)
             /* --------------------------------------------------------------------
              */
             panJPEGBlockOffset = reinterpret_cast<GIntBig *>(VSI_CALLOC_VERBOSE(
-                sizeof(GIntBig),
-                psImage->nBlocksPerRow * psImage->nBlocksPerColumn));
+                sizeof(GIntBig), static_cast<size_t>(psImage->nBlocksPerRow) *
+                                     psImage->nBlocksPerColumn));
             if (panJPEGBlockOffset == nullptr)
             {
                 return CE_Failure;
@@ -3753,7 +3754,8 @@ CPLErr NITFDataset::ReadJPEGBlock(int iBlockX, int iBlockY)
     {
         /* Allocate enough memory to hold 12bit JPEG data */
         pabyJPEGBlock = reinterpret_cast<GByte *>(VSI_CALLOC_VERBOSE(
-            psImage->nBands, psImage->nBlockWidth * psImage->nBlockHeight * 2));
+            psImage->nBands, static_cast<size_t>(psImage->nBlockWidth) *
+                                 psImage->nBlockHeight * 2));
         if (pabyJPEGBlock == nullptr)
         {
             return CE_Failure;
@@ -3769,8 +3771,8 @@ CPLErr NITFDataset::ReadJPEGBlock(int iBlockX, int iBlockY)
         panJPEGBlockOffset[iBlock] == UINT_MAX)
     {
         memset(pabyJPEGBlock, 0,
-               psImage->nBands * psImage->nBlockWidth * psImage->nBlockHeight *
-                   2);
+               static_cast<size_t>(psImage->nBands) * psImage->nBlockWidth *
+                   psImage->nBlockHeight * 2);
         return CE_None;
     }
 
@@ -4703,19 +4705,17 @@ GDALDataset *NITFDataset::NITFCreateCopy(const char *pszFilename,
                 /*      Write GEOLOB TRE */
                 /* --------------------------------------------------------------------
                  */
-                char szGEOLOB[48 + 1];
+                // Extra (useless) bytes to avoid CLang 18 erroneous -Wformat-truncation
+                constexpr int MARGIN_FOR_CLANG_18 = 2;
+                char szGEOLOB[48 + 1 + MARGIN_FOR_CLANG_18];
                 const double dfARV = 360.0 / adfGeoTransform[1];
                 const double dfBRV = 360.0 / -adfGeoTransform[5];
                 const double dfLSO = adfGeoTransform[0];
                 const double dfPSO = adfGeoTransform[3];
-                snprintf(szGEOLOB, sizeof(szGEOLOB), "%09d",
-                         static_cast<int>(dfARV + 0.5));
-                snprintf(szGEOLOB + 9, sizeof(szGEOLOB) - (9), "%09d",
-                         static_cast<int>(dfBRV + 0.5));
-                snprintf(szGEOLOB + 9 + 9, sizeof(szGEOLOB) - (9 + 9),
-                         "%#+015.10f", dfLSO);
-                snprintf(szGEOLOB + 9 + 9 + 15, sizeof(szGEOLOB) - (9 + 9 + 15),
-                         "%#+015.10f", dfPSO);
+                CPLsnprintf(szGEOLOB, sizeof(szGEOLOB),
+                            "%09d%09d%#+015.10f%#+015.10f",
+                            static_cast<int>(dfARV + 0.5),
+                            static_cast<int>(dfBRV + 0.5), dfLSO, dfPSO);
 
                 CPLString osGEOLOB("TRE=GEOLOB=");
                 osGEOLOB += szGEOLOB;
@@ -5612,10 +5612,11 @@ static bool NITFPatchImageLength(const char *pszFilename, int nIMIndex,
 
                 // We emit in Vxyz or Nxyz format with an implicit decimal place
                 // between yz and z as per spec.
-                snprintf(szCOMRAT, sizeof(szCOMRAT), "%c%03d",
+                snprintf(szCOMRAT, sizeof(szCOMRAT), "%c%03u",
                          EQUAL(pszProfile, "NPJE_VISUALLY_LOSSLESS") ? 'V'
                                                                      : 'N',
-                         static_cast<int>(dfRate * 10));
+                         // % 1000 to please -Wformat-truncation
+                         static_cast<unsigned>(dfRate * 10) % 1000);
             }
             else
             {
@@ -5625,8 +5626,9 @@ static bool NITFPatchImageLength(const char *pszFilename, int nIMIndex,
                 // between wx and yz as per spec for lossy compression.
                 // We really should have a special case for lossless
                 // compression.
-                snprintf(szCOMRAT, sizeof(szCOMRAT), "%04d",
-                         static_cast<int>(dfRate * 100));
+                snprintf(szCOMRAT, sizeof(szCOMRAT), "%04u",
+                         // % 10000 to please -Wformat-truncation
+                         static_cast<unsigned>(dfRate * 100) % 10000);
             }
         }
         else if (EQUAL(pszIC, "C3") || EQUAL(pszIC, "M3")) /* jpeg */
@@ -6222,9 +6224,9 @@ static bool NITFWriteDES(VSILFILE *&fp, const char *pszFilename,
         char szDESITEM[LEN_DESITEM + 1];
         memcpy(szDESITEM, pabyDESData + 169 + LEN_DESOFLW, LEN_DESITEM);
         szDESITEM[LEN_DESITEM] = '\0';
-        if (!isdigit(static_cast<int>(szDESITEM[0])) ||
-            !isdigit(static_cast<int>(szDESITEM[1])) ||
-            !isdigit(static_cast<int>(szDESITEM[2])))
+        if (!isdigit(static_cast<unsigned char>(szDESITEM[0])) ||
+            !isdigit(static_cast<unsigned char>(szDESITEM[1])) ||
+            !isdigit(static_cast<unsigned char>(szDESITEM[2])))
         {
             CPLError(CE_Failure, CPLE_AppDefined,
                      "Invalid value for DESITEM: '%s'", szDESITEM);
@@ -6326,10 +6328,10 @@ static bool NITFWriteDES(VSILFILE *&fp, const char *pszFilename,
         169 + (bIsTRE_OVERFLOW ? LEN_DESOFLW + LEN_DESITEM : 0);
     memcpy(szDESSHL, pabyDESData + OFFSET_DESSHL, LEN_DESSHL);
     szDESSHL[LEN_DESSHL] = '\0';
-    if (!isdigit(static_cast<int>(szDESSHL[0])) ||
-        !isdigit(static_cast<int>(szDESSHL[1])) ||
-        !isdigit(static_cast<int>(szDESSHL[2])) ||
-        !isdigit(static_cast<int>(szDESSHL[3])))
+    if (!isdigit(static_cast<unsigned char>(szDESSHL[0])) ||
+        !isdigit(static_cast<unsigned char>(szDESSHL[1])) ||
+        !isdigit(static_cast<unsigned char>(szDESSHL[2])) ||
+        !isdigit(static_cast<unsigned char>(szDESSHL[3])))
     {
         CPLError(CE_Failure, CPLE_AppDefined, "Invalid value for DESSHL: '%s'",
                  szDESSHL);
@@ -6797,7 +6799,8 @@ static bool NITFWriteJPEGImage(GDALDataset *poSrcDS, VSILFILE *fp,
         bOK &= VSIFWriteL(&nTPXCDLNTH, 2, 1, fp) == 1;
 
         /* Reserve space for the table itself */
-        bOK &= VSIFSeekL(fp, nNBPC * nNBPR * 4, SEEK_CUR) == 0;
+        bOK &= VSIFSeekL(fp, static_cast<vsi_l_offset>(nNBPC) * nNBPR * 4,
+                         SEEK_CUR) == 0;
     }
 
     /* -------------------------------------------------------------------- */

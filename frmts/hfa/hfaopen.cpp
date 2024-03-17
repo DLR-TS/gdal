@@ -3750,9 +3750,9 @@ CPLErr HFARenameReferences(HFAHandle hHFA, const char *pszNewBase,
         {
             if (strncmp(aosNL[i], pszOldBase, strlen(pszOldBase)) == 0)
             {
-                CPLString osNew = pszNewBase;
+                std::string osNew = pszNewBase;
                 osNew += aosNL[i].c_str() + strlen(pszOldBase);
-                aosNL[i] = osNew;
+                aosNL[i] = std::move(osNew);
             }
         }
 
@@ -3807,9 +3807,9 @@ CPLErr HFARenameReferences(HFAHandle hHFA, const char *pszNewBase,
         // Update the filename.
         if (strncmp(osFileName, pszOldBase, strlen(pszOldBase)) == 0)
         {
-            CPLString osNew = pszNewBase;
+            std::string osNew = pszNewBase;
             osNew += osFileName.c_str() + strlen(pszOldBase);
-            osFileName = osNew;
+            osFileName = std::move(osNew);
         }
 
         // Grow the node if needed.
@@ -3859,9 +3859,9 @@ CPLErr HFARenameReferences(HFAHandle hHFA, const char *pszNewBase,
         // Update the filename.
         if (strncmp(osFileName, pszOldBase, strlen(pszOldBase)) == 0)
         {
-            CPLString osNew = pszNewBase;
-            osNew += osFileName.c_str() + strlen(pszOldBase);
-            osFileName = osNew;
+            std::string osNew = pszNewBase;
+            osNew += (osFileName.c_str() + strlen(pszOldBase));
+            osFileName = std::move(osNew);
         }
 
         apoNodeList[iNode]->SetStringField("dependent.string", osFileName);
