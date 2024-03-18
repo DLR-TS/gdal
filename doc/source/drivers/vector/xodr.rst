@@ -54,13 +54,13 @@ Open options
 The following open options can be specified
 (typically with the ``-oo name=value`` parameters of :program:`ogrinfo` or :program:`ogr2ogr`):
 
--  oo: EPS
+-  .. oo:: EPS
       :choices: <float>
       :default: 1.0
 
       Epsilon value for linear approximation of continuous OpenDRIVE geometries. A smaller value results in a finer sampling. This parameter is internally forwarded to libOpenDRIVE.
 
--   oo: DISSOLVE_TIN
+-  .. oo:: DISSOLVE_TIN
       :choices: YES, NO
       :default: NO
 
@@ -133,7 +133,7 @@ Now, build GDAL and install it:
 Afterwards you will find a new shared library file :file:`{path/to/GDAL/installdir}/lib/gdalplugins/ogr_XODR`.
 
 Alternative build option with docker image 
-++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++
 - To compile xodr driver with docker image, please locate to docker directory 
     ::
 
