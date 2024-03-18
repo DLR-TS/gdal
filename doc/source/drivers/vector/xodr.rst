@@ -7,7 +7,7 @@ XODR -- OpenDRIVE Road Description Format
 
 .. build_dependencies:: libOpenDRIVE >= 0.5.0, GEOS
 
-This driver provides read access to road network elements of an OpenDRIVE dataset.
+This driver provides read access to road network elements of OpenDRIVE datasets.
 
 `OpenDRIVE <https://www.asam.net/standards/detail/opendrive/>`_ is an open industry format for lane-detailed description of road networks, commonly used in applications of the automotive and transportation systems domains. It bundles polynomial, continuous road geometry modelling with all necessary topological links and semantic information from traffic-regulating infrastructure (signs and traffic lights).
 
@@ -48,6 +48,11 @@ By definition, OpenDRIVE geometries are always referenced in a Cartesian coordin
 
 The XODR driver uses this PROJ definition as spatial reference for creation of all OGR geometry layers. 
 
+Limitations
+-----------
+
+By default, OpenDRIVE XML files are opened by GDAL always in UTF-8 encoding, see :cpp:func:`VSIFOpenExL`.
+
 Open options
 ------------
 
@@ -70,13 +75,13 @@ The following open options can be specified
 Examples
 --------
 
-- Translate OpenDRIVE road *ReferenceLine* elements (``<planView>``) to :ref:`Shapefile <vector.shapefile>`. The desired :ref:`layer type <layer types>` which is to be extracted from the dataset is specified as the last parameter of the function call. 
+- Translate OpenDRIVE road *ReferenceLine* elements (``<planView>``) to :ref:`Shapefile <vector.shapefile>` using :program:`ogr2ogr`. The desired :ref:`layer type <layer types>` which is to be extracted from the dataset is specified as the last parameter of the function call. 
 
   ::
 
     ogr2ogr -f "ESRI Shapefile" CulDeSac.shp CulDeSac.xodr ReferenceLine
 
-- Convert the whole OpenDRIVE dataset with all its different layers into a :ref:`GeoPackage <vector.gpkg>`:
+- Convert the whole OpenDRIVE dataset with all its different layers into a :ref:`GeoPackage <vector.gpkg>` using:
 
   ::
 
@@ -88,13 +93,40 @@ Examples
 
     ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo EPS=0.9 -oo DISSOLVE_TIN=YES
 
-Limitations
------------
+Convenient usage through docker image 
+-------------------------------------
 
-By default, OpenDRIVE XML files are opened by GDAL always in UTF-8 encoding, see :cpp:func:`VSIFOpenExL`.
+To use the XODR driver inside a docker image, first build the image from the corresponding docker image directory 
+    
+  ::
 
-Building Notes
---------------
+    cd <gdal>/docker/ubuntu-small/
+    docker build -t gdal/xodr -f DockerfileXODR .
+
+For general usage information refer to `GDAL Docker images <https://github.com/OSGeo/gdal/tree/master/docker#usage>`__. Usage examples:
+
+- Use :program:`ogrinfo` to extract detailed information about a local `xodr` file by mounting your current working directory (`$PWD`) containing the file into the Docker container:
+  
+  ::
+
+    docker run --rm -v ${PWD}:/home -it gdal/xodr ogrinfo /home/<file>.xodr
+
+- Use :program:`ogr2ogr` to convert a local `xodr` file into any other supported OGR output format. The result will be automatically available in your host machine's working directory which is mounted into the container: 
+  
+  ::
+
+    docker run --rm -v ${PWD}:/home -it gdal/xodr ogr2ogr -f "GPKG" /home/<file>.gpkg /home/<file>.xodr
+
+
+Alternatively, you can run a docker container that enables using the XODR driver in an isolated workspace from within the container 
+    
+    ::
+
+      docker run --name <container_name> -it gdal/xodr /bin/bash
+
+
+General building notes
+----------------------
 
 Building of the driver as plugin is tested to work on
 
@@ -132,51 +164,6 @@ Now, build GDAL and install it:
 
 Afterwards you will find a new shared library file :file:`{path/to/GDAL/installdir}/lib/gdalplugins/ogr_XODR`.
 
-Alternative build option with docker image 
-++++++++++++++++++++++++++++++++++++++++++
-- To compile xodr driver with docker image, please locate to docker directory 
-    ::
-
-      cd <gdal>/docker/ubuntu-small/
-
-- Build docker image by using following command 
-    ::
-
-      docker build . -t <your_name/repository_name>:<tag>
-
-- Example usage of docker image
-
-  - Use `ogrinfo` to extract detailed information about a local `xodr` file. Mount the directory containing the file into the Docker container and execute the command as follows:
-    
-    ::
-
-      docker run --rm -v /<path/to/file>:/<path/to/file> -it <your_name/repository_name> ogrinfo $PWD/<file>.xodr
-
-  - Use `ogr2ogr` to convert local `xodr` file into desired data type that avaliable in GDAL 
-    ::
-
-      docker run --rm -v /<path/to/file>:/<path/to/file> -it <your_name/repository_name> ogr2ogr -f "GPKG" $PWD/<file>.gpkg $PWD/<file>.xodr
-
-
-- Alternatively, you can run docker container that enables to use xodr driver in isolated workspace 
-    ::
-
-      docker run --name <container_name> -it <your_name/repository_name>:<tag> /bin/bash
-
-    If you lost your connection docker container your can run following command to execute container 
-
-      ::
-
-        docker exec -it <container_name> /bin/bash
-
-    If you want to copy your local file into container
-    
-      ::
-
-        docker cp path/to/your/local/file <container_name>/specified/path/for/file
-
-You can follow the following section to verify if driver successfully avaliable inside of container.  
-
 Verifying a successful build
 ++++++++++++++++++++++++++++
 
@@ -209,4 +196,3 @@ In such a case set the following environment variables:
 
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
     export GDAL_DRIVER_PATH=<gdal>/build/gdalplugins/
-    
