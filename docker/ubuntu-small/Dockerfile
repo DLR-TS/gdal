@@ -81,10 +81,10 @@ RUN . /buildscripts/bh-set-envvars.sh \
     ); fi
 
 # Build libOpenDRIVE
-ARG OPENDRIVE_VERSION=0.5.0
+ARG OPENDRIVE_VERSION=0.5.0-gdal
 RUN . /buildscripts/bh-set-envvars.sh \
     && if test "${OPENDRIVE_VERSION}" != ""; then ( \
-    wget -q https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/${OPENDRIVE_VERSION}.tar.gz \
+    wget -q https://github.com/DLR-TS/libOpenDRIVE/archive/refs/tags/${OPENDRIVE_VERSION}.tar.gz \
     && tar xzf ${OPENDRIVE_VERSION}.tar.gz \
     && rm -f ${OPENDRIVE_VERSION}.tar.gz \
     && cd libOpenDRIVE-${OPENDRIVE_VERSION} \
