@@ -50,7 +50,8 @@ OGRXODRDataSource::~OGRXODRDataSource()
     CPLFree(layers);
 }
 
-int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdate)
+int OGRXODRDataSource::Open(const char *fileName, char **openOptions,
+                            int bUpdate)
 {
     VSILFILE *file = nullptr;
 
@@ -73,8 +74,9 @@ int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdat
                  "Failed to load OpenDRIVE file %s.", fileName);
         return CE_Failure;
     }
-    
-    const char * openOptionValue = CSLFetchNameValueDef(openOptions, "EPS", "1.0");
+
+    const char *openOptionValue =
+        CSLFetchNameValueDef(openOptions, "EPS", "1.0");
     eps = CPLAtof(openOptionValue);
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
     dissolveTIN = CPLTestBool(openOptionValue);
@@ -86,13 +88,15 @@ int OGRXODRDataSource::Open(const char *fileName, char **openOptions, int bUpdat
 
     nLayers = 6;
     //TODO Do we have to update this, taking into account all different layer subclasses?
-    layers = (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
+    layers =
+        (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
     layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
     layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
     layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, dissolveTIN);
     layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
     layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, dissolveTIN);
-    layers[5] = new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
+    layers[5] =
+        new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
     return TRUE;
 }
 
@@ -124,7 +128,8 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads)
     {
         elements.roads.insert({road.id, road});
 
-        odr::Line3D referenceLine = road.ref_line.get_line(0.0, road.length, eps);
+        odr::Line3D referenceLine =
+            road.ref_line.get_line(0.0, road.length, eps);
         elements.referenceLines.push_back(referenceLine);
 
         for (odr::LaneSection laneSection : road.get_lanesections())
@@ -169,15 +174,13 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads)
             elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
 
-        for(odr::RoadSignal roadSignal : road.get_road_signals()){
+        for (odr::RoadSignal roadSignal : road.get_road_signals())
+        {
             elements.roadSignals.push_back(roadSignal);
-      
-            odr::Mesh3D roadSignalMesh = 
-                road.get_road_signal_mesh(roadSignal);
-            elements.roadSignalMeshes.push_back(roadSignalMesh);
 
+            odr::Mesh3D roadSignalMesh = road.get_road_signal_mesh(roadSignal);
+            elements.roadSignalMeshes.push_back(roadSignalMesh);
         }
-        
     }
     return elements;
 }

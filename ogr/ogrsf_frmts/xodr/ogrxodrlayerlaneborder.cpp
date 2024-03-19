@@ -56,8 +56,8 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
         std::string laneRoadID = *laneRoadIDIter;
 
         OGRLineString lineString;
-        for (auto vertexIter = laneOuter.begin();
-             vertexIter != laneOuter.end(); ++vertexIter)
+        for (auto vertexIter = laneOuter.begin(); vertexIter != laneOuter.end();
+             ++vertexIter)
         {
             odr::Vec3D laneVertex = *vertexIter;
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);

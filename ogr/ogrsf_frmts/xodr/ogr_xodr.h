@@ -134,7 +134,7 @@ class OGRXODRLayer : public OGRLayer
     // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn);
     OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
-                 bool dissolveTriangulatedSurface);                 
+                 bool dissolveTriangulatedSurface);
     ~OGRXODRLayer();
 };
 
@@ -147,7 +147,8 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
-    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements, std::string proj4Defn);
+    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements,
+                              std::string proj4Defn);
 };
 
 class OGRXODRLayerLaneBorder : public OGRXODRLayer
@@ -159,7 +160,8 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
 
-    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements, std::string proj4Defn);
+    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements,
+                           std::string proj4Defn);
 };
 
 class OGRXODRLayerRoadMark : public OGRXODRLayer
@@ -184,7 +186,8 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
 
-    OGRXODRLayerRoadObject(RoadElements xodrRoadElements, std::string proj4Defn);
+    OGRXODRLayerRoadObject(RoadElements xodrRoadElements,
+                           std::string proj4Defn);
 };
 
 class OGRXODRLayerRoadSignal : public OGRXODRLayer
@@ -245,7 +248,7 @@ class OGRXODRDataSource : public GDALDataset
     */
     bool dissolveTIN;
 
-    int Open(const char *fileName, char **openOptions, int bUpdate );
+    int Open(const char *fileName, char **openOptions, int bUpdate);
 
     int GetLayerCount() override
     {

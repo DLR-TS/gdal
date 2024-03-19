@@ -45,8 +45,7 @@ OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn)
 
 OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface)
-    : roadElements(xodrRoadElements),
-      dissolveTIN(dissolveTriangulatedSurface)
+    : roadElements(xodrRoadElements), dissolveTIN(dissolveTriangulatedSurface)
 {
     spatialRef.importFromProj4(proj4Defn.c_str());
     ResetReading();

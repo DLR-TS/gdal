@@ -31,7 +31,6 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-
 OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(RoadElements xodrRoadElements,
                                                std::string proj4Defn,
                                                bool dissolveTriangulatedSurface)
@@ -45,7 +44,6 @@ OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(RoadElements xodrRoadElements,
     defineFeatureClass();
 }
 
-
 OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
@@ -56,7 +54,6 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
         odr::RoadSignal roadSignal = *roadSignalIter;
         odr::Mesh3D roadSignalMesh = *roadSignalMeshesIter;
-
 
         if (dissolveTIN)
         {
@@ -88,17 +85,16 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
         feature->SetField(featureDefn->GetFieldIndex("SubType"),
                           roadSignal.subtype.c_str());
         feature->SetField(featureDefn->GetFieldIndex("HOffset"),
-                          roadSignal.hOffset);                          
+                          roadSignal.hOffset);
         feature->SetField(featureDefn->GetFieldIndex("Pitch"),
                           roadSignal.pitch);
-        feature->SetField(featureDefn->GetFieldIndex("Roll"),
-                          roadSignal.roll);          
+        feature->SetField(featureDefn->GetFieldIndex("Roll"), roadSignal.roll);
         feature->SetField(featureDefn->GetFieldIndex("Orientation"),
-                          roadSignal.orientation.c_str());                                          
+                          roadSignal.orientation.c_str());
         feature->SetField(featureDefn->GetFieldIndex("Name"),
                           roadSignal.name.c_str());
         feature->SetField(featureDefn->GetFieldIndex("Dynamic"),
-                        roadSignal.is_dynamic);
+                          roadSignal.is_dynamic);
         feature->SetFID(nNextFID++);
 
         roadSignalIter++;
@@ -150,7 +146,7 @@ void OGRXODRLayerRoadSignal::defineFeatureClass()
     featureDefn->AddFieldDefn(&oFieldRoll);
 
     OGRFieldDefn oFieldOrientation("Orientation", OFTString);
-    featureDefn->AddFieldDefn(&oFieldOrientation);        
+    featureDefn->AddFieldDefn(&oFieldOrientation);
 
     OGRFieldDefn oFieldName("Name", OFTString);
     featureDefn->AddFieldDefn(&oFieldName);

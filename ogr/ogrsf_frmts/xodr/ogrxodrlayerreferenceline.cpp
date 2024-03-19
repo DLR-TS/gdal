@@ -55,11 +55,12 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
         odr::Line3D refLine = *referenceLineIter;
 
         OGRLineString lineString;
-        for (auto vertexIter = refLine.begin();
-             vertexIter != refLine.end(); ++vertexIter)
+        for (auto vertexIter = refLine.begin(); vertexIter != refLine.end();
+             ++vertexIter)
         {
             odr::Vec3D refLineVertex = *vertexIter;
-            lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
+            lineString.addPoint(refLineVertex[0], refLineVertex[1],
+                                refLineVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
 

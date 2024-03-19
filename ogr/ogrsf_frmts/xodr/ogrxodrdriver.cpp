@@ -43,7 +43,8 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *openInfo)
 
     OGRXODRDataSource *dataSource = new OGRXODRDataSource();
 
-    if (!dataSource->Open(openInfo->pszFilename, openInfo->papszOpenOptions, FALSE))
+    if (!dataSource->Open(openInfo->pszFilename, openInfo->papszOpenOptions,
+                          FALSE))
     {
         delete dataSource;
         dataSource = nullptr;
@@ -69,12 +70,15 @@ void RegisterOGRXODR()
         GDAL_DMD_LONGNAME,
         "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     driver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
-    driver->SetMetadataItem(GDAL_DMD_OPENOPTIONLIST,
-    "<OpenOptionList>"
-    "  <Option name='EPS' type='float' description='Epsilon value for linear approximation of continuous OpenDRIVE geometries.' default='1.0'/>"
-    "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to dissolve triangulated surfaces.' default= 'NO'/>"
-    "</OpenOptionList>"
-    );
+    driver->SetMetadataItem(
+        GDAL_DMD_OPENOPTIONLIST,
+        "<OpenOptionList>"
+        "  <Option name='EPS' type='float' description='Epsilon value for "
+        "linear approximation of continuous OpenDRIVE geometries.' "
+        "default='1.0'/>"
+        "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to "
+        "dissolve triangulated surfaces.' default= 'NO'/>"
+        "</OpenOptionList>");
     driver->pfnOpen = OGRXODRDriverOpen;
     driver->pfnIdentify = OGRXODRDriverIdentity;
 
