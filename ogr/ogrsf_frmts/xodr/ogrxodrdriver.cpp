@@ -43,8 +43,7 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *openInfo)
 
     OGRXODRDataSource *dataSource = new OGRXODRDataSource();
 
-    if (!dataSource->Open(openInfo->pszFilename, openInfo->papszOpenOptions,
-                          FALSE))
+    if (!dataSource->Open(openInfo->pszFilename, openInfo->papszOpenOptions))
     {
         delete dataSource;
         dataSource = nullptr;

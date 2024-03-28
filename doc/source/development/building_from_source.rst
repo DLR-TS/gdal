@@ -1144,6 +1144,21 @@ by the :ref:`raster.marfa` driver.
     Control whether to use LibQB3. Defaults to ON when LibQB3 is found.
 
 
+libOpenDRIVE
+******
+`libOpenDRIVE: <https://github.com/pageldev/libOpenDRIVE>`_ is required for the :ref:`vector.xodr` driver.
+.. option::  -DOGR_ENABLE_DRIVER_XODR=TRUE
+
+    Enable driver XODR.
+
+.. option:: -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE
+    
+    Enable driver XODR as plugin.
+
+.. option:: -DOpenDrive_DIR=/path/to/libOpenDRIVE/installdir/cmake/
+
+    Define path to local libOpenDRIVE configuration directory.
+
 
 LibXml2
 *******

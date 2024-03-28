@@ -59,7 +59,7 @@ Open options
 The following open options can be specified
 (typically with the ``-oo name=value`` parameters of :program:`ogrinfo` or :program:`ogr2ogr`):
 
--  .. oo:: EPS
+-  .. oo:: EPSILON
       :choices: <float>
       :default: 1.0
 
@@ -87,11 +87,11 @@ Examples
 
     ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr
 
-- Convert the whole OpenDRIVE dataset with custom parameters :oo:`EPS` and :oo:`DISSOLVE_TIN` into a :ref:`GeoPackage <vector.gpkg>`:
+- Convert the whole OpenDRIVE dataset with custom parameters :oo:`EPSILON` and :oo:`DISSOLVE_TIN` into a :ref:`GeoPackage <vector.gpkg>`:
 
   ::
 
-    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo EPS=0.9 -oo DISSOLVE_TIN=YES
+    ogr2ogr -f "GPKG" CulDeSac.gpkg CulDeSac.xodr -oo EPSILON=0.9 -oo DISSOLVE_TIN=YES
 
 Convenient usage through docker image 
 -------------------------------------

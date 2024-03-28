@@ -123,7 +123,7 @@ class OGRXODRLayer : public OGRLayer
     /**
      * Builds an ordinary TIN from libOpenDRIVE's mesh.
     */
-    OGRTriangulatedSurface triangulateSurface(odr::Mesh3D mesh);
+    std::unique_ptr<OGRTriangulatedSurface> triangulateSurface(odr::Mesh3D mesh);
 
   public:
     /**
@@ -132,8 +132,8 @@ class OGRXODRLayer : public OGRLayer
      * Only applicable for layer types derived from meshes.
     */
     // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
-    OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn);
-    OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn);
+    OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface);
     ~OGRXODRLayer();
 };
@@ -147,7 +147,7 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
-    OGRXODRLayerReferenceLine(RoadElements xodrRoadElements,
+    OGRXODRLayerReferenceLine(const RoadElements& xodrRoadElements,
                               std::string proj4Defn);
 };
 
@@ -160,7 +160,7 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
 
-    OGRXODRLayerLaneBorder(RoadElements xodrRoadElements,
+    OGRXODRLayerLaneBorder(const RoadElements& xodrRoadElements,
                            std::string proj4Defn);
 };
 
@@ -173,7 +173,7 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadMark";
 
-    OGRXODRLayerRoadMark(RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayerRoadMark(const RoadElements& xodrRoadElements, std::string proj4Defn,
                          bool dissolveTriangulatedSurface);
 };
 
@@ -186,7 +186,7 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
 
-    OGRXODRLayerRoadObject(RoadElements xodrRoadElements,
+    OGRXODRLayerRoadObject(const RoadElements& xodrRoadElements,
                            std::string proj4Defn);
 };
 
@@ -199,7 +199,7 @@ class OGRXODRLayerRoadSignal : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "RoadSignal";
 
-    OGRXODRLayerRoadSignal(RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayerRoadSignal(const RoadElements& xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface);
 };
 
@@ -212,7 +212,7 @@ class OGRXODRLayerLane : public OGRXODRLayer
   public:
     const std::string FEATURE_CLASS_NAME = "Lane";
 
-    OGRXODRLayerLane(RoadElements xodrRoadElements, std::string proj4Defn,
+    OGRXODRLayerLane(const RoadElements& xodrRoadElements, std::string proj4Defn,
                      bool dissolveTriangulatedSurface);
 };
 
@@ -231,7 +231,7 @@ class OGRXODRDataSource : public GDALDataset
      * 
      * \param roads Roads of the dataset.
     */
-    RoadElements createRoadElements(const std::vector<odr::Road> roads);
+    RoadElements createRoadElements(const std::vector<odr::Road>& roads);
 
   public:
     OGRXODRDataSource();
@@ -248,7 +248,7 @@ class OGRXODRDataSource : public GDALDataset
     */
     bool dissolveTIN;
 
-    int Open(const char *fileName, char **openOptions, int bUpdate);
+    bool Open(const char *fileName, char **openOptions);
 
     int GetLayerCount() override
     {

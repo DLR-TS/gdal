@@ -31,7 +31,7 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(RoadElements xodrRoadElements,
+OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadElements,
                                                std::string proj4Defn,
                                                bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
@@ -50,7 +50,7 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
     if (roadSignalIter != roadElements.roadSignals.end())
     {
-        feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+        feature = std::make_unique<OGRFeature>(featureDefn);
 
         odr::RoadSignal roadSignal = *roadSignalIter;
         odr::Mesh3D roadSignalMesh = *roadSignalMeshesIter;
@@ -71,7 +71,8 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
         }
         else
         {
-            OGRTriangulatedSurface tin = triangulateSurface(roadSignalMesh);
+            std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadSignalMesh);
+            OGRTriangulatedSurface tin = *tinPtr;
             //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
             feature->SetGeometry(&tin);
         }

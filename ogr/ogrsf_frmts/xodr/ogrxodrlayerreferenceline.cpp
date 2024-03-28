@@ -32,7 +32,7 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerReferenceLine::OGRXODRLayerReferenceLine(
-    RoadElements xodrRoadElements, std::string proj4Defn)
+    const RoadElements& xodrRoadElements, std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
@@ -49,7 +49,7 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
 
     if (roadIter != roadElements.roads.end())
     {
-        feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+        feature = std::make_unique<OGRFeature>(featureDefn);
 
         odr::Road road = (*roadIter).second;
         odr::Line3D refLine = *referenceLineIter;

@@ -31,7 +31,7 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerRoadMark::OGRXODRLayerRoadMark(RoadElements xodrRoadElements,
+OGRXODRLayerRoadMark::OGRXODRLayerRoadMark(const RoadElements& xodrRoadElements,
                                            std::string proj4Defn,
                                            bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
@@ -50,13 +50,14 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
 
     if (roadMarkIter != roadElements.roadMarks.end())
     {
-        feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+        feature = std::make_unique<OGRFeature>(featureDefn);
 
         odr::RoadMark roadMark = *roadMarkIter;
         odr::Mesh3D roadMarkMesh = *roadMarkMeshIter;
 
-        OGRTriangulatedSurface tin = triangulateSurface(roadMarkMesh);
-
+   
+        std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadMarkMesh);
+        OGRTriangulatedSurface tin = *tinPtr;
         if (dissolveTIN)
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();

@@ -50,22 +50,11 @@ OGRXODRDataSource::~OGRXODRDataSource()
     CPLFree(layers);
 }
 
-int OGRXODRDataSource::Open(const char *fileName, char **openOptions,
-                            int bUpdate)
+bool OGRXODRDataSource::Open(const char *fileName, char **openOptions)
 {
     VSILFILE *file = nullptr;
 
-    bool updatable = CPL_TO_BOOL(bUpdate);
-    if (updatable)
-    {
-        CPLError(CE_Failure, CPLE_OpenFailed,
-                 "Write or update access not supported by XODR driver.");
-        return CE_Failure;
-    }
-    else
-    {
-        file = VSIFOpenExL(fileName, "r", true);
-    }
+    file = VSIFOpenL(fileName, "r");
 
     if (file == nullptr)
     {
@@ -76,7 +65,7 @@ int OGRXODRDataSource::Open(const char *fileName, char **openOptions,
     }
 
     const char *openOptionValue =
-        CSLFetchNameValueDef(openOptions, "EPS", "1.0");
+        CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
     eps = CPLAtof(openOptionValue);
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
     dissolveTIN = CPLTestBool(openOptionValue);
@@ -120,7 +109,7 @@ int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 }
 
 RoadElements
-OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> roads)
+OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
 {
     RoadElements elements;
 

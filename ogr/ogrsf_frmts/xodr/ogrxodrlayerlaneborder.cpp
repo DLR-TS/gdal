@@ -31,7 +31,7 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(RoadElements xodrRoadElements,
+OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadElements,
                                                std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
@@ -49,8 +49,9 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 
     if (laneIter != roadElements.lanes.end())
     {
-        feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-
+        //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
+        feature = std::make_unique<OGRFeature>(featureDefn);
+        
         odr::Lane lane = *laneIter;
         odr::Line3D laneOuter = *laneLinesOuterIter;
         std::string laneRoadID = *laneRoadIDIter;

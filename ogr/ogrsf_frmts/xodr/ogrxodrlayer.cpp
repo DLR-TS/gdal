@@ -38,12 +38,12 @@
 #include <string>
 #include <typeinfo>
 
-OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn)
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, false)
 {
 }
 
-OGRXODRLayer::OGRXODRLayer(RoadElements xodrRoadElements, std::string proj4Defn,
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn,
                            bool dissolveTriangulatedSurface)
     : roadElements(xodrRoadElements), dissolveTIN(dissolveTriangulatedSurface)
 {
@@ -88,12 +88,12 @@ void OGRXODRLayer::resetRoadElementIterators()
     roadSignalMeshesIter = roadElements.roadSignalMeshes.begin();
 }
 
-OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
+std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
 {
     std::vector<odr::Vec3D> meshVertices = mesh.vertices;
     std::vector<uint32_t> meshIndices = mesh.indices;
 
-    OGRTriangulatedSurface tin;
+    std::unique_ptr<OGRTriangulatedSurface> tin = std::make_unique<OGRTriangulatedSurface>();
     const size_t numIndices = meshIndices.size();
     // Build triangles from mesh vertices.
     // Each triple of mesh indices defines which vertices form a triangle.
@@ -112,7 +112,7 @@ OGRTriangulatedSurface OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
         OGRPoint r(vertexR[0], vertexR[1], vertexR[2]);
 
         OGRTriangle triangle(p, q, r);
-        tin.addGeometry(&triangle);
+        tin->addGeometry(&triangle);
     }
 
     return tin;
