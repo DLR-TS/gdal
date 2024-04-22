@@ -49,6 +49,7 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
 
     if (roadIter != roadElements.roads.end())
     {
+        //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
         feature = std::make_unique<OGRFeature>(featureDefn);
 
         odr::Road road = (*roadIter).second;
@@ -64,7 +65,7 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
         }
         OGRGeometry *geometry = lineString.MakeValid();
 
-        feature->SetGeometry(geometry);
+        feature->SetGeometryDirectly(geometry);
         feature->SetField("ID", road.id.c_str());
         feature->SetField("Length", road.length);
         feature->SetField("Junction", road.junction.c_str());

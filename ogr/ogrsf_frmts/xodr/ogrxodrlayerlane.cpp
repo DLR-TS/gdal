@@ -73,12 +73,12 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
      
-            feature->SetGeometry(dissolvedPolygon);
+            feature->SetGeometryDirectly(dissolvedPolygon);
         }
         else
         {
             //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometry(&tin);
+            feature->SetGeometryDirectly(&tin);
         }
 
         feature->SetFID(nNextFID++);

@@ -35,7 +35,6 @@ from osgeo import gdal, ogr
 pytestmark = pytest.mark.require_driver("XODR")
 xodr_file = "data/xodr/5g_living_lab_A39_Wolfsburg-West.xodr"
 
-
 def test_ogr_xodr_basics():
     """Test basic capabilities:
     - Data source
@@ -289,3 +288,4 @@ def ogr_xodr_check_road_signal_geometry_dissolve(lyr, dissolve_tin: bool):
         assert (
             wkt == "POINT (618366.942790883 5809541.22374025 103.556888074495)"
         ), "wrong geometry created for dissolved RoadSignal"
+

@@ -65,7 +65,7 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
         }
         OGRGeometry *geometry = lineString.MakeValid();
 
-        feature->SetGeometry(geometry);
+        feature->SetGeometryDirectly(geometry);
         feature->SetField(featureDefn->GetFieldIndex("RoadID"),
                           laneRoadID.c_str());
         feature->SetField(featureDefn->GetFieldIndex("ID"), lane.id);
