@@ -72,7 +72,7 @@ void RegisterOGRXODR()
     driver->SetMetadataItem(
         GDAL_DMD_OPENOPTIONLIST,
         "<OpenOptionList>"
-        "  <Option name='EPS' type='float' description='Epsilon value for "
+        "  <Option name='EPSILON' type='float' description='Epsilon value for "
         "linear approximation of continuous OpenDRIVE geometries.' "
         "default='1.0'/>"
         "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to "

@@ -78,7 +78,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
         else
         {
             //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometryDirectly(&tin);
+            feature->SetGeometry(&tin);
         }
 
         feature->SetFID(nNextFID++);

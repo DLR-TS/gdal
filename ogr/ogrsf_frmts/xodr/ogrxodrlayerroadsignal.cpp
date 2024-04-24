@@ -74,7 +74,7 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
             std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadSignalMesh);
             OGRTriangulatedSurface tin = *tinPtr;
             //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometryDirectly(&tin);
+            feature->SetGeometry(&tin);
         }
 
         feature->SetField(featureDefn->GetFieldIndex("SignalID"),

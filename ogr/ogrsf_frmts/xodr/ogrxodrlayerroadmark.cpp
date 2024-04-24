@@ -66,7 +66,7 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
         else
         {
             //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometryDirectly(&tin);
+            feature->SetGeometry(&tin);
         }
         feature->SetField(featureDefn->GetFieldIndex("RoadID"),
                           roadMark.road_id.c_str());
