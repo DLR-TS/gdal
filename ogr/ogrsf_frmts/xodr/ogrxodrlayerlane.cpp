@@ -36,10 +36,10 @@ OGRXODRLayerLane::OGRXODRLayerLane(const RoadElements& xodrRoadElements,
                                    bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
-    this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str()); //manual memory 
     SetDescription(FEATURE_CLASS_NAME.c_str());
-    featureDefn->Reference();
-    featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&spatialRef);
+    m_poFeatureDefn->Reference();
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     defineFeatureClass();
 }
@@ -48,7 +48,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    while (laneIter != roadElements.lanes.end() && (*laneIter).id == 0)
+    while (laneIter != m_roadElements.lanes.end() && (*laneIter).id == 0)
     {
         // Skip lane(s) with id 0
         laneIter++;
@@ -56,10 +56,10 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
         laneRoadIDIter++;
     }
 
-    if (laneIter != roadElements.lanes.end())
+    if (laneIter != m_roadElements.lanes.end())
     {
       
-        feature = std::make_unique<OGRFeature>(featureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
         odr::Lane lane = *laneIter;
         odr::Mesh3D laneMesh = *laneMeshIter;
@@ -69,7 +69,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
         std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(laneMesh);
         OGRTriangulatedSurface tin = *tinPtr;
 
-        if (dissolveTIN)
+        if (m_bDissolveTIN)
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
      
@@ -81,15 +81,15 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
             feature->SetGeometry(&tin);
         }
 
-        feature->SetFID(nNextFID++);
-        feature->SetField(featureDefn->GetFieldIndex("RoadID"),
+        feature->SetFID(m_nNextFID++);
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
                           laneRoadID.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("LaneID"), lane.id);
-        feature->SetField(featureDefn->GetFieldIndex("Type"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("LaneID"), lane.id);
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Type"),
                           lane.type.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Predecessor"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Predecessor"),
                           lane.predecessor);
-        feature->SetField(featureDefn->GetFieldIndex("Successor"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Successor"),
                           lane.successor);
 
         laneIter++;
@@ -110,28 +110,28 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
 void OGRXODRLayerLane::defineFeatureClass()
 {
-    if (dissolveTIN)
+    if (m_bDissolveTIN)
     {
         OGRwkbGeometryType wkbPolygonWithZ = OGR_GT_SetZ(wkbPolygon);
-        featureDefn->SetGeomType(wkbPolygonWithZ);
+        m_poFeatureDefn->SetGeomType(wkbPolygonWithZ);
     }
     else
     {
-        featureDefn->SetGeomType(wkbTINZ);
+        m_poFeatureDefn->SetGeomType(wkbTINZ);
     }
 
     OGRFieldDefn oFieldLaneID("LaneID", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldLaneID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldLaneID);
 
     OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldRoadID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldRoadID);
 
     OGRFieldDefn oFieldType("Type", OFTString);
-    featureDefn->AddFieldDefn(&oFieldType);
+    m_poFeatureDefn->AddFieldDefn(&oFieldType);
 
     OGRFieldDefn oFieldPred("Predecessor", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldPred);
+    m_poFeatureDefn->AddFieldDefn(&oFieldPred);
 
     OGRFieldDefn oFieldSuc("Successor", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldSuc);
+    m_poFeatureDefn->AddFieldDefn(&oFieldSuc);
 }

@@ -36,31 +36,31 @@ CPL_CVSID("$Id$")
 
 OGRXODRDataSource::OGRXODRDataSource()
 {
-    layers = nullptr;
-    nLayers = 0;
+    //m_apoLayers = nullptr;
+    //nLayers = 0;
 }
 
 OGRXODRDataSource::~OGRXODRDataSource()
 {
-    for (int i = 0; i < nLayers; i++)
-    {
-        delete layers[i];
-        layers[i] = nullptr;
-    }
-    CPLFree(layers);
+    //for (int i = 0; i < nLayers; i++)
+    //{
+    //    delete m_apoLayers[i];
+    //    m_apoLayers[i] = nullptr;
+    //}
+    //CPLFree(m_apoLayers);
 }
 
-bool OGRXODRDataSource::Open(const char *fileName, char **openOptions)
+bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
 {
     VSILFILE *file = nullptr;
 
-    file = VSIFOpenL(fileName, "r");
+    file = VSIFOpenL(pszFilename, "r");
 
     if (file == nullptr)
     {
         //TODO is this ever called on an opening error? An incorrect file name or path is caught earlier already.
         CPLError(CE_Failure, CPLE_OpenFailed,
-                 "Failed to load OpenDRIVE file %s.", fileName);
+                 "Failed to load OpenDRIVE file %s.", pszFilename);
         return CE_Failure;
     }
 
@@ -68,42 +68,57 @@ bool OGRXODRDataSource::Open(const char *fileName, char **openOptions)
         CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
     eps = CPLAtof(openOptionValue);
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
-    dissolveTIN = CPLTestBool(openOptionValue);
+    m_bDissolveTIN = CPLTestBool(openOptionValue);
 
-    odr::OpenDriveMap xodr(fileName, false);
+    odr::OpenDriveMap xodr(pszFilename, false);
     std::string proj4Defn = xodr.proj4;
     std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
 
-    nLayers = 6;
+    //nLayers = 6;
     //TODO Do we have to update this, taking into account all different layer subclasses?
-    layers =
-        (OGRXODRLayer **)CPLRealloc(layers, sizeof(OGRXODRLayer *) * nLayers);
-    layers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
-    layers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
-    layers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, dissolveTIN);
-    layers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
-    layers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, dissolveTIN);
-    layers[5] =
-        new OGRXODRLayerRoadSignal(roadElements, proj4Defn, dissolveTIN);
+    //m_apoLayers =
+    //    (OGRXODRLayer **)CPLRealloc(m_apoLayers, sizeof(OGRXODRLayer *) * m_apoLayers.size());
+    std::unique_ptr<OGRXODRLayer> refLine(new OGRXODRLayerReferenceLine(roadElements, proj4Defn));
+    std::unique_ptr<OGRXODRLayer> laneBorder(new OGRXODRLayerLaneBorder(roadElements, proj4Defn));
+    std::unique_ptr<OGRXODRLayer> roadMark(new OGRXODRLayerRoadMark(roadElements, proj4Defn, m_bDissolveTIN));
+    std::unique_ptr<OGRXODRLayer> roadObject(new OGRXODRLayerRoadObject(roadElements, proj4Defn));
+    std::unique_ptr<OGRXODRLayer> lane(new OGRXODRLayerLane(roadElements, proj4Defn, m_bDissolveTIN));
+    std::unique_ptr<OGRXODRLayer> roadSignal(new OGRXODRLayerRoadSignal(roadElements, proj4Defn, m_bDissolveTIN));
+    
+    m_apoLayers.push_back(std::move(refLine));
+    m_apoLayers.push_back(std::move(laneBorder));
+    m_apoLayers.push_back(std::move(roadMark));
+    m_apoLayers.push_back(std::move(roadObject));
+    m_apoLayers.push_back(std::move(lane));
+    m_apoLayers.push_back(std::move(roadSignal));
+    
+    //m_apoLayers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
+    //m_apoLayers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
+    //m_apoLayers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, m_bDissolveTIN);
+    //m_apoLayers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
+    //m_apoLayers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, m_bDissolveTIN);
+    //m_apoLayers[5] =
+    //    new OGRXODRLayerRoadSignal(roadElements, proj4Defn, m_bDissolveTIN);
     return TRUE;
 }
 
 OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
 {
-    if (iLayer < 0 || iLayer >= nLayers)
+    
+    if (iLayer < 0 || iLayer >= m_apoLayers.size()) //m_apoLayers.size -> unsigned int type !warning
         return NULL;
 
-    return layers[iLayer];
+    return m_apoLayers[iLayer].get();
 }
 
 int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 {
-    if (EQUAL(capability, ODsCCreateLayer))
-        return FALSE;
-    else if (EQUAL(capability, ODsCDeleteLayer))
-        return FALSE;
-    else if (EQUAL(capability, ODsCZGeometries))
+    //if (EQUAL(capability, ODsCCreateLayer))
+    //    return FALSE;
+    //else if (EQUAL(capability, ODsCDeleteLayer))
+    //    return FALSE;
+    if (EQUAL(capability, ODsCZGeometries))
         return TRUE;
     return FALSE;
 }

@@ -35,10 +35,10 @@ OGRXODRLayerRoadObject::OGRXODRLayerRoadObject(const RoadElements& xodrRoadEleme
                                                std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
-    featureDefn->Reference();
-    featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&spatialRef);
+    m_poFeatureDefn->Reference();
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     defineFeatureClass();
 }
@@ -47,9 +47,9 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (roadObjectIter != roadElements.roadObjects.end())
+    if (roadObjectIter != m_roadElements.roadObjects.end())
     {
-        feature = std::make_unique<OGRFeature>(featureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
         odr::RoadObject roadObject = *roadObjectIter;
         odr::Mesh3D roadObjectMesh = *roadObjectMeshesIter;
@@ -60,15 +60,15 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
         //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
         feature->SetGeometry(&tin);
 
-        feature->SetField(featureDefn->GetFieldIndex("ObjectID"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("ObjectID"),
                           roadObject.id.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("RoadID"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
                           roadObject.road_id.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Type"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Type"),
                           roadObject.type.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Name"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Name"),
                           roadObject.name.c_str());
-        feature->SetFID(nNextFID++);
+        feature->SetFID(m_nNextFID++);
 
         roadObjectIter++;
         roadObjectMeshesIter++;
@@ -87,17 +87,17 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
 
 void OGRXODRLayerRoadObject::defineFeatureClass()
 {
-    featureDefn->SetGeomType(wkbTINZ);
+    m_poFeatureDefn->SetGeomType(wkbTINZ);
 
     OGRFieldDefn oFieldObjectID("ObjectID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldObjectID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldObjectID);
 
     OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldRoadID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldRoadID);
 
     OGRFieldDefn oFieldType("Type", OFTString);
-    featureDefn->AddFieldDefn(&oFieldType);
+    m_poFeatureDefn->AddFieldDefn(&oFieldType);
 
     OGRFieldDefn oFieldObjectName("Name", OFTString);
-    featureDefn->AddFieldDefn(&oFieldObjectName);
+    m_poFeatureDefn->AddFieldDefn(&oFieldObjectName);
 }

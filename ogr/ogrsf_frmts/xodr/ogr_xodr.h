@@ -71,7 +71,7 @@ class OGRXODRLayer : public OGRLayer
 
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
-        return featureDefn;
+        return  m_poFeatureDefn;//featureDefn;
     }
 
     virtual int TestCapability(const char *) override
@@ -83,16 +83,17 @@ class OGRXODRLayer : public OGRLayer
      * Initializes XODR road elements and iterators.
     */
     void resetRoadElementIterators();
-
+  
   protected:
-    VSILFILE *file;
-    RoadElements roadElements;
-    OGRSpatialReference spatialRef;
-    bool dissolveTIN;
-    OGRFeatureDefn *featureDefn;
+    //VSILFILE *m_file; -> unneccessary 
+    OGRSpatialReference m_poSRS;
+    OGRFeatureDefn *m_poFeatureDefn;
+
+    RoadElements m_roadElements;
+    bool m_bDissolveTIN;
 
     /* Unique feature ID which is automatically incremented for any new road feature creation. */
-    int nNextFID;
+    int m_nNextFID;
 
     std::map<std::string, odr::Road>::iterator roadIter;
     std::vector<odr::Line3D>::iterator referenceLineIter;
@@ -223,9 +224,9 @@ class OGRXODRLayerLane : public OGRXODRLayer
 class OGRXODRDataSource : public GDALDataset
 {
   private:
-    OGRXODRLayer **layers;
-    int nLayers;
-
+    //OGRXODRLayer **m_apoLayers;
+    //int nLayers;
+    std::vector<std::unique_ptr<OGRXODRLayer>> m_apoLayers{};
     /**
      * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
      * 
@@ -246,13 +247,13 @@ class OGRXODRDataSource : public GDALDataset
     /**
      * Whether to dissolve triangulated surfaces which are created from libOpenDRIVE's meshes.
     */
-    bool dissolveTIN;
+    bool m_bDissolveTIN;
 
-    bool Open(const char *fileName, char **openOptions);
+    bool Open(const char *pszFilename, char **papszOpenOptions);
 
     int GetLayerCount() override
     {
-        return nLayers;
+        return m_apoLayers.size();
     }
 
     OGRLayer *GetLayer(int) override;

@@ -27,47 +27,31 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#include "ogr_xodr.h"
-#include "cpl_conv.h"
-#include "cpl_error.h"
+#include "ogrsf_frmts.h"
 
-//CPL_CVSID(
-//    "$Id$")  //TODO do we need this? Also the $Id$ in above licence headers?
-//
-extern "C" void CPL_DLL RegisterOGRXODR();
+#include "ogrxodrdrivercore.h"
 
-static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
+
+/************************************************************************/
+/*                    OGRXODRDriverIdentify()                            */
+/************************************************************************/
+
+static int OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo)
+
 {
-    if (poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr)
-        return nullptr;
-
-    OGRXODRDataSource *dataSource = new OGRXODRDataSource();
-
-    if (!dataSource->Open(poOpenInfo->pszFilename, poOpenInfo->papszOpenOptions))
-    {
-        delete dataSource;
-        dataSource = nullptr;
-    }
-
-    return dataSource;
+    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "XODR");
 }
 
-static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo)
-{
-    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
-}
+/************************************************************************/
+/*                  OGRXODRDriverSetCommonMetadata()                  */
+/************************************************************************/
 
-void RegisterOGRXODR()
+void OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver)
 {
-    if (GDALGetDriverByName("XODR") != nullptr)
-        return;
-
-    GDALDriver *poDriver = new GDALDriver();
     poDriver->SetDescription("XODR");
     poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-    poDriver->SetMetadataItem(
-        GDAL_DMD_LONGNAME,
-        "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
+
+    poDriver->SetMetadataItem(GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
     poDriver->SetMetadataItem(
         GDAL_DMD_OPENOPTIONLIST,
@@ -78,8 +62,30 @@ void RegisterOGRXODR()
         "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to "
         "dissolve triangulated surfaces.' default= 'NO'/>"
         "</OpenOptionList>");
-    poDriver->pfnOpen = OGRXODRDriverOpen;
-    poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
-    GetGDALDriverManager()->RegisterDriver(poDriver);
+
+    poDriver->pfnIdentify = OGRXODRDriverIdentify;
+    poDriver->SetMetadataItem(GDAL_DCAP_OPEN, "YES");
 }
+
+/************************************************************************/
+/*                   DeclareDeferredOGRXLSPlugin()                      */
+/************************************************************************/
+
+#ifdef PLUGIN_FILENAME
+void DeclareDeferredOGRXODRPlugin()
+{
+    if (GDALGetDriverByName("XODR") != nullptr)
+    {
+        return;
+    }
+    auto poDriver = new GDALPluginDriverProxy(PLUGIN_FILENAME);
+#ifdef PLUGIN_INSTALLATION_MESSAGE
+    poDriver->SetMetadataItem(GDAL_DMD_PLUGIN_INSTALLATION_MESSAGE,
+                              PLUGIN_INSTALLATION_MESSAGE);
+#endif
+    OGRXODRDriverSetCommonMetadata(poDriver);
+    GetGDALDriverManager()->DeclareDeferredPluginDriver(poDriver);
+}
+#endif
+

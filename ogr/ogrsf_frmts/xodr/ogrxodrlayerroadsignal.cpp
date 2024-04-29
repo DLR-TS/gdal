@@ -36,10 +36,10 @@ OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadEleme
                                                bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
-    this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
-    featureDefn->Reference();
-    featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&spatialRef);
+    m_poFeatureDefn->Reference();
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     defineFeatureClass();
 }
@@ -48,17 +48,17 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (roadSignalIter != roadElements.roadSignals.end())
+    if (roadSignalIter != m_roadElements.roadSignals.end())
     {
-        feature = std::make_unique<OGRFeature>(featureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
         odr::RoadSignal roadSignal = *roadSignalIter;
         odr::Mesh3D roadSignalMesh = *roadSignalMeshesIter;
 
-        if (dissolveTIN)
+        if (m_bDissolveTIN)
         {
             std::string roadId = roadSignal.road_id;
-            odr::Road road = roadElements.roads.at(roadId);
+            odr::Road road = m_roadElements.roads.at(roadId);
 
             double s = roadSignal.s0;
             double t = roadSignal.t0;
@@ -77,26 +77,26 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
             feature->SetGeometry(&tin);
         }
 
-        feature->SetField(featureDefn->GetFieldIndex("SignalID"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("SignalID"),
                           roadSignal.id.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("RoadID"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
                           roadSignal.road_id.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Type"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Type"),
                           roadSignal.type.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("SubType"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("SubType"),
                           roadSignal.subtype.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("HOffset"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("HOffset"),
                           roadSignal.hOffset);
-        feature->SetField(featureDefn->GetFieldIndex("Pitch"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Pitch"),
                           roadSignal.pitch);
-        feature->SetField(featureDefn->GetFieldIndex("Roll"), roadSignal.roll);
-        feature->SetField(featureDefn->GetFieldIndex("Orientation"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Roll"), roadSignal.roll);
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Orientation"),
                           roadSignal.orientation.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Name"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Name"),
                           roadSignal.name.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Dynamic"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Dynamic"),
                           roadSignal.is_dynamic);
-        feature->SetFID(nNextFID++);
+        feature->SetFID(m_nNextFID++);
 
         roadSignalIter++;
         roadSignalMeshesIter++;
@@ -115,44 +115,44 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
 void OGRXODRLayerRoadSignal::defineFeatureClass()
 {
-    if (dissolveTIN)
+    if (m_bDissolveTIN)
     {
         OGRwkbGeometryType wkbPointWithZ = OGR_GT_SetZ(wkbPoint);
-        featureDefn->SetGeomType(wkbPointWithZ);
+        m_poFeatureDefn->SetGeomType(wkbPointWithZ);
     }
     else
     {
-        featureDefn->SetGeomType(wkbTINZ);
+        m_poFeatureDefn->SetGeomType(wkbTINZ);
     }
 
     OGRFieldDefn oFieldSignalID("SignalID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldSignalID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldSignalID);
 
     OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldRoadID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldRoadID);
 
     OGRFieldDefn oFieldType("Type", OFTString);
-    featureDefn->AddFieldDefn(&oFieldType);
+    m_poFeatureDefn->AddFieldDefn(&oFieldType);
 
     OGRFieldDefn oFieldSubType("SubType", OFTString);
-    featureDefn->AddFieldDefn(&oFieldSubType);
+    m_poFeatureDefn->AddFieldDefn(&oFieldSubType);
 
     OGRFieldDefn oFieldHOffset("HOffset", OFTReal);
-    featureDefn->AddFieldDefn(&oFieldHOffset);
+    m_poFeatureDefn->AddFieldDefn(&oFieldHOffset);
 
     OGRFieldDefn oFieldPitch("Pitch", OFTReal);
-    featureDefn->AddFieldDefn(&oFieldPitch);
+    m_poFeatureDefn->AddFieldDefn(&oFieldPitch);
 
     OGRFieldDefn oFieldRoll("Roll", OFTReal);
-    featureDefn->AddFieldDefn(&oFieldRoll);
+    m_poFeatureDefn->AddFieldDefn(&oFieldRoll);
 
     OGRFieldDefn oFieldOrientation("Orientation", OFTString);
-    featureDefn->AddFieldDefn(&oFieldOrientation);
+    m_poFeatureDefn->AddFieldDefn(&oFieldOrientation);
 
     OGRFieldDefn oFieldName("Name", OFTString);
-    featureDefn->AddFieldDefn(&oFieldName);
+    m_poFeatureDefn->AddFieldDefn(&oFieldName);
 
     OGRFieldDefn oFieldObjectDynamic("Dynamic", OFTInteger);
     oFieldObjectDynamic.SetSubType(OFSTBoolean);
-    featureDefn->AddFieldDefn(&oFieldObjectDynamic);
+    m_poFeatureDefn->AddFieldDefn(&oFieldObjectDynamic);
 }

@@ -35,10 +35,10 @@ OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadEleme
                                                std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    this->featureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
-    featureDefn->Reference();
-    featureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&spatialRef);
+    m_poFeatureDefn->Reference();
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     defineFeatureClass();
 }
@@ -47,35 +47,38 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (laneIter != roadElements.lanes.end())
+    if (laneIter != m_roadElements.lanes.end())
     {
         //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
-        feature = std::make_unique<OGRFeature>(featureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
         
         odr::Lane lane = *laneIter;
         odr::Line3D laneOuter = *laneLinesOuterIter;
         std::string laneRoadID = *laneRoadIDIter;
 
         OGRLineString lineString;
-        for (auto vertexIter = laneOuter.begin(); vertexIter != laneOuter.end();
-             ++vertexIter)
-        {
-            odr::Vec3D laneVertex = *vertexIter;
+        //for (auto vertexIter = laneOuter.begin(); vertexIter != laneOuter.end();
+        //     ++vertexIter)
+        //{
+        //    odr::Vec3D laneVertex = *vertexIter;
+        //    lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
+        //}
+        for(const auto& laneVertex: laneOuter ){
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
 
         feature->SetGeometryDirectly(geometry);
-        feature->SetField(featureDefn->GetFieldIndex("RoadID"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
                           laneRoadID.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("ID"), lane.id);
-        feature->SetField(featureDefn->GetFieldIndex("Type"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("ID"), lane.id);
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Type"),
                           lane.type.c_str());
-        feature->SetField(featureDefn->GetFieldIndex("Predecessor"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Predecessor"),
                           lane.predecessor);
-        feature->SetField(featureDefn->GetFieldIndex("Successor"),
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Successor"),
                           lane.successor);
-        feature->SetFID(nNextFID++);
+        feature->SetFID(m_nNextFID++);
 
         laneIter++;
         laneLinesOuterIter++;
@@ -97,20 +100,20 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 void OGRXODRLayerLaneBorder::defineFeatureClass()
 {
     OGRwkbGeometryType wkbLineStringWithZ = OGR_GT_SetZ(wkbLineString);
-    featureDefn->SetGeomType(wkbLineStringWithZ);
+    m_poFeatureDefn->SetGeomType(wkbLineStringWithZ);
 
     OGRFieldDefn oFieldID("ID", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldID);
 
     OGRFieldDefn oFieldRoadID("RoadID", OFTString);
-    featureDefn->AddFieldDefn(&oFieldRoadID);
+    m_poFeatureDefn->AddFieldDefn(&oFieldRoadID);
 
     OGRFieldDefn oFieldType("Type", OFTString);
-    featureDefn->AddFieldDefn(&oFieldType);
+    m_poFeatureDefn->AddFieldDefn(&oFieldType);
 
     OGRFieldDefn oFieldPred("Predecessor", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldPred);
+    m_poFeatureDefn->AddFieldDefn(&oFieldPred);
 
     OGRFieldDefn oFieldSuc("Successor", OFTInteger);
-    featureDefn->AddFieldDefn(&oFieldSuc);
+    m_poFeatureDefn->AddFieldDefn(&oFieldSuc);
 }
