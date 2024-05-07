@@ -1145,8 +1145,10 @@ by the :ref:`raster.marfa` driver.
 
 
 libOpenDRIVE
-******
-`libOpenDRIVE: <https://github.com/pageldev/libOpenDRIVE>`_ is required for the :ref:`vector.xodr` driver.
+************
+
+`libOpenDRIVE <https://github.com/pageldev/libOpenDRIVE>`_ is required for the :ref:`vector.xodr` driver.
+
 .. option::  -DOGR_ENABLE_DRIVER_XODR=TRUE
 
     Enable driver XODR.

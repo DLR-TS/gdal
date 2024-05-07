@@ -1,6 +1,4 @@
 /******************************************************************************
- * $Id$
- *
  * Project:  OpenGIS Simple Features for OpenDRIVE
  * Purpose:  Definition of OGR driver components for OpenDRIVE.
  * Author:   Michael Scholz, German Aerospace Center (DLR)
@@ -71,7 +69,7 @@ class OGRXODRLayer : public OGRLayer
 
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
-        return  m_poFeatureDefn;//featureDefn;
+        return  m_poFeatureDefn;
     }
 
     virtual int TestCapability(const char *) override
@@ -85,7 +83,6 @@ class OGRXODRLayer : public OGRLayer
     void resetRoadElementIterators();
   
   protected:
-    //VSILFILE *m_file; -> unneccessary 
     OGRSpatialReference m_poSRS;
     OGRFeatureDefn *m_poFeatureDefn;
 
@@ -132,7 +129,6 @@ class OGRXODRLayer : public OGRLayer
      * libOpenDRIVE are to be dissolved into simpler geometries.
      * Only applicable for layer types derived from meshes.
     */
-    // TODO For lower memory consumption maybe better pass xodrRoadElements by reference?
     OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn);
     OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface);
@@ -224,9 +220,8 @@ class OGRXODRLayerLane : public OGRXODRLayer
 class OGRXODRDataSource : public GDALDataset
 {
   private:
-    //OGRXODRLayer **m_apoLayers;
-    //int nLayers;
     std::vector<std::unique_ptr<OGRXODRLayer>> m_apoLayers{};
+    
     /**
      * Retrieves all necessary road elements from the underlying OpenDRIVE structure.
      * 

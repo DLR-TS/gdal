@@ -32,22 +32,15 @@ using namespace odr;
 using namespace pugi;
 using namespace std;
 
-CPL_CVSID("$Id$")
 
 OGRXODRDataSource::OGRXODRDataSource()
 {
-    //m_apoLayers = nullptr;
-    //nLayers = 0;
+
 }
 
 OGRXODRDataSource::~OGRXODRDataSource()
 {
-    //for (int i = 0; i < nLayers; i++)
-    //{
-    //    delete m_apoLayers[i];
-    //    m_apoLayers[i] = nullptr;
-    //}
-    //CPLFree(m_apoLayers);
+
 }
 
 bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
@@ -75,10 +68,6 @@ bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
     std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
 
-    //nLayers = 6;
-    //TODO Do we have to update this, taking into account all different layer subclasses?
-    //m_apoLayers =
-    //    (OGRXODRLayer **)CPLRealloc(m_apoLayers, sizeof(OGRXODRLayer *) * m_apoLayers.size());
     std::unique_ptr<OGRXODRLayer> refLine(new OGRXODRLayerReferenceLine(roadElements, proj4Defn));
     std::unique_ptr<OGRXODRLayer> laneBorder(new OGRXODRLayerLaneBorder(roadElements, proj4Defn));
     std::unique_ptr<OGRXODRLayer> roadMark(new OGRXODRLayerRoadMark(roadElements, proj4Defn, m_bDissolveTIN));
@@ -93,13 +82,6 @@ bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
     m_apoLayers.push_back(std::move(lane));
     m_apoLayers.push_back(std::move(roadSignal));
     
-    //m_apoLayers[0] = new OGRXODRLayerReferenceLine(roadElements, proj4Defn);
-    //m_apoLayers[1] = new OGRXODRLayerLaneBorder(roadElements, proj4Defn);
-    //m_apoLayers[2] = new OGRXODRLayerRoadMark(roadElements, proj4Defn, m_bDissolveTIN);
-    //m_apoLayers[3] = new OGRXODRLayerRoadObject(roadElements, proj4Defn);
-    //m_apoLayers[4] = new OGRXODRLayerLane(roadElements, proj4Defn, m_bDissolveTIN);
-    //m_apoLayers[5] =
-    //    new OGRXODRLayerRoadSignal(roadElements, proj4Defn, m_bDissolveTIN);
     return TRUE;
 }
 
@@ -114,10 +96,6 @@ OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
 
 int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 {
-    //if (EQUAL(capability, ODsCCreateLayer))
-    //    return FALSE;
-    //else if (EQUAL(capability, ODsCDeleteLayer))
-    //    return FALSE;
     if (EQUAL(capability, ODsCZGeometries))
         return TRUE;
     return FALSE;
