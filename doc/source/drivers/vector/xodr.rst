@@ -51,7 +51,7 @@ The XODR driver uses this PROJ definition as spatial reference for creation of a
 Limitations
 -----------
 
-By default, OpenDRIVE XML files are opened by GDAL always in UTF-8 encoding, see :cpp:func:`VSIFOpenExL`.
+The supported content encoding of OpenDRIVE XML files is limited to what pugixml is able to automatically guess (see `4.6. Encodings <https://pugixml.org/docs/manual.html#loading.encoding>`_). The default fallback encoding is UTF-8.
 
 Open options
 ------------

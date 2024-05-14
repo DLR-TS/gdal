@@ -50,12 +50,7 @@ bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
     file = VSIFOpenL(pszFilename, "r");
 
     if (file == nullptr)
-    {
-        //TODO is this ever called on an opening error? An incorrect file name or path is caught earlier already.
-        CPLError(CE_Failure, CPLE_OpenFailed,
-                 "Failed to load OpenDRIVE file %s.", pszFilename);
-        return CE_Failure;
-    }
+        return FALSE;
 
     const char *openOptionValue =
         CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
@@ -87,8 +82,7 @@ bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
 
 OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
 {
-    
-    if (iLayer < 0 || iLayer >= m_apoLayers.size()) //m_apoLayers.size -> unsigned int type !warning
+    if (iLayer < 0 || (size_t)iLayer >= m_apoLayers.size())
         return NULL;
 
     return m_apoLayers[iLayer].get();
