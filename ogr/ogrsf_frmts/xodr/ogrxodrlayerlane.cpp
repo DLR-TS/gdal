@@ -50,7 +50,7 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
     while (m_laneIter != m_roadElements.lanes.end() && (*m_laneIter).id == 0)
     {
-        // Skip lane(s) with id 0
+        // Skip lane(s) with id 0 because these "center lanes" don't have any width
         m_laneIter++;
         m_laneMeshIter++;
         m_laneRoadIDIter++;

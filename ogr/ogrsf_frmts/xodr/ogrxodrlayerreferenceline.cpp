@@ -49,20 +49,12 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
 
     if (m_roadIter != m_roadElements.roads.end())
     {
-        //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
         odr::Road road = (*m_roadIter).second;
         odr::Line3D refLine = *m_referenceLineIter;
 
         OGRLineString lineString;
-        //for (auto vertexIter = refLine.begin(); vertexIter != refLine.end();
-        //     ++vertexIter)
-        //{
-        //    odr::Vec3D refLineVertex = *vertexIter;
-        //    lineString.addPoint(refLineVertex[0], refLineVertex[1],
-        //                        refLineVertex[2]);
-        //}
         for(const auto& refLineVertex: refLine){
             lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
         }

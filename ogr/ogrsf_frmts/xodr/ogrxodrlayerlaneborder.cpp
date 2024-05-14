@@ -49,7 +49,6 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 
     if (m_laneIter != m_roadElements.lanes.end())
     {
-        //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
         
         odr::Lane lane = *m_laneIter;
@@ -57,12 +56,6 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
         std::string laneRoadID = *m_laneRoadIDIter;
 
         OGRLineString lineString;
-        //for (auto vertexIter = laneOuter.begin(); vertexIter != laneOuter.end();
-        //     ++vertexIter)
-        //{
-        //    odr::Vec3D laneVertex = *vertexIter;
-        //    lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
-        //}
         for(const auto& laneVertex: laneOuter ){
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
         }
