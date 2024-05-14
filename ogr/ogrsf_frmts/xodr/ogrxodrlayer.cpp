@@ -51,14 +51,6 @@ OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, std::string pro
     ResetReading();
 }
 
-OGRXODRLayer::~OGRXODRLayer()
-{
-    if (m_poFeatureDefn)
-    {
-        m_poFeatureDefn->Release();
-    }
-}
-
 void OGRXODRLayer::ResetReading()
 {
     m_nNextFID = 0;

@@ -36,7 +36,7 @@ OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadEleme
                                                bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
-    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
@@ -50,7 +50,7 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
     if (m_roadSignalIter != m_roadElements.roadSignals.end())
     {
-        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn.get());
 
         odr::RoadSignal roadSignal = *m_roadSignalIter;
         odr::Mesh3D roadSignalMesh = *m_roadSignalMeshesIter;

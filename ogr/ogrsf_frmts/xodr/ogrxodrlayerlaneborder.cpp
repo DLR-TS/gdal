@@ -35,7 +35,7 @@ OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadEleme
                                                std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    this->m_poFeatureDefn = new OGRFeatureDefn(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     SetDescription(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
@@ -49,7 +49,7 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
 
     if (m_laneIter != m_roadElements.lanes.end())
     {
-        feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
+        feature = std::make_unique<OGRFeature>(m_poFeatureDefn.get());
         
         odr::Lane lane = *m_laneIter;
         odr::Line3D laneOuter = *m_laneLinesOuterIter;

@@ -69,7 +69,7 @@ class OGRXODRLayer : public OGRLayer
 
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
-        return m_poFeatureDefn;
+        return m_poFeatureDefn.get();
     }
 
     virtual int TestCapability(const char *) override
@@ -109,7 +109,8 @@ class OGRXODRLayer : public OGRLayer
     std::vector<odr::RoadSignal>::iterator m_roadSignalIter{};
     std::vector<odr::Mesh3D>::iterator m_roadSignalMeshesIter{};
 
-    OGRFeatureDefn *m_poFeatureDefn;
+    std::unique_ptr<OGRFeatureDefn> m_poFeatureDefn{};
+
     /**
      * Completes feature class definition with all specific attributes and geometry type
      * according to layer type.
@@ -131,7 +132,6 @@ class OGRXODRLayer : public OGRLayer
     */
     OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn,
                  bool dissolveTriangulatedSurface);
-    ~OGRXODRLayer();
 };
 
 class OGRXODRLayerReferenceLine : public OGRXODRLayer
