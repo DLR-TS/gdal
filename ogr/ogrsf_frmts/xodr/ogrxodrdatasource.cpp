@@ -33,16 +33,6 @@ using namespace pugi;
 using namespace std;
 
 
-OGRXODRDataSource::OGRXODRDataSource()
-{
-
-}
-
-OGRXODRDataSource::~OGRXODRDataSource()
-{
-
-}
-
 bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 {
     VSILFILE *file = nullptr;
@@ -52,11 +42,14 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     if (file == nullptr)
         return FALSE;
 
-    const char *openOptionValue =
-        CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
-    m_dfEpsilon = CPLAtof(openOptionValue);
+    const char *openOptionValue = CSLFetchNameValue(openOptions, "EPSILON");
+    if (openOptionValue != nullptr) {
+        double dfEpsilon = CPLAtof(openOptionValue);
+        if (dfEpsilon > 0.0)
+            m_dfEpsilon = dfEpsilon;
+    }
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
-    m_bDissolveTIN = CPLTestBool(openOptionValue);
+    bool bDissolveTIN = CPLTestBool(openOptionValue);
 
     odr::OpenDriveMap xodr(pszFilename, false);
     std::string proj4Defn = xodr.proj4;
@@ -65,10 +58,10 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 
     std::unique_ptr<OGRXODRLayer> refLine(new OGRXODRLayerReferenceLine(roadElements, proj4Defn));
     std::unique_ptr<OGRXODRLayer> laneBorder(new OGRXODRLayerLaneBorder(roadElements, proj4Defn));
-    std::unique_ptr<OGRXODRLayer> roadMark(new OGRXODRLayerRoadMark(roadElements, proj4Defn, m_bDissolveTIN));
+    std::unique_ptr<OGRXODRLayer> roadMark(new OGRXODRLayerRoadMark(roadElements, proj4Defn, bDissolveTIN));
     std::unique_ptr<OGRXODRLayer> roadObject(new OGRXODRLayerRoadObject(roadElements, proj4Defn));
-    std::unique_ptr<OGRXODRLayer> lane(new OGRXODRLayerLane(roadElements, proj4Defn, m_bDissolveTIN));
-    std::unique_ptr<OGRXODRLayer> roadSignal(new OGRXODRLayerRoadSignal(roadElements, proj4Defn, m_bDissolveTIN));
+    std::unique_ptr<OGRXODRLayer> lane(new OGRXODRLayerLane(roadElements, proj4Defn, bDissolveTIN));
+    std::unique_ptr<OGRXODRLayer> roadSignal(new OGRXODRLayerRoadSignal(roadElements, proj4Defn, bDissolveTIN));
     
     m_apoLayers.push_back(std::move(refLine));
     m_apoLayers.push_back(std::move(laneBorder));
