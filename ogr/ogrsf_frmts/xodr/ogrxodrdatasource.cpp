@@ -43,7 +43,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
 
 }
 
-bool OGRXODRDataSource::Open(const char *pszFilename, char **openOptions)
+bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 {
     VSILFILE *file = nullptr;
 

@@ -244,7 +244,7 @@ class OGRXODRDataSource : public GDALDataset
     */
     bool m_bDissolveTIN;
 
-    bool Open(const char *pszFilename, char **papszOpenOptions);
+    bool Open(const char *pszFilename, CSLConstList openOptions);
 
     int GetLayerCount() override
     {
