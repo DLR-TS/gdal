@@ -47,13 +47,13 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (roadIter != m_roadElements.roads.end())
+    if (m_roadIter != m_roadElements.roads.end())
     {
         //feature = std::unique_ptr<OGRFeature>(new OGRFeature(featureDefn));
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
-        odr::Road road = (*roadIter).second;
-        odr::Line3D refLine = *referenceLineIter;
+        odr::Road road = (*m_roadIter).second;
+        odr::Line3D refLine = *m_referenceLineIter;
 
         OGRLineString lineString;
         //for (auto vertexIter = refLine.begin(); vertexIter != refLine.end();
@@ -74,8 +74,8 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextFeature()
         feature->SetField("Junction", road.junction.c_str());
         feature->SetFID(m_nNextFID++);
 
-        roadIter++;
-        referenceLineIter++;
+        m_roadIter++;
+        m_referenceLineIter++;
     }
 
     if (feature)

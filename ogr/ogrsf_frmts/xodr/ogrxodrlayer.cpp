@@ -67,25 +67,25 @@ void OGRXODRLayer::ResetReading()
 
 void OGRXODRLayer::resetRoadElementIterators()
 {
-    roadIter = m_roadElements.roads.begin();
-    referenceLineIter = m_roadElements.referenceLines.begin();
+    m_roadIter = m_roadElements.roads.begin();
+    m_referenceLineIter = m_roadElements.referenceLines.begin();
 
-    laneIter = m_roadElements.lanes.begin();
-    laneSectionIter = m_roadElements.laneSections.begin();
-    laneRoadIDIter = m_roadElements.laneRoadIDs.begin();
-    laneMeshIter = m_roadElements.laneMeshes.begin();
+    m_laneIter = m_roadElements.lanes.begin();
+    m_laneSectionIter = m_roadElements.laneSections.begin();
+    m_laneRoadIDIter = m_roadElements.laneRoadIDs.begin();
+    m_laneMeshIter = m_roadElements.laneMeshes.begin();
 
-    laneLinesInnerIter = m_roadElements.laneLinesInner.begin();
-    laneLinesOuterIter = m_roadElements.laneLinesOuter.begin();
+    m_laneLinesInnerIter = m_roadElements.laneLinesInner.begin();
+    m_laneLinesOuterIter = m_roadElements.laneLinesOuter.begin();
 
-    roadMarkIter = m_roadElements.roadMarks.begin();
-    roadMarkMeshIter = m_roadElements.roadMarkMeshes.begin();
+    m_roadMarkIter = m_roadElements.roadMarks.begin();
+    m_roadMarkMeshIter = m_roadElements.roadMarkMeshes.begin();
 
-    roadObjectIter = m_roadElements.roadObjects.begin();
-    roadObjectMeshesIter = m_roadElements.roadObjectMeshes.begin();
+    m_roadObjectIter = m_roadElements.roadObjects.begin();
+    m_roadObjectMeshesIter = m_roadElements.roadObjectMeshes.begin();
 
-    roadSignalIter = m_roadElements.roadSignals.begin();
-    roadSignalMeshesIter = m_roadElements.roadSignalMeshes.begin();
+    m_roadSignalIter = m_roadElements.roadSignals.begin();
+    m_roadSignalMeshesIter = m_roadElements.roadSignalMeshes.begin();
 }
 
 std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)

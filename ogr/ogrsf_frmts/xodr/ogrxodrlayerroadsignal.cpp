@@ -48,12 +48,12 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (roadSignalIter != m_roadElements.roadSignals.end())
+    if (m_roadSignalIter != m_roadElements.roadSignals.end())
     {
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
-        odr::RoadSignal roadSignal = *roadSignalIter;
-        odr::Mesh3D roadSignalMesh = *roadSignalMeshesIter;
+        odr::RoadSignal roadSignal = *m_roadSignalIter;
+        odr::Mesh3D roadSignalMesh = *m_roadSignalMeshesIter;
 
         if (m_bDissolveTIN)
         {
@@ -98,8 +98,8 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
                           roadSignal.is_dynamic);
         feature->SetFID(m_nNextFID++);
 
-        roadSignalIter++;
-        roadSignalMeshesIter++;
+        m_roadSignalIter++;
+        m_roadSignalMeshesIter++;
     }
 
     if (feature)

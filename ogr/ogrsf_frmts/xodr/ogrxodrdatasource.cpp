@@ -43,7 +43,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
 
 }
 
-bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
+bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList papszOpenOptions)
 {
     VSILFILE *file = nullptr;
 
@@ -53,9 +53,9 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
         return FALSE;
 
     const char *openOptionValue =
-        CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
-    eps = CPLAtof(openOptionValue);
-    openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
+        CSLFetchNameValueDef(papszOpenOptions, "EPSILON", "1.0");
+    m_dfEpsilon = CPLAtof(openOptionValue);
+    openOptionValue = CSLFetchNameValueDef(papszOpenOptions, "DISSOLVE_TIN", "NO");
     m_bDissolveTIN = CPLTestBool(openOptionValue);
 
     odr::OpenDriveMap xodr(pszFilename, false);
@@ -105,7 +105,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
         elements.roads.insert({road.id, road});
 
         odr::Line3D referenceLine =
-            road.ref_line.get_line(0.0, road.length, eps);
+            road.ref_line.get_line(0.0, road.length, m_dfEpsilon);
         elements.referenceLines.push_back(referenceLine);
 
         for (odr::LaneSection laneSection : road.get_lanesections())
@@ -118,15 +118,15 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
 
                 elements.lanes.push_back(lane);
 
-                odr::Mesh3D laneMesh = road.get_lane_mesh(lane, eps);
+                odr::Mesh3D laneMesh = road.get_lane_mesh(lane, m_dfEpsilon);
                 elements.laneMeshes.push_back(laneMesh);
 
                 odr::Line3D laneLineOuter =
-                    road.get_lane_border_line(lane, eps, true);
+                    road.get_lane_border_line(lane, m_dfEpsilon, true);
                 elements.laneLinesOuter.push_back(laneLineOuter);
 
                 odr::Line3D laneLineInner =
-                    road.get_lane_border_line(lane, eps, false);
+                    road.get_lane_border_line(lane, m_dfEpsilon, false);
                 elements.laneLinesInner.push_back(laneLineInner);
 
                 for (odr::RoadMark roadMark : lane.get_roadmarks(
@@ -135,7 +135,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
                     elements.roadMarks.push_back(roadMark);
 
                     odr::Mesh3D roadMarkMesh =
-                        road.get_roadmark_mesh(lane, roadMark, eps);
+                        road.get_roadmark_mesh(lane, roadMark, m_dfEpsilon);
                     elements.roadMarkMeshes.push_back(roadMarkMesh);
                 }
             }
@@ -146,7 +146,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
             elements.roadObjects.push_back(roadObject);
 
             odr::Mesh3D roadObjectMesh =
-                road.get_road_object_mesh(roadObject, eps);
+                road.get_road_object_mesh(roadObject, m_dfEpsilon);
             elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
 

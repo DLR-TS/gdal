@@ -48,12 +48,12 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    if (roadMarkIter != m_roadElements.roadMarks.end())
+    if (m_roadMarkIter != m_roadElements.roadMarks.end())
     {
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
-        odr::RoadMark roadMark = *roadMarkIter;
-        odr::Mesh3D roadMarkMesh = *roadMarkMeshIter;
+        odr::RoadMark roadMark = *m_roadMarkIter;
+        odr::Mesh3D roadMarkMesh = *m_roadMarkMeshIter;
 
    
         std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadMarkMesh);
@@ -76,8 +76,8 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
                           roadMark.type.c_str());
         feature->SetFID(m_nNextFID++);
 
-        roadMarkIter++;
-        roadMarkMeshIter++;
+        m_roadMarkIter++;
+        m_roadMarkMeshIter++;
     }
 
     if (feature)

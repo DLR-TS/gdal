@@ -48,23 +48,23 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
-    while (laneIter != m_roadElements.lanes.end() && (*laneIter).id == 0)
+    while (m_laneIter != m_roadElements.lanes.end() && (*m_laneIter).id == 0)
     {
         // Skip lane(s) with id 0
-        laneIter++;
-        laneMeshIter++;
-        laneRoadIDIter++;
+        m_laneIter++;
+        m_laneMeshIter++;
+        m_laneRoadIDIter++;
     }
 
-    if (laneIter != m_roadElements.lanes.end())
+    if (m_laneIter != m_roadElements.lanes.end())
     {
       
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn);
 
-        odr::Lane lane = *laneIter;
-        odr::Mesh3D laneMesh = *laneMeshIter;
+        odr::Lane lane = *m_laneIter;
+        odr::Mesh3D laneMesh = *m_laneMeshIter;
 
-        std::string laneRoadID = *laneRoadIDIter;
+        std::string laneRoadID = *m_laneRoadIDIter;
 
         std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(laneMesh);
         OGRTriangulatedSurface tin = *tinPtr;
@@ -92,9 +92,9 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
         feature->SetField(m_poFeatureDefn->GetFieldIndex("Successor"),
                           lane.successor);
 
-        laneIter++;
-        laneMeshIter++;
-        laneRoadIDIter++;
+        m_laneIter++;
+        m_laneMeshIter++;
+        m_laneRoadIDIter++;
     }
 
     if (feature)
