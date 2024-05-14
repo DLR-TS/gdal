@@ -55,8 +55,8 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextFeature()
         odr::Mesh3D roadObjectMesh = *m_roadObjectMeshesIter;
 
 
-        std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadObjectMesh);
-        OGRTriangulatedSurface tin = *tinPtr;
+        std::unique_ptr<OGRTriangulatedSurface> pTin = triangulateSurface(roadObjectMesh);
+        OGRTriangulatedSurface tin = *pTin;
         //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
         feature->SetGeometry(&tin);
 

@@ -32,7 +32,6 @@ using namespace odr;
 using namespace pugi;
 using namespace std;
 
-
 bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 {
     VSILFILE *file = nullptr;
@@ -43,7 +42,8 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
         return FALSE;
 
     const char *openOptionValue = CSLFetchNameValue(openOptions, "EPSILON");
-    if (openOptionValue != nullptr) {
+    if (openOptionValue != nullptr)
+    {
         double dfEpsilon = CPLAtof(openOptionValue);
         if (dfEpsilon > 0.0)
             m_dfEpsilon = dfEpsilon;
@@ -56,20 +56,26 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
 
-    std::unique_ptr<OGRXODRLayer> refLine(new OGRXODRLayerReferenceLine(roadElements, proj4Defn));
-    std::unique_ptr<OGRXODRLayer> laneBorder(new OGRXODRLayerLaneBorder(roadElements, proj4Defn));
-    std::unique_ptr<OGRXODRLayer> roadMark(new OGRXODRLayerRoadMark(roadElements, proj4Defn, bDissolveTIN));
-    std::unique_ptr<OGRXODRLayer> roadObject(new OGRXODRLayerRoadObject(roadElements, proj4Defn));
-    std::unique_ptr<OGRXODRLayer> lane(new OGRXODRLayerLane(roadElements, proj4Defn, bDissolveTIN));
-    std::unique_ptr<OGRXODRLayer> roadSignal(new OGRXODRLayerRoadSignal(roadElements, proj4Defn, bDissolveTIN));
-    
+    auto refLine =
+        std::make_unique<OGRXODRLayerReferenceLine>(roadElements, proj4Defn);
+    auto laneBorder =
+        std::make_unique<OGRXODRLayerLaneBorder>(roadElements, proj4Defn);
+    auto roadMark = std::make_unique<OGRXODRLayerRoadMark>(
+        roadElements, proj4Defn, bDissolveTIN);
+    auto roadObject =
+        std::make_unique<OGRXODRLayerRoadObject>(roadElements, proj4Defn);
+    auto lane = std::make_unique<OGRXODRLayerLane>(roadElements, proj4Defn,
+                                                   bDissolveTIN);
+    auto roadSignal = std::make_unique<OGRXODRLayerRoadSignal>(
+        roadElements, proj4Defn, bDissolveTIN);
+
     m_apoLayers.push_back(std::move(refLine));
     m_apoLayers.push_back(std::move(laneBorder));
     m_apoLayers.push_back(std::move(roadMark));
     m_apoLayers.push_back(std::move(roadObject));
     m_apoLayers.push_back(std::move(lane));
     m_apoLayers.push_back(std::move(roadSignal));
-    
+
     return TRUE;
 }
 
@@ -89,7 +95,7 @@ int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
 }
 
 RoadElements
-OGRXODRDataSource::createRoadElements(const std::vector<odr::Road>& roads)
+OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
 {
     RoadElements elements;
 

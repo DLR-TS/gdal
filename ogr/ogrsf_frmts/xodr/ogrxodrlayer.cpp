@@ -85,7 +85,7 @@ std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(odr::Me
     std::vector<odr::Vec3D> meshVertices = mesh.vertices;
     std::vector<uint32_t> meshIndices = mesh.indices;
 
-    std::unique_ptr<OGRTriangulatedSurface> tin = std::make_unique<OGRTriangulatedSurface>();
+    auto tin = std::make_unique<OGRTriangulatedSurface>();
     const size_t numIndices = meshIndices.size();
     // Build triangles from mesh vertices.
     // Each triple of mesh indices defines which vertices form a triangle.

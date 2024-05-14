@@ -56,8 +56,8 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
         odr::Mesh3D roadMarkMesh = *m_roadMarkMeshIter;
 
    
-        std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(roadMarkMesh);
-        OGRTriangulatedSurface tin = *tinPtr;
+        std::unique_ptr<OGRTriangulatedSurface> pTin = triangulateSurface(roadMarkMesh);
+        OGRTriangulatedSurface tin = *pTin;
         if (m_bDissolveTIN)
         {
             OGRGeometry *dissolvedPolygon = tin.UnaryUnion();

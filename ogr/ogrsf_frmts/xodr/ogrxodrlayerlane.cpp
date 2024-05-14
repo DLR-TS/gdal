@@ -66,8 +66,8 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
         std::string laneRoadID = *m_laneRoadIDIter;
 
-        std::unique_ptr<OGRTriangulatedSurface> tinPtr = triangulateSurface(laneMesh);
-        OGRTriangulatedSurface tin = *tinPtr;
+        std::unique_ptr<OGRTriangulatedSurface> pTin = triangulateSurface(laneMesh);
+        OGRTriangulatedSurface tin = *pTin;
 
         if (m_bDissolveTIN)
         {

@@ -38,15 +38,14 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
     if (poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr)
         return nullptr;
 
-    OGRXODRDataSource *dataSource = new OGRXODRDataSource();
+    auto dataSource = std::make_unique<OGRXODRDataSource>();
 
     if (!dataSource->Open(poOpenInfo->pszFilename, poOpenInfo->papszOpenOptions))
     {
-        delete dataSource;
-        dataSource = nullptr;
+        return nullptr;
     }
 
-    return dataSource;
+    return dataSource.release();
 }
 
 static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo)
