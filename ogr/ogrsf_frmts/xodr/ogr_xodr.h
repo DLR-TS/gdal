@@ -247,7 +247,7 @@ class OGRXODRDataSource : public GDALDataset
     OGRXODRDataSource();
     ~OGRXODRDataSource();
 
-    bool Open(const char *pszFilename, CSLConstList papszOpenOptions);
+    bool Open(const char *pszFilename, CSLConstList openOptions);
 
     int GetLayerCount() override
     {

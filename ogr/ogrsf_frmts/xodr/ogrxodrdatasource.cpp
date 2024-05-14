@@ -43,7 +43,7 @@ OGRXODRDataSource::~OGRXODRDataSource()
 
 }
 
-bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList papszOpenOptions)
+bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 {
     VSILFILE *file = nullptr;
 
@@ -53,9 +53,9 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList papszOpenOpti
         return FALSE;
 
     const char *openOptionValue =
-        CSLFetchNameValueDef(papszOpenOptions, "EPSILON", "1.0");
+        CSLFetchNameValueDef(openOptions, "EPSILON", "1.0");
     m_dfEpsilon = CPLAtof(openOptionValue);
-    openOptionValue = CSLFetchNameValueDef(papszOpenOptions, "DISSOLVE_TIN", "NO");
+    openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
     m_bDissolveTIN = CPLTestBool(openOptionValue);
 
     odr::OpenDriveMap xodr(pszFilename, false);
