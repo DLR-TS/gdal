@@ -66,19 +66,18 @@ OGRFeature *OGRXODRLayerLane::GetNextFeature()
 
         std::string laneRoadID = *m_laneRoadIDIter;
 
-        std::unique_ptr<OGRTriangulatedSurface> pTin = triangulateSurface(laneMesh);
-        OGRTriangulatedSurface tin = *pTin;
+        std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(laneMesh);
 
         if (m_bDissolveTIN)
         {
-            OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
+            OGRGeometry *dissolvedPolygon = tin->UnaryUnion();
      
             feature->SetGeometryDirectly(dissolvedPolygon);
         }
         else
         {
-            //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometry(&tin);
+            //tin->MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+            feature->SetGeometryDirectly(tin.release());
         }
 
         feature->SetFID(m_nNextFID++);

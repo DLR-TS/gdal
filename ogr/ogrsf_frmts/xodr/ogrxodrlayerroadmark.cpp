@@ -56,17 +56,16 @@ OGRFeature *OGRXODRLayerRoadMark::GetNextFeature()
         odr::Mesh3D roadMarkMesh = *m_roadMarkMeshIter;
 
    
-        std::unique_ptr<OGRTriangulatedSurface> pTin = triangulateSurface(roadMarkMesh);
-        OGRTriangulatedSurface tin = *pTin;
+        std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(roadMarkMesh);
         if (m_bDissolveTIN)
         {
-            OGRGeometry *dissolvedPolygon = tin.UnaryUnion();
+            OGRGeometry *dissolvedPolygon = tin->UnaryUnion();
             feature->SetGeometryDirectly(dissolvedPolygon);
         }
         else
         {
-            //tin.MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
-            feature->SetGeometry(&tin);
+            //tin->MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+            feature->SetGeometryDirectly(tin.release());
         }
         feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
                           roadMark.road_id.c_str());
