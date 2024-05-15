@@ -80,7 +80,7 @@ void OGRXODRLayer::resetRoadElementIterators()
     m_roadSignalMeshesIter = m_roadElements.roadSignalMeshes.begin();
 }
 
-std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(odr::Mesh3D mesh)
+std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(const odr::Mesh3D &mesh)
 {
     std::vector<odr::Vec3D> meshVertices = mesh.vertices;
     std::vector<uint32_t> meshIndices = mesh.indices;

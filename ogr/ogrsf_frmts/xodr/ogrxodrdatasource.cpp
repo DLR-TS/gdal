@@ -110,7 +110,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
 {
     RoadElements elements;
 
-    for (odr::Road road : roads)
+    for (const odr::Road &road : roads)
     {
         elements.roads.insert({road.id, road});
 
@@ -118,11 +118,11 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
             road.ref_line.get_line(0.0, road.length, m_dfEpsilon);
         elements.referenceLines.push_back(referenceLine);
 
-        for (odr::LaneSection laneSection : road.get_lanesections())
+        for (const odr::LaneSection &laneSection : road.get_lanesections())
         {
             elements.laneSections.push_back(laneSection);
 
-            for (odr::Lane lane : laneSection.get_lanes())
+            for (const odr::Lane &lane : laneSection.get_lanes())
             {
                 elements.laneRoadIDs.push_back(road.id);
 
@@ -139,8 +139,10 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
                     road.get_lane_border_line(lane, m_dfEpsilon, false);
                 elements.laneLinesInner.push_back(laneLineInner);
 
-                for (odr::RoadMark roadMark : lane.get_roadmarks(
-                         laneSection.s0, road.get_lanesection_end(laneSection)))
+                const double sectionStart = laneSection.s0;
+                const double sectionEnd = road.get_lanesection_end(laneSection);
+                for (const odr::RoadMark &roadMark :
+                     lane.get_roadmarks(sectionStart, sectionEnd))
                 {
                     elements.roadMarks.push_back(roadMark);
 
@@ -151,7 +153,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
             }
         }
 
-        for (odr::RoadObject roadObject : road.get_road_objects())
+        for (const odr::RoadObject &roadObject : road.get_road_objects())
         {
             elements.roadObjects.push_back(roadObject);
 
@@ -160,7 +162,7 @@ OGRXODRDataSource::createRoadElements(const std::vector<odr::Road> &roads)
             elements.roadObjectMeshes.push_back(roadObjectMesh);
         }
 
-        for (odr::RoadSignal roadSignal : road.get_road_signals())
+        for (const odr::RoadSignal &roadSignal : road.get_road_signals())
         {
             elements.roadSignals.push_back(roadSignal);
 

@@ -121,7 +121,7 @@ class OGRXODRLayer : public OGRLayer
      * Builds an ordinary TIN from libOpenDRIVE's mesh.
     */
     std::unique_ptr<OGRTriangulatedSurface>
-    triangulateSurface(odr::Mesh3D mesh);
+    triangulateSurface(const odr::Mesh3D &mesh);
 
   public:
     OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn);
