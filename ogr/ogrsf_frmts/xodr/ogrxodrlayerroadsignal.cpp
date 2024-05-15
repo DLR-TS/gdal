@@ -32,8 +32,8 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadElements,
-                                               std::string proj4Defn,
-                                               bool dissolveTriangulatedSurface)
+                                               const std::string proj4Defn,
+                                               const bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
     m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());

@@ -38,13 +38,13 @@
 #include <string>
 #include <typeinfo>
 
-OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn)
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, false)
 {
 }
 
-OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, std::string proj4Defn,
-                           bool dissolveTriangulatedSurface)
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn,
+                           const bool dissolveTriangulatedSurface)
     : m_roadElements(xodrRoadElements), m_bDissolveTIN(dissolveTriangulatedSurface)
 {
     m_poSRS.importFromProj4(proj4Defn.c_str());

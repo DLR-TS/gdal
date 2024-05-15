@@ -32,7 +32,7 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadElements,
-                                               std::string proj4Defn)
+                                               const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
