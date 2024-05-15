@@ -35,11 +35,24 @@ using namespace std;
 bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 {
     VSILFILE *file = nullptr;
-
     file = VSIFOpenL(pszFilename, "r");
-
     if (file == nullptr)
         return FALSE;
+
+    odr::OpenDriveMap xodr(pszFilename, false);
+    bool parsingFailed = xodr.xml_doc.child("OpenDRIVE").empty();
+    if (parsingFailed) {
+        CPLError(CE_Failure, CPLE_AppDefined,
+                 "No valid OpenDRIVE dataset could be parsed.");
+        return FALSE;
+    }
+
+    std::vector<odr::Road> roads = xodr.get_roads();
+    if (roads.empty()) {
+        CPLError(CE_Failure, CPLE_AppDefined,
+                 "OpenDRIVE dataset does not contain any roads.");
+        return FALSE;
+    }
 
     const char *openOptionValue = CSLFetchNameValue(openOptions, "EPSILON");
     if (openOptionValue != nullptr)
@@ -51,10 +64,8 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
     bool bDissolveTIN = CPLTestBool(openOptionValue);
 
-    odr::OpenDriveMap xodr(pszFilename, false);
-    std::string proj4Defn = xodr.proj4;
-    std::vector<odr::Road> roads = xodr.get_roads();
     RoadElements roadElements = createRoadElements(roads);
+    std::string proj4Defn = xodr.proj4;
 
     auto refLine =
         std::make_unique<OGRXODRLayerReferenceLine>(roadElements, proj4Defn);
