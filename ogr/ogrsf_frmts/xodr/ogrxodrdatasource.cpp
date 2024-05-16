@@ -58,8 +58,12 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     if (openOptionValue != nullptr)
     {
         double dfEpsilon = CPLAtof(openOptionValue);
-        if (dfEpsilon > 0.0)
+        if (dfEpsilon > 0.0) {
             m_dfEpsilon = dfEpsilon;
+        } else {
+            CPLError(CE_Warning , CPLE_AppDefined,
+                     "Invalid value for EPSILON specified. Falling back to default of 1.0.");
+        }
     }
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");
     bool bDissolveTIN = CPLTestBool(openOptionValue);

@@ -63,7 +63,7 @@ The following open options can be specified
       :choices: <float>
       :default: 1.0
 
-      Epsilon value for linear approximation of continuous OpenDRIVE geometries. A smaller value results in a finer sampling. This parameter is internally forwarded to libOpenDRIVE.
+      Epsilon value ``> 0.0`` for linear approximation of continuous OpenDRIVE geometries. A smaller value results in a finer sampling. This parameter corresponds to libOpenDRIVE's ``eps`` parameter.
 
 -  .. oo:: DISSOLVE_TIN
       :choices: YES, NO
