@@ -28,6 +28,7 @@
  ****************************************************************************/
 
 #include "ogr_xodr.h"
+#include "ogrxodrdrivercore.h"
 #include "cpl_conv.h"
 #include "cpl_error.h"
 
@@ -48,34 +49,15 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
     return dataSource.release();
 }
 
-static int OGRXODRDriverIdentity(GDALOpenInfo *poOpenInfo)
-{
-    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "xodr");
-}
-
 void RegisterOGRXODR()
 {
     if (GDALGetDriverByName("XODR") != nullptr)
         return;
 
     GDALDriver *poDriver = new GDALDriver();
-    poDriver->SetDescription("XODR");
-    poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-    poDriver->SetMetadataItem(
-        GDAL_DMD_LONGNAME,
-        "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
-    poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
-    poDriver->SetMetadataItem(
-        GDAL_DMD_OPENOPTIONLIST,
-        "<OpenOptionList>"
-        "  <Option name='EPSILON' type='float' description='Epsilon value for "
-        "linear approximation of continuous OpenDRIVE geometries.' "
-        "default='1.0'/>"
-        "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to "
-        "dissolve triangulated surfaces.' default= 'NO'/>"
-        "</OpenOptionList>");
+    OGRXODRDriverSetCommonMetadata(poDriver);
+    
     poDriver->pfnOpen = OGRXODRDriverOpen;
-    poDriver->pfnIdentify = OGRXODRDriverIdentity;
 
     GetGDALDriverManager()->RegisterDriver(poDriver);
 }
