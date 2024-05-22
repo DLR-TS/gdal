@@ -40,10 +40,10 @@ USER root
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-            build-essential ca-certificates \
-            git make cmake wget unzip libtool automake \
-            zlib1g-dev${APT_ARCH_SUFFIX} libsqlite3-dev${APT_ARCH_SUFFIX} pkg-config sqlite3 libcurl4-openssl-dev${APT_ARCH_SUFFIX} \
-            libtiff5-dev${APT_ARCH_SUFFIX} \
+    build-essential ca-certificates \
+    git make cmake wget unzip libtool automake \
+    zlib1g-dev${APT_ARCH_SUFFIX} libsqlite3-dev${APT_ARCH_SUFFIX} pkg-config sqlite3 libcurl4-openssl-dev${APT_ARCH_SUFFIX} \
+    libtiff5-dev${APT_ARCH_SUFFIX} \
     && rm -rf /var/lib/apt/lists/*
 
 ARG JAVA_VERSION=17
@@ -51,23 +51,23 @@ ARG JAVA_VERSION=17
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends \
-       libopenjp2-7-dev${APT_ARCH_SUFFIX} libcairo2-dev${APT_ARCH_SUFFIX} \
-       python3-dev${APT_ARCH_SUFFIX} python3-numpy${APT_ARCH_SUFFIX} python3-setuptools${APT_ARCH_SUFFIX} \
-       libpng-dev${APT_ARCH_SUFFIX} libjpeg-dev${APT_ARCH_SUFFIX} libgif-dev${APT_ARCH_SUFFIX} liblzma-dev${APT_ARCH_SUFFIX} libgeos-dev${APT_ARCH_SUFFIX} \
-       curl libxml2-dev${APT_ARCH_SUFFIX} libexpat-dev${APT_ARCH_SUFFIX} libxerces-c-dev${APT_ARCH_SUFFIX} \
-       libnetcdf-dev${APT_ARCH_SUFFIX} libpoppler-dev${APT_ARCH_SUFFIX} libpoppler-private-dev${APT_ARCH_SUFFIX} \
-       libspatialite-dev${APT_ARCH_SUFFIX} librasterlite2-dev${APT_ARCH_SUFFIX} swig ant libhdf4-alt-dev${APT_ARCH_SUFFIX} libhdf5-serial-dev${APT_ARCH_SUFFIX} \
-       libfreexl-dev${APT_ARCH_SUFFIX} unixodbc-dev${APT_ARCH_SUFFIX}  mdbtools-dev${APT_ARCH_SUFFIX} libwebp-dev${APT_ARCH_SUFFIX} \
-       liblcms2-2 libpcre3-dev${APT_ARCH_SUFFIX} libcrypto++-dev${APT_ARCH_SUFFIX} libfyba-dev${APT_ARCH_SUFFIX} \
-       libkml-dev${APT_ARCH_SUFFIX} libmysqlclient-dev${APT_ARCH_SUFFIX} libogdi-dev${APT_ARCH_SUFFIX} \
-       libcfitsio-dev${APT_ARCH_SUFFIX} openjdk-"$JAVA_VERSION"-jdk${APT_ARCH_SUFFIX} libzstd-dev${APT_ARCH_SUFFIX} \
-       libpq-dev${APT_ARCH_SUFFIX} libssl-dev${APT_ARCH_SUFFIX} libboost-dev${APT_ARCH_SUFFIX} \
-       autoconf automake bash-completion libarmadillo-dev${APT_ARCH_SUFFIX} \
-       libopenexr-dev${APT_ARCH_SUFFIX} libheif-dev${APT_ARCH_SUFFIX} \
-       libdeflate-dev${APT_ARCH_SUFFIX} libblosc-dev${APT_ARCH_SUFFIX} liblz4-dev${APT_ARCH_SUFFIX} libbz2-dev${APT_ARCH_SUFFIX} \
-       libbrotli-dev${APT_ARCH_SUFFIX} \
-       libarchive-dev${APT_ARCH_SUFFIX} \
-       libaec-dev${APT_ARCH_SUFFIX} \
+    libopenjp2-7-dev${APT_ARCH_SUFFIX} libcairo2-dev${APT_ARCH_SUFFIX} \
+    python3-dev${APT_ARCH_SUFFIX} python3-numpy${APT_ARCH_SUFFIX} python3-setuptools${APT_ARCH_SUFFIX} \
+    libpng-dev${APT_ARCH_SUFFIX} libjpeg-dev${APT_ARCH_SUFFIX} libgif-dev${APT_ARCH_SUFFIX} liblzma-dev${APT_ARCH_SUFFIX} libgeos-dev${APT_ARCH_SUFFIX} \
+    curl libxml2-dev${APT_ARCH_SUFFIX} libexpat-dev${APT_ARCH_SUFFIX} libxerces-c-dev${APT_ARCH_SUFFIX} \
+    libnetcdf-dev${APT_ARCH_SUFFIX} libpoppler-dev${APT_ARCH_SUFFIX} libpoppler-private-dev${APT_ARCH_SUFFIX} \
+    libspatialite-dev${APT_ARCH_SUFFIX} librasterlite2-dev${APT_ARCH_SUFFIX} swig ant libhdf4-alt-dev${APT_ARCH_SUFFIX} libhdf5-serial-dev${APT_ARCH_SUFFIX} \
+    libfreexl-dev${APT_ARCH_SUFFIX} unixodbc-dev${APT_ARCH_SUFFIX}  mdbtools-dev${APT_ARCH_SUFFIX} libwebp-dev${APT_ARCH_SUFFIX} \
+    liblcms2-2 libpcre3-dev${APT_ARCH_SUFFIX} libcrypto++-dev${APT_ARCH_SUFFIX} libfyba-dev${APT_ARCH_SUFFIX} \
+    libkml-dev${APT_ARCH_SUFFIX} libmysqlclient-dev${APT_ARCH_SUFFIX} libogdi-dev${APT_ARCH_SUFFIX} \
+    libcfitsio-dev${APT_ARCH_SUFFIX} openjdk-"$JAVA_VERSION"-jdk${APT_ARCH_SUFFIX} libzstd-dev${APT_ARCH_SUFFIX} \
+    libpq-dev${APT_ARCH_SUFFIX} libssl-dev${APT_ARCH_SUFFIX} libboost-dev${APT_ARCH_SUFFIX} \
+    autoconf automake bash-completion libarmadillo-dev${APT_ARCH_SUFFIX} \
+    libopenexr-dev${APT_ARCH_SUFFIX} libheif-dev${APT_ARCH_SUFFIX} \
+    libdeflate-dev${APT_ARCH_SUFFIX} libblosc-dev${APT_ARCH_SUFFIX} liblz4-dev${APT_ARCH_SUFFIX} libbz2-dev${APT_ARCH_SUFFIX} \
+    libbrotli-dev${APT_ARCH_SUFFIX} \
+    libarchive-dev${APT_ARCH_SUFFIX} \
+    libaec-dev${APT_ARCH_SUFFIX} \
     && rm -rf /var/lib/apt/lists/*
 
 # Build likbkea
@@ -78,8 +78,8 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -f kealib-${KEA_VERSION}.zip \
     && cd kealib-kealib-${KEA_VERSION} \
     && cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_INCLUDE_DIR=/usr/include/hdf5/serial \
-        -DHDF5_LIB_PATH=/usr/lib/${GCC_ARCH}-linux-gnu/hdf5/serial -DLIBKEA_WITH_GDAL=OFF \
+    -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_INCLUDE_DIR=/usr/include/hdf5/serial \
+    -DHDF5_LIB_PATH=/usr/lib/${GCC_ARCH}-linux-gnu/hdf5/serial -DLIBKEA_WITH_GDAL=OFF \
     && make -j$(nproc) \
     && make install DESTDIR="/build_thirdparty" \
     && make install \
@@ -93,7 +93,7 @@ ARG MONGO_C_DRIVER_VERSION=1.24.4
 RUN . /buildscripts/bh-set-envvars.sh \
     && mkdir mongo-c-driver \
     && wget -q https://github.com/mongodb/mongo-c-driver/releases/download/${MONGO_C_DRIVER_VERSION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}.tar.gz -O - \
-        | tar xz -C mongo-c-driver --strip-components=1 \
+    | tar xz -C mongo-c-driver --strip-components=1 \
     && cd mongo-c-driver \
     && mkdir build_cmake \
     && cd build_cmake \
@@ -112,7 +112,7 @@ ARG MONGOCXX_VERSION=3.8.1
 RUN . /buildscripts/bh-set-envvars.sh \
     && mkdir mongocxx \
     && wget -q https://github.com/mongodb/mongo-cxx-driver/archive/r${MONGOCXX_VERSION}.tar.gz -O - \
-        | tar xz -C mongocxx --strip-components=1 \
+    | tar xz -C mongocxx --strip-components=1 \
     && cd mongocxx \
     && mkdir build_cmake \
     && cd build_cmake \
@@ -130,10 +130,10 @@ ARG TILEDB_VERSION=2.17.4
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        libspdlog-dev${APT_ARCH_SUFFIX} \
+    libspdlog-dev${APT_ARCH_SUFFIX} \
     && mkdir tiledb \
     && wget -q https://github.com/TileDB-Inc/TileDB/archive/${TILEDB_VERSION}.tar.gz -O - \
-        | tar xz -C tiledb --strip-components=1 \
+    | tar xz -C tiledb --strip-components=1 \
     && cd tiledb \
     && mkdir build_cmake \
     && cd build_cmake \
@@ -155,7 +155,7 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -f v${OPENJPEG_VERSION}.tar.gz \
     && cd openjpeg-${OPENJPEG_VERSION} \
     && cmake . -DBUILD_SHARED_LIBS=ON  -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_PREFIX=/usr \
     && make -j$(nproc) \
     && make install \
     && mkdir -p /build_thirdparty/usr/lib/${GCC_ARCH}-linux-gnu \
@@ -185,21 +185,22 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && cd .. \
     && rm -rf libOpenDRIVE-${OPENDRIVE_VERSION} \
     ); fi
-    
+
+
 #Build File Geodatabase
 
 ARG WITH_FILEGDB=
 RUN . /buildscripts/bh-set-envvars.sh \
-  && if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
-  wget -q https://github.com/Esri/file-geodatabase-api/raw/master/FileGDB_API_1.5.2/FileGDB_API-RHEL7-64gcc83.tar.gz \
-  && tar -xzf FileGDB_API-RHEL7-64gcc83.tar.gz \
-  && chown -R root:root FileGDB_API-RHEL7-64gcc83 \
-  && mv FileGDB_API-RHEL7-64gcc83 /usr/local/FileGDB_API \
-  && rm -rf /usr/local/FileGDB_API/lib/libstdc++* \
-  && cp /usr/local/FileGDB_API/lib/* /build_thirdparty/usr/lib/x86_64-linux-gnu \
-  && cp /usr/local/FileGDB_API/include/* /usr/include \
-  && rm -rf FileGDB_API-RHEL7-64gcc83.tar.gz \
-  ) ; fi
+    && if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
+    wget -q https://github.com/Esri/file-geodatabase-api/raw/master/FileGDB_API_1.5.2/FileGDB_API-RHEL7-64gcc83.tar.gz \
+    && tar -xzf FileGDB_API-RHEL7-64gcc83.tar.gz \
+    && chown -R root:root FileGDB_API-RHEL7-64gcc83 \
+    && mv FileGDB_API-RHEL7-64gcc83 /usr/local/FileGDB_API \
+    && rm -rf /usr/local/FileGDB_API/lib/libstdc++* \
+    && cp /usr/local/FileGDB_API/lib/* /build_thirdparty/usr/lib/x86_64-linux-gnu \
+    && cp /usr/local/FileGDB_API/include/* /usr/include \
+    && rm -rf FileGDB_API-RHEL7-64gcc83.tar.gz \
+    ) ; fi
 
 # Build libqb3
 RUN . /buildscripts/bh-set-envvars.sh \
@@ -216,16 +217,16 @@ RUN . /buildscripts/bh-set-envvars.sh \
 
 ARG WITH_PDFIUM=yes
 RUN if echo "$WITH_PDFIUM" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
-  wget -q https://github.com/rouault/pdfium_build_gdal_3_9/releases/download/pdfium_6309_v1/install-ubuntu2004-rev6309.tar.gz \
-  && tar -xzf install-ubuntu2004-rev6309.tar.gz \
-  && chown -R root:root install \
-  && mv install/lib/* /usr/lib/ \
-  && mv install/include/* /usr/include/ \
-  && rm -rf install-ubuntu2004-rev6309.tar.gz install \
-  && apt-get update -y \
-  && apt-get install -y --fix-missing --no-install-recommends liblcms2-dev${APT_ARCH_SUFFIX} \
-  && rm -rf /var/lib/apt/lists/* \
-  ) ; fi
+    wget -q https://github.com/rouault/pdfium_build_gdal_3_9/releases/download/pdfium_6309_v1/install-ubuntu2004-rev6309.tar.gz \
+    && tar -xzf install-ubuntu2004-rev6309.tar.gz \
+    && chown -R root:root install \
+    && mv install/lib/* /usr/lib/ \
+    && mv install/include/* /usr/include/ \
+    && rm -rf install-ubuntu2004-rev6309.tar.gz install \
+    && apt-get update -y \
+    && apt-get install -y --fix-missing --no-install-recommends liblcms2-dev${APT_ARCH_SUFFIX} \
+    && rm -rf /var/lib/apt/lists/* \
+    ) ; fi
 
 # Build libjxl
 RUN . /buildscripts/bh-set-envvars.sh \
@@ -246,9 +247,9 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Arrow C++
-ARG ARROW_VERSION=15.0.1-1
+ARG ARROW_VERSION=16.1.0-1
 # ARROW_SOVERSION to be updated in the "Build final image" section too
-ARG ARROW_SOVERSION=1500
+ARG ARROW_SOVERSION=1600
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V ca-certificates lsb-release wget \
@@ -284,8 +285,8 @@ COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 # itself has changed.
 RUN . /buildscripts/bh-set-envvars.sh \
     && DESTDIR=/build_tmp_proj /buildscripts/bh-proj.sh \
-     && LD_LIBRARY_PATH=/build_tmp_proj/usr/local/lib /build_tmp_proj/usr/local/bin/projsync --target-dir /tmp/proj_grids --all \
-     && rm -rf /build_tmp_proj
+    && LD_LIBRARY_PATH=/build_tmp_proj/usr/local/lib /build_tmp_proj/usr/local/bin/projsync --target-dir /tmp/proj_grids --all \
+    && rm -rf /build_tmp_proj
 
 # Build PROJ
 ARG PROJ_VERSION=master
@@ -309,7 +310,7 @@ FROM $TARGET_BASE_IMAGE as runner
 USER root
 RUN date
 ARG JAVA_VERSION=17
-ARG ARROW_SOVERSION=1500
+ARG ARROW_SOVERSION=1600
 
 # Update distro
 RUN apt-get update -y && apt-get upgrade -y \
@@ -317,30 +318,30 @@ RUN apt-get update -y && apt-get upgrade -y \
 
 ARG TARGET_ARCH=
 RUN apt-get update \
-# PROJ dependencies
+    # PROJ dependencies
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        libsqlite3-0 libtiff5 libcurl4 \
-        wget curl unzip ca-certificates \
-# GDAL dependencies
+    libsqlite3-0 libtiff5 libcurl4 \
+    wget curl unzip ca-certificates \
+    # GDAL dependencies
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        libopenjp2-7 libcairo2 python3-numpy \
-        libpng16-16 libjpeg-turbo8 libgif7 liblzma5 libgeos3.10.2 libgeos-c1v5 \
-        libxml2 libexpat1 \
-        libxerces-c3.2 libnetcdf-c++4 netcdf-bin libpoppler118 libspatialite7 librasterlite2-1 gpsbabel \
-        libhdf4-0-alt libhdf5-103 libhdf5-cpp-103 poppler-utils libfreexl1 unixodbc mdbtools libwebp7 \
-        liblcms2-2 libpcre3 libcrypto++8 libfyba0 \
-        libkmlbase1 libkmlconvenience1 libkmldom1 libkmlengine1 libkmlregionator1 libkmlxsd1 \
-        libmysqlclient21 libogdi4.1 libcfitsio9 openjdk-"$JAVA_VERSION"-jre \
-        libzstd1 bash bash-completion libpq5 libssl3 \
-        libarmadillo10 libpython3.10 libopenexr25 libheif1 \
-        libdeflate0 libblosc1 liblz4-1 \
-        libbrotli1 \
-        libarchive13 \
-        libaec0 \
-        libspdlog1 \
-        python-is-python3 \
-        # pil for antialias option of gdal2tiles
-        python3-pil \
+    libopenjp2-7 libcairo2 python3-numpy \
+    libpng16-16 libjpeg-turbo8 libgif7 liblzma5 libgeos3.10.2 libgeos-c1v5 \
+    libxml2 libexpat1 \
+    libxerces-c3.2 libnetcdf-c++4 netcdf-bin libpoppler118 libspatialite7 librasterlite2-1 gpsbabel \
+    libhdf4-0-alt libhdf5-103 libhdf5-cpp-103 poppler-utils libfreexl1 unixodbc mdbtools libwebp7 \
+    liblcms2-2 libpcre3 libcrypto++8 libfyba0 \
+    libkmlbase1 libkmlconvenience1 libkmldom1 libkmlengine1 libkmlregionator1 libkmlxsd1 \
+    libmysqlclient21 libogdi4.1 libcfitsio9 openjdk-"$JAVA_VERSION"-jre \
+    libzstd1 bash bash-completion libpq5 libssl3 \
+    libarmadillo10 libpython3.10 libopenexr25 libheif1 \
+    libdeflate0 libblosc1 liblz4-1 \
+    libbrotli1 \
+    libarchive13 \
+    libaec0 \
+    libspdlog1 \
+    python-is-python3 \
+    # pil for antialias option of gdal2tiles
+    python3-pil \
     # Workaround bug in ogdi packaging
     && ln -s /usr/lib/ogdi/libvrf.so /usr/lib \
     # Install Arrow C++
@@ -370,5 +371,6 @@ COPY --from=builder  /build/usr/share/gdal/ /usr/share/gdal/
 COPY --from=builder  /build/usr/include/ /usr/include/
 COPY --from=builder  /build_gdal_python/usr/ /usr/
 COPY --from=builder  /build_gdal_version_changing/usr/ /usr/
+COPY --from=builder /build_thirdparty/usr/lib/ /usr/lib/
 
 RUN ldconfig
