@@ -48,9 +48,8 @@ static int OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo)
 
 void OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver)
 {
-    poDriver->SetDescription("XODR");
+    poDriver->SetDescription(DRIVER_NAME);
     poDriver->SetMetadataItem(GDAL_DCAP_VECTOR, "YES");
-
     poDriver->SetMetadataItem(GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
     poDriver->SetMetadataItem(
@@ -62,20 +61,18 @@ void OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver)
         "  <Option name='DISSOLVE_TIN' type='boolean' description='Whether to "
         "dissolve triangulated surfaces.' default= 'NO'/>"
         "</OpenOptionList>");
-
-
     poDriver->pfnIdentify = OGRXODRDriverIdentify;
     poDriver->SetMetadataItem(GDAL_DCAP_OPEN, "YES");
 }
 
 /************************************************************************/
-/*                   DeclareDeferredOGRXLSPlugin()                      */
+/*                   DeclareDeferredOGRXODRPlugin()                      */
 /************************************************************************/
 
 #ifdef PLUGIN_FILENAME
 void DeclareDeferredOGRXODRPlugin()
 {
-    if (GDALGetDriverByName("XODR") != nullptr)
+    if (GDALGetDriverByName(DRIVER_NAME) != nullptr)
     {
         return;
     }
