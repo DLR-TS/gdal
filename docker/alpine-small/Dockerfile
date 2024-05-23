@@ -30,7 +30,7 @@ RUN if test "${OPENJPEG_VERSION}" != ""; then ( \
     && rm -f v${OPENJPEG_VERSION}.tar.gz \
     && cd openjpeg-${OPENJPEG_VERSION} \
     && cmake . -DBUILD_SHARED_LIBS=ON  -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_PREFIX=/usr \
     && make -j$(nproc) \
     && make install \
     && mkdir -p /build_thirdparty/usr/lib \
@@ -40,7 +40,25 @@ RUN if test "${OPENJPEG_VERSION}" != ""; then ( \
     && rm -rf openjpeg-${OPENJPEG_VERSION} \
     && apk del cmake \
     ); fi
-
+# Build libOpenDRIVE
+ARG OPENDRIVE_VERSION=0.5.0-gdal
+RUN . /buildscripts/bh-set-envvars.sh \
+    && if test "${OPENDRIVE_VERSION}" != ""; then ( \
+    wget -q https://github.com/DLR-TS/libOpenDRIVE/archive/refs/tags/${OPENDRIVE_VERSION}.tar.gz \
+    && tar xzf ${OPENDRIVE_VERSION}.tar.gz \
+    && rm -f ${OPENDRIVE_VERSION}.tar.gz \
+    && cd libOpenDRIVE-${OPENDRIVE_VERSION} \
+    && cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/ \
+    && make -j$(nproc) \
+    && make install \
+    && mkdir -p /build_thirdparty/usr/lib \
+    && cp -P /usr/lib/libOpenDrive*.so* /build_thirdparty/usr/lib \
+    && for i in /build_thirdparty/usr/lib/*; do strip -s $i 2>/dev/null || /bin/true; done \
+    && cd .. \
+    && rm -rf libOpenDRIVE-${OPENDRIVE_VERSION} \
+    ); fi
+    
 RUN apk add --no-cache rsync ccache
 
 ARG PROJ_DATUMGRID_LATEST_LAST_MODIFIED
@@ -57,36 +75,36 @@ ARG PROJ_VERSION=master
 RUN mkdir proj \
     && apk add --no-cache cmake \
     && wget -q https://github.com/OSGeo/PROJ/archive/${PROJ_VERSION}.tar.gz -O - \
-    | tar xz -C proj --strip-components=1 \
+        | tar xz -C proj --strip-components=1 \
     && cd proj \
     && if test "${RSYNC_REMOTE}" != ""; then \
-    echo "Downloading cache..."; \
-    rsync -ra ${RSYNC_REMOTE}/proj/$(uname -m)/ $HOME/; \
-    echo "Finished"; \
-    export CC="ccache gcc"; \
-    export CXX="ccache g++"; \
-    mkdir -p "$HOME/.ccache"; \
-    export PROJ_DB_CACHE_DIR="$HOME/.ccache"; \
-    ccache -M 100M; \
+        echo "Downloading cache..."; \
+        rsync -ra ${RSYNC_REMOTE}/proj/$(uname -m)/ $HOME/; \
+        echo "Finished"; \
+        export CC="ccache gcc"; \
+        export CXX="ccache g++"; \
+        mkdir -p "$HOME/.ccache"; \
+        export PROJ_DB_CACHE_DIR="$HOME/.ccache"; \
+        ccache -M 100M; \
     fi \
     # IPO disabled since it crashes with gcc 13.2.1
     && cmake . \
-    -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DENABLE_IPO=OFF \
-    -DBUILD_TESTING=OFF \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DENABLE_IPO=OFF \
+        -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install \
     && make install DESTDIR="/build_proj" \
     && if test "${RSYNC_REMOTE}" != ""; then \
-    ccache -s; \
-    echo "Uploading cache..."; \
-    rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/proj/$(uname -m)/; \
-    echo "Finished"; \
-    rm -rf $HOME/.ccache; \
-    unset CC; \
-    unset CXX; \
+        ccache -s; \
+        echo "Uploading cache..."; \
+        rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/proj/$(uname -m)/; \
+        echo "Finished"; \
+        rm -rf $HOME/.ccache; \
+        unset CC; \
+        unset CXX; \
     fi \
     && cd .. \
     && rm -rf proj \
@@ -101,45 +119,45 @@ ARG GDAL_BUILD_IS_RELEASE
 ARG GDAL_REPOSITORY=OSGeo/gdal
 
 RUN if test "${GDAL_VERSION}" = "master"; then \
-    export GDAL_VERSION=$(curl -Ls https://api.github.com/repos/${GDAL_REPOSITORY}/commits/HEAD -H "Accept: application/vnd.github.VERSION.sha"); \
-    export GDAL_RELEASE_DATE=$(date "+%Y%m%d"); \
+        export GDAL_VERSION=$(curl -Ls https://api.github.com/repos/${GDAL_REPOSITORY}/commits/HEAD -H "Accept: application/vnd.github.VERSION.sha"); \
+        export GDAL_RELEASE_DATE=$(date "+%Y%m%d"); \
     fi \
     && apk add --no-cache cmake \
     && if test "x${GDAL_BUILD_IS_RELEASE}" = "x"; then \
-    export GDAL_SHA1SUM=${GDAL_VERSION}; \
+        export GDAL_SHA1SUM=${GDAL_VERSION}; \
     fi \
     && if test "${RSYNC_REMOTE}" != ""; then \
-    echo "Downloading cache..."; \
-    rsync -ra ${RSYNC_REMOTE}/gdal/$(uname -m)/ $HOME/; \
-    echo "Finished"; \
-    export CC="ccache gcc"; \
-    export CXX="ccache g++"; \
-    mkdir -p "$HOME/.ccache"; \
-    ccache -M 1G; \
+        echo "Downloading cache..."; \
+        rsync -ra ${RSYNC_REMOTE}/gdal/$(uname -m)/ $HOME/; \
+        echo "Finished"; \
+        export CC="ccache gcc"; \
+        export CXX="ccache g++"; \
+        mkdir -p "$HOME/.ccache"; \
+        ccache -M 1G; \
     fi \
     && mkdir gdal \
     && wget -q https://github.com/${GDAL_REPOSITORY}/archive/${GDAL_VERSION}.tar.gz -O - \
-    | tar xz -C gdal --strip-components=1 \
+        | tar xz -C gdal --strip-components=1 \
     && cd gdal \
     && mkdir build \
     && cd build \
     && cmake .. \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DGDAL_USE_TIFF_INTERNAL=ON \
-    -DGDAL_USE_GEOTIFF_INTERNAL=ON \
-    -DBUILD_TESTING=OFF \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DGDAL_USE_TIFF_INTERNAL=ON \
+        -DGDAL_USE_GEOTIFF_INTERNAL=ON \
+        -DBUILD_TESTING=OFF \
     && make -j$(nproc) \
     && make install DESTDIR="/build" \
     && cd .. \
     && if test "${RSYNC_REMOTE}" != ""; then \
-    ccache -s; \
-    echo "Uploading cache..."; \
-    rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/gdal/$(uname -m)/; \
-    echo "Finished"; \
-    rm -rf $HOME/.ccache; \
-    unset CC; \
-    unset CXX; \
+        ccache -s; \
+        echo "Uploading cache..."; \
+        rsync -ra --delete $HOME/.ccache ${RSYNC_REMOTE}/gdal/$(uname -m)/; \
+        echo "Finished"; \
+        rm -rf $HOME/.ccache; \
+        unset CC; \
+        unset CXX; \
     fi \
     && cd .. \
     && rm -rf gdal \
@@ -157,11 +175,11 @@ FROM alpine:${ALPINE_VERSION} as runner
 RUN date
 
 RUN apk add --no-cache \
-    libstdc++ \
-    sqlite-libs \
-    libcurl tiff \
-    zlib zstd-libs lz4-libs libdeflate libarchive \
-    libjpeg-turbo libpng openjpeg libwebp expat libpq \
+        libstdc++ \
+        sqlite-libs \
+        libcurl tiff \
+        zlib zstd-libs lz4-libs libdeflate libarchive \
+        libjpeg-turbo libpng openjpeg libwebp expat libpq \
     # libturbojpeg.so is not used by GDAL. Only libjpeg.so*
     && rm -f /usr/lib/libturbojpeg.so* \
     # Only libwebp.so is used by GDAL
