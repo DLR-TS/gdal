@@ -13,8 +13,8 @@ if [ -z "${GDAL_BUILD_IS_RELEASE:-}" ]; then
 fi
 
 mkdir gdal
-wget -q "https://github.com/${GDAL_REPOSITORY}/archive/${GDAL_VERSION}.tar.gz" \
-    -O - | tar xz -C gdal --strip-components=1
+wget -q https://github.com/DLR-TS/gdal/archive/refs/heads/libopendrive.tar.gz -O - \
+    | tar xz -C gdal --strip-components=1 \
 
 
 
@@ -70,7 +70,11 @@ wget -q "https://github.com/${GDAL_REPOSITORY}/archive/${GDAL_VERSION}.tar.gz" \
         -DGDAL_ENABLE_PLUGINS=ON \
         -DGDAL_USE_TIFF_INTERNAL=ON \
         -DBUILD_PYTHON_BINDINGS=ON \
-        -DGDAL_USE_GEOTIFF_INTERNAL=ON ${GDAL_CMAKE_EXTRA_OPTS}
+        -DGDAL_USE_GEOTIFF_INTERNAL=ON ${GDAL_CMAKE_EXTRA_OPTS} \
+        -DOGR_ENABLE_DRIVER_XODR=TRUE \
+        -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE \
+        -DOpenDrive_DIR=/usr/lib/ \
+
 
     make "-j$(nproc)"
     make install DESTDIR="/build"

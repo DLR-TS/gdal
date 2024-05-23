@@ -69,7 +69,7 @@ void OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver)
 }
 
 /************************************************************************/
-/*                   DeclareDeferredOGRXLSPlugin()                      */
+/*                   DeclareDeferredOGRXODRPlugin()                      */
 /************************************************************************/
 
 #ifdef PLUGIN_FILENAME
