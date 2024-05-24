@@ -65,16 +65,10 @@ struct RoadElements
 class OGRXODRLayer : public OGRLayer
 {
   private:
-    virtual void ResetReading() override;
 
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
         return m_poFeatureDefn.get();
-    }
-
-    virtual int TestCapability(const char *) override
-    {
-        return FALSE;
     }
 
     /**
@@ -116,6 +110,7 @@ class OGRXODRLayer : public OGRLayer
      * according to layer type.
     */
     virtual void defineFeatureClass() = 0;
+    virtual void ResetReading() override;
 
     /**
      * Builds an ordinary TIN from libOpenDRIVE's mesh.
@@ -134,37 +129,45 @@ class OGRXODRLayer : public OGRLayer
                  const bool dissolveTriangulatedSurface);
 };
 
-class OGRXODRLayerReferenceLine : public OGRXODRLayer
+class OGRXODRLayerReferenceLine : public OGRXODRLayer, 
+                                  public OGRGetNextFeatureThroughRaw<OGRXODRLayerReferenceLine>
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "ReferenceLine";
 
     OGRXODRLayerReferenceLine(const RoadElements &xodrRoadElements,
                               const std::string proj4Defn);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerReferenceLine)
 };
 
-class OGRXODRLayerLaneBorder : public OGRXODRLayer
+class OGRXODRLayerLaneBorder : public OGRXODRLayer, 
+                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerLaneBorder>
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "LaneBorder";
 
     OGRXODRLayerLaneBorder(const RoadElements &xodrRoadElements,
                            const std::string proj4Defn);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerLaneBorder)
 };
 
-class OGRXODRLayerRoadMark : public OGRXODRLayer
+class OGRXODRLayerRoadMark : public OGRXODRLayer,
+                             public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadMark>
+
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "RoadMark";
@@ -172,26 +175,32 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer
     OGRXODRLayerRoadMark(const RoadElements &xodrRoadElements,
                          const std::string proj4Defn,
                          const bool dissolveTriangulatedSurface);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerRoadMark)
 };
 
-class OGRXODRLayerRoadObject : public OGRXODRLayer
+class OGRXODRLayerRoadObject : public OGRXODRLayer,
+                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadObject>
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "RoadObject";
 
     OGRXODRLayerRoadObject(const RoadElements &xodrRoadElements,
                            const std::string proj4Defn);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerRoadObject)
 };
 
-class OGRXODRLayerRoadSignal : public OGRXODRLayer
+class OGRXODRLayerRoadSignal : public OGRXODRLayer,
+                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadSignal>
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "RoadSignal";
@@ -199,13 +208,16 @@ class OGRXODRLayerRoadSignal : public OGRXODRLayer
     OGRXODRLayerRoadSignal(const RoadElements &xodrRoadElements,
                            const std::string proj4Defn,
                            const bool dissolveTriangulatedSurface);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerRoadSignal)
 };
 
-class OGRXODRLayerLane : public OGRXODRLayer
+class OGRXODRLayerLane : public OGRXODRLayer,
+                         public OGRGetNextFeatureThroughRaw<OGRXODRLayerLane>
 {
   protected:
     virtual void defineFeatureClass() override;
-    virtual OGRFeature *GetNextFeature() override;
+    OGRFeature *GetNextRawFeature();
 
   public:
     const std::string FEATURE_CLASS_NAME = "Lane";
@@ -213,6 +225,8 @@ class OGRXODRLayerLane : public OGRXODRLayer
     OGRXODRLayerLane(const RoadElements &xodrRoadElements,
                      const std::string proj4Defn,
                      const bool dissolveTriangulatedSurface);
+    virtual int TestCapability(const char *pszCap) override;
+    DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerLane)
 };
 
 /*--------------------------------------------------------------------*/
@@ -247,5 +261,5 @@ class OGRXODRDataSource : public GDALDataset
 
     OGRLayer *GetLayer(int) override;
 
-    virtual int TestCapability(const char *) override;
+    virtual int TestCapability(const char *pszCap) override;
 };

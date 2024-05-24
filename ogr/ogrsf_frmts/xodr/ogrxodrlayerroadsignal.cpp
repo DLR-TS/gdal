@@ -37,14 +37,22 @@ OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadEleme
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
     m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
-    SetDescription(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
-    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
-
+    SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
 }
 
-OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
+int OGRXODRLayerRoadSignal::TestCapability(const char *pszCap)
+{
+    int result = FALSE;
+
+    if (EQUAL(pszCap, OLCZGeometries))
+        result = TRUE;
+
+    return result;
+}
+
+OGRFeature *OGRXODRLayerRoadSignal::GetNextRawFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
@@ -67,12 +75,14 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextFeature()
 
             OGRPoint point(xyz[0], xyz[1], xyz[2]);
             OGRGeometry *geometry = point.MakeValid();
+            geometry->assignSpatialReference(&m_poSRS);
             feature->SetGeometryDirectly(geometry);
         }
         else
         {
             std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(roadSignalMesh);
             //tin->MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
+            tin->assignSpatialReference(&m_poSRS);
             feature->SetGeometryDirectly(tin.release());
         }
 
@@ -123,6 +133,7 @@ void OGRXODRLayerRoadSignal::defineFeatureClass()
     {
         m_poFeatureDefn->SetGeomType(wkbTINZ);
     }
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     OGRFieldDefn oFieldSignalID("SignalID", OFTString);
     m_poFeatureDefn->AddFieldDefn(&oFieldSignalID);
