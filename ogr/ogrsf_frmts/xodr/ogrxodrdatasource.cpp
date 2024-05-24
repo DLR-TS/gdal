@@ -43,7 +43,7 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     bool parsingFailed = xodr.xml_doc.child("OpenDRIVE").empty();
     if (parsingFailed) {
         CPLError(CE_Failure, CPLE_AppDefined,
-                 "No valid OpenDRIVE dataset could be parsed.");
+                 "The provided file does not contain any OpenDRIVE data. Is it empty?");
         return FALSE;
     }
 
