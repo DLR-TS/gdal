@@ -31,11 +31,12 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadElements,
-                                               const std::string proj4Defn)
+OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(
+    const RoadElements &xodrRoadElements, const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn =
+        std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
@@ -58,13 +59,14 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextRawFeature()
     if (m_laneIter != m_roadElements.lanes.end())
     {
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn.get());
-        
+
         odr::Lane lane = *m_laneIter;
         odr::Line3D laneOuter = *m_laneLinesOuterIter;
         std::string laneRoadID = *m_laneRoadIDIter;
 
         OGRLineString lineString;
-        for(const auto& laneVertex: laneOuter ){
+        for (const auto &laneVertex : laneOuter)
+        {
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();

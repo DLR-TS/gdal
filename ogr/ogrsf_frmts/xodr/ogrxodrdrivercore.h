@@ -27,7 +27,7 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#pragma once 
+#pragma once
 
 #include "gdal_priv.h"
 

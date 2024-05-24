@@ -39,7 +39,8 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
 
     auto dataSource = std::make_unique<OGRXODRDataSource>();
 
-    if (!dataSource->Open(poOpenInfo->pszFilename, poOpenInfo->papszOpenOptions))
+    if (!dataSource->Open(poOpenInfo->pszFilename,
+                          poOpenInfo->papszOpenOptions))
     {
         return nullptr;
     }

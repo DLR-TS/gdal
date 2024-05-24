@@ -31,11 +31,12 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerRoadObject::OGRXODRLayerRoadObject(const RoadElements& xodrRoadElements,
-                                               const std::string proj4Defn)
+OGRXODRLayerRoadObject::OGRXODRLayerRoadObject(
+    const RoadElements &xodrRoadElements, const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn =
+        std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
@@ -62,8 +63,8 @@ OGRFeature *OGRXODRLayerRoadObject::GetNextRawFeature()
         odr::RoadObject roadObject = *m_roadObjectIter;
         odr::Mesh3D roadObjectMesh = *m_roadObjectMeshesIter;
 
-
-        std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(roadObjectMesh);
+        std::unique_ptr<OGRTriangulatedSurface> tin =
+            triangulateSurface(roadObjectMesh);
         //tin->MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
         tin->assignSpatialReference(&m_poSRS);
         feature->SetGeometryDirectly(tin.release());

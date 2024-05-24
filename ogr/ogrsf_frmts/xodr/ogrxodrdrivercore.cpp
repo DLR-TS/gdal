@@ -30,7 +30,6 @@
 #include "ogrsf_frmts.h"
 #include "ogrxodrdrivercore.h"
 
-
 /************************************************************************/
 /*                    OGRXODRDriverIdentify()                            */
 /************************************************************************/
@@ -49,7 +48,9 @@ int OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo)
 void OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver)
 {
     poDriver->SetDescription(DRIVER_NAME);
-    poDriver->SetMetadataItem(GDAL_DMD_LONGNAME, "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
+    poDriver->SetMetadataItem(
+        GDAL_DMD_LONGNAME,
+        "OpenDRIVE - Open Dynamic Road Information for Vehicle Environment");
     poDriver->SetMetadataItem(GDAL_DMD_EXTENSION, "xodr");
     poDriver->SetMetadataItem(
         GDAL_DMD_OPENOPTIONLIST,
@@ -86,4 +87,3 @@ void DeclareDeferredOGRXODRPlugin()
     GetGDALDriverManager()->DeclareDeferredPluginDriver(poDriver);
 }
 #endif
-

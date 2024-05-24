@@ -65,7 +65,6 @@ struct RoadElements
 class OGRXODRLayer : public OGRLayer
 {
   private:
-
     virtual OGRFeatureDefn *GetLayerDefn() override
     {
         return m_poFeatureDefn.get();
@@ -119,18 +118,21 @@ class OGRXODRLayer : public OGRLayer
     triangulateSurface(const odr::Mesh3D &mesh);
 
   public:
-    OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn);
+    OGRXODRLayer(const RoadElements &xodrRoadElements,
+                 const std::string proj4Defn);
     /**
      * \param dissolveTriangulatedSurface True if original triangulated surface meshes from 
      * libOpenDRIVE are to be dissolved into simpler geometries.
      * Only applicable for layer types derived from meshes.
     */
-    OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn,
+    OGRXODRLayer(const RoadElements &xodrRoadElements,
+                 const std::string proj4Defn,
                  const bool dissolveTriangulatedSurface);
 };
 
-class OGRXODRLayerReferenceLine : public OGRXODRLayer, 
-                                  public OGRGetNextFeatureThroughRaw<OGRXODRLayerReferenceLine>
+class OGRXODRLayerReferenceLine
+    : public OGRXODRLayer,
+      public OGRGetNextFeatureThroughRaw<OGRXODRLayerReferenceLine>
 {
   protected:
     virtual void defineFeatureClass() override;
@@ -145,8 +147,9 @@ class OGRXODRLayerReferenceLine : public OGRXODRLayer,
     DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerReferenceLine)
 };
 
-class OGRXODRLayerLaneBorder : public OGRXODRLayer, 
-                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerLaneBorder>
+class OGRXODRLayerLaneBorder
+    : public OGRXODRLayer,
+      public OGRGetNextFeatureThroughRaw<OGRXODRLayerLaneBorder>
 {
   protected:
     virtual void defineFeatureClass() override;
@@ -161,8 +164,9 @@ class OGRXODRLayerLaneBorder : public OGRXODRLayer,
     DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerLaneBorder)
 };
 
-class OGRXODRLayerRoadMark : public OGRXODRLayer,
-                             public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadMark>
+class OGRXODRLayerRoadMark
+    : public OGRXODRLayer,
+      public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadMark>
 
 {
   protected:
@@ -179,8 +183,9 @@ class OGRXODRLayerRoadMark : public OGRXODRLayer,
     DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerRoadMark)
 };
 
-class OGRXODRLayerRoadObject : public OGRXODRLayer,
-                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadObject>
+class OGRXODRLayerRoadObject
+    : public OGRXODRLayer,
+      public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadObject>
 {
   protected:
     virtual void defineFeatureClass() override;
@@ -195,8 +200,9 @@ class OGRXODRLayerRoadObject : public OGRXODRLayer,
     DEFINE_GET_NEXT_FEATURE_THROUGH_RAW(OGRXODRLayerRoadObject)
 };
 
-class OGRXODRLayerRoadSignal : public OGRXODRLayer,
-                               public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadSignal>
+class OGRXODRLayerRoadSignal
+    : public OGRXODRLayer,
+      public OGRGetNextFeatureThroughRaw<OGRXODRLayerRoadSignal>
 {
   protected:
     virtual void defineFeatureClass() override;

@@ -31,12 +31,13 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(const RoadElements& xodrRoadElements,
-                                               const std::string proj4Defn,
-                                               const bool dissolveTriangulatedSurface)
+OGRXODRLayerRoadSignal::OGRXODRLayerRoadSignal(
+    const RoadElements &xodrRoadElements, const std::string proj4Defn,
+    const bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
-    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn =
+        std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
@@ -80,7 +81,8 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextRawFeature()
         }
         else
         {
-            std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(roadSignalMesh);
+            std::unique_ptr<OGRTriangulatedSurface> tin =
+                triangulateSurface(roadSignalMesh);
             //tin->MakeValid(); // TODO Works for TINs only with enabled SFCGAL support
             tin->assignSpatialReference(&m_poSRS);
             feature->SetGeometryDirectly(tin.release());
@@ -98,7 +100,8 @@ OGRFeature *OGRXODRLayerRoadSignal::GetNextRawFeature()
                           roadSignal.hOffset);
         feature->SetField(m_poFeatureDefn->GetFieldIndex("Pitch"),
                           roadSignal.pitch);
-        feature->SetField(m_poFeatureDefn->GetFieldIndex("Roll"), roadSignal.roll);
+        feature->SetField(m_poFeatureDefn->GetFieldIndex("Roll"),
+                          roadSignal.roll);
         feature->SetField(m_poFeatureDefn->GetFieldIndex("Orientation"),
                           roadSignal.orientation.c_str());
         feature->SetField(m_poFeatureDefn->GetFieldIndex("Name"),

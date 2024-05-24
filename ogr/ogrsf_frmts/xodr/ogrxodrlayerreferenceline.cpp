@@ -32,10 +32,11 @@
 #include "ogr_xodr.h"
 
 OGRXODRLayerReferenceLine::OGRXODRLayerReferenceLine(
-    const RoadElements& xodrRoadElements, const std::string proj4Defn)
+    const RoadElements &xodrRoadElements, const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
-    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn =
+        std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
@@ -63,8 +64,10 @@ OGRFeature *OGRXODRLayerReferenceLine::GetNextRawFeature()
         odr::Line3D refLine = *m_referenceLineIter;
 
         OGRLineString lineString;
-        for(const auto& refLineVertex: refLine){
-            lineString.addPoint(refLineVertex[0], refLineVertex[1], refLineVertex[2]);
+        for (const auto &refLineVertex : refLine)
+        {
+            lineString.addPoint(refLineVertex[0], refLineVertex[1],
+                                refLineVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
         geometry->assignSpatialReference(&m_poSRS);

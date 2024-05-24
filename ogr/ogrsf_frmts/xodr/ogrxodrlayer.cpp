@@ -38,14 +38,17 @@
 #include <string>
 #include <typeinfo>
 
-OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn)
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements,
+                           const std::string proj4Defn)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, false)
 {
 }
 
-OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements, const std::string proj4Defn,
+OGRXODRLayer::OGRXODRLayer(const RoadElements &xodrRoadElements,
+                           const std::string proj4Defn,
                            const bool dissolveTriangulatedSurface)
-    : m_roadElements(xodrRoadElements), m_bDissolveTIN(dissolveTriangulatedSurface)
+    : m_roadElements(xodrRoadElements),
+      m_bDissolveTIN(dissolveTriangulatedSurface)
 {
     m_poSRS.importFromProj4(proj4Defn.c_str());
     ResetReading();
@@ -80,7 +83,8 @@ void OGRXODRLayer::resetRoadElementIterators()
     m_roadSignalMeshesIter = m_roadElements.roadSignalMeshes.begin();
 }
 
-std::unique_ptr<OGRTriangulatedSurface> OGRXODRLayer::triangulateSurface(const odr::Mesh3D &mesh)
+std::unique_ptr<OGRTriangulatedSurface>
+OGRXODRLayer::triangulateSurface(const odr::Mesh3D &mesh)
 {
     std::vector<odr::Vec3D> meshVertices = mesh.vertices;
     std::vector<uint32_t> meshIndices = mesh.indices;

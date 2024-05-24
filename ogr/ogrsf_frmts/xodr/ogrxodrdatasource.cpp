@@ -41,14 +41,17 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
 
     odr::OpenDriveMap xodr(pszFilename, false);
     bool parsingFailed = xodr.xml_doc.child("OpenDRIVE").empty();
-    if (parsingFailed) {
+    if (parsingFailed)
+    {
         CPLError(CE_Failure, CPLE_AppDefined,
-                 "The provided file does not contain any OpenDRIVE data. Is it empty?");
+                 "The provided file does not contain any OpenDRIVE data. Is it "
+                 "empty?");
         return FALSE;
     }
 
     std::vector<odr::Road> roads = xodr.get_roads();
-    if (roads.empty()) {
+    if (roads.empty())
+    {
         CPLError(CE_Failure, CPLE_AppDefined,
                  "OpenDRIVE dataset does not contain any roads.");
         return FALSE;
@@ -58,11 +61,15 @@ bool OGRXODRDataSource::Open(const char *pszFilename, CSLConstList openOptions)
     if (openOptionValue != nullptr)
     {
         double dfEpsilon = CPLAtof(openOptionValue);
-        if (dfEpsilon > 0.0) {
+        if (dfEpsilon > 0.0)
+        {
             m_dfEpsilon = dfEpsilon;
-        } else {
-            CPLError(CE_Warning , CPLE_AppDefined,
-                     "Invalid value for EPSILON specified. Falling back to default of 1.0.");
+        }
+        else
+        {
+            CPLError(CE_Warning, CPLE_AppDefined,
+                     "Invalid value for EPSILON specified. Falling back to "
+                     "default of 1.0.");
         }
     }
     openOptionValue = CSLFetchNameValueDef(openOptions, "DISSOLVE_TIN", "NO");

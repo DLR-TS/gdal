@@ -31,12 +31,13 @@
 #include "ogr_geometry.h"
 #include "ogr_xodr.h"
 
-OGRXODRLayerLane::OGRXODRLayerLane(const RoadElements& xodrRoadElements,
+OGRXODRLayerLane::OGRXODRLayerLane(const RoadElements &xodrRoadElements,
                                    const std::string proj4Defn,
                                    const bool dissolveTriangulatedSurface)
     : OGRXODRLayer(xodrRoadElements, proj4Defn, dissolveTriangulatedSurface)
 {
-    m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
+    m_poFeatureDefn =
+        std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
     SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
@@ -66,7 +67,7 @@ OGRFeature *OGRXODRLayerLane::GetNextRawFeature()
 
     if (m_laneIter != m_roadElements.lanes.end())
     {
-      
+
         feature = std::make_unique<OGRFeature>(m_poFeatureDefn.get());
 
         odr::Lane lane = *m_laneIter;
@@ -74,7 +75,8 @@ OGRFeature *OGRXODRLayerLane::GetNextRawFeature()
 
         std::string laneRoadID = *m_laneRoadIDIter;
 
-        std::unique_ptr<OGRTriangulatedSurface> tin = triangulateSurface(laneMesh);
+        std::unique_ptr<OGRTriangulatedSurface> tin =
+            triangulateSurface(laneMesh);
 
         if (m_bDissolveTIN)
         {
