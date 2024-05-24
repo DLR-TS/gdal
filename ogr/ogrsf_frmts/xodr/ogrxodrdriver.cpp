@@ -32,8 +32,6 @@
 #include "cpl_conv.h"
 #include "cpl_error.h"
 
-extern "C" void CPL_DLL RegisterOGRXODR();
-
 static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
 {
     if (poOpenInfo->eAccess == GA_Update || poOpenInfo->fpL == nullptr)
@@ -51,14 +49,14 @@ static GDALDataset *OGRXODRDriverOpen(GDALOpenInfo *poOpenInfo)
 
 void RegisterOGRXODR()
 {
+    if (!GDAL_CHECK_VERSION(DRIVER_NAME))
+        return;
+
     if (GDALGetDriverByName(DRIVER_NAME) != nullptr)
         return;
 
     GDALDriver *poDriver = new GDALDriver();
-    
     OGRXODRDriverSetCommonMetadata(poDriver);
     poDriver->pfnOpen = OGRXODRDriverOpen;
-
-
     GetGDALDriverManager()->RegisterDriver(poDriver);
 }

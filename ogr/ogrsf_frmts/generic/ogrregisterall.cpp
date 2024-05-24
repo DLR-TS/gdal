@@ -263,6 +263,9 @@ void OGRRegisterAllInternal()
 #ifdef JSONFG_ENABLED
     RegisterOGRJSONFG();
 #endif
+#ifdef XODR_ENABLED
+    RegisterOGRXODR();
+#endif
 
     // NOTE: you need to generally insert your own driver before that line.
 

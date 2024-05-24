@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of OGRXODRDriver.
+ * Purpose:  Implementation of OGRXODRDriverCore.
  * Author:   Michael Scholz, German Aerospace Center (DLR)
  *           Gülsen Bardak, German Aerospace Center (DLR)        
  *
@@ -28,7 +28,6 @@
  ****************************************************************************/
 
 #include "ogrsf_frmts.h"
-
 #include "ogrxodrdrivercore.h"
 
 
@@ -36,10 +35,11 @@
 /*                    OGRXODRDriverIdentify()                            */
 /************************************************************************/
 
-static int OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo)
-
+int OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo)
 {
-    return EQUAL(CPLGetExtension(poOpenInfo->pszFilename), "XODR");
+    CPLString extension = CPLString(CPLGetExtension(poOpenInfo->pszFilename));
+    extension.tolower();
+    return EQUAL(extension, "xodr");
 }
 
 /************************************************************************/
