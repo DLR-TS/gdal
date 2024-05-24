@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * Project:  OpenGIS Simple Features for OpenDRIVE
- * Purpose:  Implementation of OGRXODRDriver.
+ * Purpose:  Definition of OGRXODRDriverCore.
  * Author:   Michael Scholz, German Aerospace Center (DLR)
  *           Gülsen Bardak, German Aerospace Center (DLR)        
  *
@@ -32,5 +32,7 @@
 #include "gdal_priv.h"
 
 constexpr const char *DRIVER_NAME = "XODR";
+
+int CPL_DLL OGRXODRDriverIdentify(GDALOpenInfo *poOpenInfo);
 
 void CPL_DLL OGRXODRDriverSetCommonMetadata(GDALDriver *poDriver);

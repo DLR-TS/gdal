@@ -730,6 +730,8 @@ void DeclareDeferredOGRArrowPlugin();
 void CPL_DLL RegisterOGRGTFS();
 void CPL_DLL RegisterOGRPMTiles();
 void CPL_DLL RegisterOGRJSONFG();
+void CPL_DLL RegisterOGRXODR();
+void DeclareDeferredOGRXODRPlugin();
 // @endcond
 
 CPL_C_END
