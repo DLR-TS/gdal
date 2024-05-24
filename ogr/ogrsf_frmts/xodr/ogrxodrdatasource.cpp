@@ -102,11 +102,14 @@ OGRLayer *OGRXODRDataSource::GetLayer(int iLayer)
     return m_apoLayers[iLayer].get();
 }
 
-int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *capability)
+int OGRXODRDataSource::TestCapability(CPL_UNUSED const char *pszCap)
 {
-    if (EQUAL(capability, ODsCZGeometries))
-        return TRUE;
-    return FALSE;
+    int result = FALSE;
+
+    if (EQUAL(pszCap, ODsCZGeometries))
+        result = TRUE;
+
+    return result;
 }
 
 RoadElements

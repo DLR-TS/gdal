@@ -36,14 +36,22 @@ OGRXODRLayerLaneBorder::OGRXODRLayerLaneBorder(const RoadElements& xodrRoadEleme
     : OGRXODRLayer(xodrRoadElements, proj4Defn)
 {
     m_poFeatureDefn = std::make_unique<OGRFeatureDefn>(FEATURE_CLASS_NAME.c_str());
-    SetDescription(FEATURE_CLASS_NAME.c_str());
     m_poFeatureDefn->Reference();
-    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
-
+    SetDescription(FEATURE_CLASS_NAME.c_str());
     defineFeatureClass();
 }
 
-OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
+int OGRXODRLayerLaneBorder::TestCapability(const char *pszCap)
+{
+    int result = FALSE;
+
+    if (EQUAL(pszCap, OLCZGeometries))
+        result = TRUE;
+
+    return result;
+}
+
+OGRFeature *OGRXODRLayerLaneBorder::GetNextRawFeature()
 {
     std::unique_ptr<OGRFeature> feature;
 
@@ -60,6 +68,7 @@ OGRFeature *OGRXODRLayerLaneBorder::GetNextFeature()
             lineString.addPoint(laneVertex[0], laneVertex[1], laneVertex[2]);
         }
         OGRGeometry *geometry = lineString.MakeValid();
+        geometry->assignSpatialReference(&m_poSRS);
 
         feature->SetGeometryDirectly(geometry);
         feature->SetField(m_poFeatureDefn->GetFieldIndex("RoadID"),
@@ -94,6 +103,7 @@ void OGRXODRLayerLaneBorder::defineFeatureClass()
 {
     OGRwkbGeometryType wkbLineStringWithZ = OGR_GT_SetZ(wkbLineString);
     m_poFeatureDefn->SetGeomType(wkbLineStringWithZ);
+    m_poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(&m_poSRS);
 
     OGRFieldDefn oFieldID("ID", OFTInteger);
     m_poFeatureDefn->AddFieldDefn(&oFieldID);
