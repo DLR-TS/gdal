@@ -233,12 +233,12 @@ def ogr_xodr_check_reference_line_geometry_eps(lyr, eps: float):
         assert (
             wkt
             == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618258.290734177 5809506.56065761 102.363999939623)"
-        ), "wrong geometry created for ReferenceLine with EPS " + str(eps)
+        ), f"wrong geometry created for ReferenceLine with EPS {str(eps)}"
     elif eps == 0.1:
         assert (
             wkt
             == "LINESTRING (618251.572934302 5809506.96459625 102.378603962182,618254.944363001 5809506.95481165 102.371268481462,618257.937110798 5809506.62607284 102.364759846201,618258.290734177 5809506.56065761 102.363999939623)"
-        ), f"wrong geometry created for ReferenceLine with EPS " + str(eps)
+        ), f"wrong geometry created for ReferenceLine with EPS {str(eps)}"
 
 
 @pytest.mark.parametrize("dissolve_tin", [True, False])
@@ -306,4 +306,3 @@ def ogr_xodr_check_road_signal_geometry_dissolve(lyr, dissolve_tin: bool):
         assert (
             wkt == "POINT (618366.942790883 5809541.22374025 103.556888074495)"
         ), "wrong geometry created for dissolved RoadSignal"
-
