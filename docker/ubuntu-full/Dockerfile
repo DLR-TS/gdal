@@ -246,9 +246,9 @@ RUN . /buildscripts/bh-set-envvars.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Arrow C++
-ARG ARROW_VERSION=15.0.1-1
+ARG ARROW_VERSION=16.1.0-1
 # ARROW_SOVERSION to be updated in the "Build final image" section too
-ARG ARROW_SOVERSION=1500
+ARG ARROW_SOVERSION=1600
 RUN . /buildscripts/bh-set-envvars.sh \
     && apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -V ca-certificates lsb-release wget \
@@ -309,7 +309,7 @@ FROM $TARGET_BASE_IMAGE as runner
 USER root
 RUN date
 ARG JAVA_VERSION=17
-ARG ARROW_SOVERSION=1500
+ARG ARROW_SOVERSION=1600
 
 # Update distro
 RUN apt-get update -y && apt-get upgrade -y \
