@@ -115,8 +115,7 @@ RUN if test "${HDF4_VERSION}" != "" -a "$(uname -m)" = "x86_64"; then ( \
 
 # Build libOpenDRIVE
 ARG OPENDRIVE_VERSION=0.5.0-gdal
-RUN . /buildscripts/bh-set-envvars.sh \
-    && if test "${OPENDRIVE_VERSION}" != ""; then ( \
+RUN if test "${OPENDRIVE_VERSION}" != ""; then ( \
     wget -q https://github.com/DLR-TS/libOpenDRIVE/archive/refs/tags/${OPENDRIVE_VERSION}.tar.gz \
     && tar xzf ${OPENDRIVE_VERSION}.tar.gz \
     && rm -f ${OPENDRIVE_VERSION}.tar.gz \
@@ -258,6 +257,8 @@ RUN if test "${GDAL_VERSION}" = "master"; then \
         -DIconv_INCLUDE_DIR=/usr/include/gnu-libiconv \
         -DIconv_LIBRARY=/usr/lib/libiconv.so \
         -DBUILD_TESTING=OFF \
+        -DOpenDrive_DIR=/usr/lib/ \
+        -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE \
     && make -j$(nproc) \
     && make install DESTDIR="/build" \
     && (make -j$(nproc) multireadtest && cp apps/multireadtest /build/usr/bin) \
