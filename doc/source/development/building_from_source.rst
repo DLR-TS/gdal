@@ -1149,17 +1149,13 @@ libOpenDRIVE
 
 `libOpenDRIVE <https://github.com/pageldev/libOpenDRIVE>`_ is required for the :ref:`vector.xodr` driver.
 
-.. option::  -DOGR_ENABLE_DRIVER_XODR=TRUE
+.. option:: OpenDrive_DIR
 
-    Enable driver XODR.
+    Path to libOpenDRIVE CMake configuration directory ``<installDir>/cmake/``. The :file:`cmake/` path is usually automatically created when installing libOpenDRIVE and contains the necessary configuration files for inclusion into other project builds.
 
-.. option:: -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE
-    
-    Enable driver XODR as plugin.
+.. option:: GDAL_USE_OPENDRIVE=ON/OFF
 
-.. option:: -DOpenDrive_DIR=/path/to/libOpenDRIVE/installdir/cmake/
-
-    Define path to local libOpenDRIVE configuration directory.
+    Control whether to use libOpenDRIVE. Defaults to ON when libOpenDRIVE is found.
 
 
 LibXml2
@@ -1553,7 +1549,7 @@ The Oracle Instant Client SDK (closed source/proprietary) is required for the
 
 .. option:: Oracle_ROOT
 
-    Path to the root directory of the Oracle Instant Client SDK
+    Path to the root directory of the Oracle Instant Client SDK.
 
 .. option:: GDAL_USE_ORACLE=ON/OFF
 
@@ -1588,7 +1584,7 @@ Regular Expressions support. It is used for the REGEXP operator in drivers using
 
 .. option:: PCRE2_LIBRARY
 
-    Path to a shared or static library file with "pcre2-8" in its name
+    Path to a shared or static library file with "pcre2-8" in its name.
 
 .. option:: GDAL_USE_PCRE2=ON/OFF
 

@@ -3,6 +3,8 @@
 XODR -- OpenDRIVE Road Description Format
 =========================================
 
+.. versionadded:: 3.9
+
 .. shortname:: XODR
 
 .. build_dependencies:: libOpenDRIVE >= 0.5.0, GEOS
@@ -19,7 +21,7 @@ Driver capabilities
 Specification version
 ---------------------
 
-The currently supported OpenDRIVE version is 1.4 and basically depends on what is provided by libOpenDRIVE_. 
+The currently supported OpenDRIVE version is 1.4 and depends on what is provided by libOpenDRIVE_. 
 
 .. _libOpenDRIVE: https://github.com/pageldev/libOpenDRIVE/
 
@@ -96,12 +98,12 @@ Examples
 Convenient usage through docker image 
 -------------------------------------
 
-To use the XODR driver inside a docker image, first build the image from the corresponding docker image directory 
+To use the XODR driver through a docker image, first build the image from the corresponding docker image directory 
     
   ::
 
-    cd <gdal>/docker/ubuntu-small/
-    docker build -t gdal/xodr -f DockerfileXODR .
+    cd <gdal>/docker/ubuntu-full/
+    docker build -t gdal/xodr -f Dockerfile .
 
 For general usage information refer to `GDAL Docker images <https://github.com/OSGeo/gdal/tree/master/docker#usage>`__. Usage examples:
 
@@ -151,9 +153,9 @@ From the build directory configure CMake to activate our XODR driver as plugin:
 
   ::
 
-    cmake .. -DOGR_ENABLE_DRIVER_XODR=TRUE -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE -DOpenDrive_DIR=/path/to/libOpenDRIVE/installdir/cmake/
+    cmake .. -DOGR_ENABLE_DRIVER_XODR_PLUGIN=TRUE -DOpenDrive_DIR=/path/to/libOpenDRIVE/installdir/cmake/
 
-.. note:: The :file:`cmake/` path is usually automatically created when installing libOpenDRIVE and contains the necessary configuration files for inclusion into other project builds, such as this.
+.. note:: The :file:`cmake/` path is usually automatically created when installing libOpenDRIVE and contains the necessary configuration files for inclusion into other project builds.
 
 Now, build GDAL and install it:
 
