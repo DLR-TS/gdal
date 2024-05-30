@@ -98,7 +98,7 @@ Examples
 Convenient usage through docker image 
 -------------------------------------
 
-To use the XODR driver through a docker image, first build the image from the corresponding docker image directory 
+To use the XODR driver through a docker image, first build the image from the corresponding docker directory 
     
   ::
 
@@ -176,7 +176,7 @@ Check if XODR driver is found:
     cd <gdal>/build/
     ./apps/ogrinfo --formats
 
-This should print a list of supported OGR formats, including `XODR` in the first row:
+This should print a list of supported OGR formats, including ``XODR`` in the first row:
 
   ::
 
@@ -192,9 +192,4 @@ If you are on Linux, depending on your environment, you might experience linker 
 
     ERROR 1: libOpenDrive.so: cannot open shared object file: No such file or directory
 
-In such a case set the following environment variables:
-
-  ::
-
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-    export GDAL_DRIVER_PATH=<gdal>/build/gdalplugins/
+In such cases ensure that your environment variable ``LD_LIBRARY_PATH`` points to the corresponding install directories of libOpenDRIVE and GDAL and run ``ldconfig`` afterwards.
